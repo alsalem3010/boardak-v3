@@ -769,8 +769,17 @@ function studentCanEdit(){
 function queueSaveTeacher(){ clearTimeout(saveTimerT); saveTimerT=setTimeout(saveTeacherBoard, 450); }
 async function saveTeacherBoard(){
   if(State.role!=="teacher" || !State.currentBoard) return;
-  const payload={ type:"boardak_v3", version:1, drawing:teacherDataUrl(), preview:teacherDataUrl() };
-  await sb.from("boards").update({ content:payload }).eq("id", State.currentBoard.id).catch(console.warn);
+  const payload = { type:"boardak_v3", version:1, drawing: teacherDataUrl(), preview: teacherDataUrl() };
+
+  const { error } = await sb
+    .from("boards")
+    .update({ content: payload })
+    .eq("id", State.currentBoard.id);
+
+  if(error){
+    console.warn(error);
+    showToast(getLang()==="ar" ? "تعذر حفظ السبورة" : "Failed to save board");
+  }
 }
 function queueSaveStudent(){ clearTimeout(saveTimerS); saveTimerS=setTimeout(saveStudentBoard, 450); }
 async function saveStudentBoard(){
