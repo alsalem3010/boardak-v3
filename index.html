@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Boardak | بوردك</title>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  https://fonts.googleapis.com
+  https://fonts.gstatic.com
+  https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap
 
   <style>
     :root{
@@ -104,9 +104,9 @@
   </style>
 
   <!-- Supabase UMD -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- jsPDF UMD (window.jspdf) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2script>
+  <!-- jsPDF UMD -->
+  https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.jsscript>
 </head>
 
 <body>
@@ -350,13 +350,30 @@
 const SUPABASE_URL = "https://juqqhqbiirmgsjewyols.supabase.co";
 const SUPABASE_KEY = "sb_publishable_GZdVXisuLM1qnAUoiN7bng_UhQ9UQrx";
 
-/* Supabase from CDN global: const { createClient } = supabase; */
+/* =============================
+   Safe Storage (reduce storage issues)
+   - Supabase allows custom storage for auth session persistence [3](https://supabase.com/docs/reference/javascript/auth-api)[4](https://deepwiki.com/supabase/supabase-js/2.2-client-configuration)
+============================= */
+const __mem = new Map();
+const safeStorage = {
+  getItem: (key) => {
+    try { return window.localStorage.getItem(key); } catch(e){ return __mem.get(key) ?? null; }
+  },
+  setItem: (key, value) => {
+    try { window.localStorage.setItem(key, value); } catch(e){ __mem.set(key, value); }
+  },
+  removeItem: (key) => {
+    try { window.localStorage.removeItem(key); } catch(e){ __mem.delete(key); }
+  }
+};
+
+/* Supabase from CDN global */
 const { createClient } = window.supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: { persistSession: true, autoRefreshToken: true }
+  auth: { persistSession: true, autoRefreshToken: true, storage: safeStorage }
 });
 
-/* jsPDF from UMD: const { jsPDF } = window.jspdf; */
+/* jsPDF from UMD */
 const { jsPDF } = window.jspdf || {};
 
 /* =============================
@@ -433,8 +450,8 @@ const I18N = {
   }
 };
 
-function getLang(){ return localStorage.getItem("boardak_lang") || "ar"; }
-function setLang(lang){ localStorage.setItem("boardak_lang", lang); applyLang(); }
+function getLang(){ return safeStorage.getItem("boardak_lang") || "ar"; }
+function setLang(lang){ safeStorage.setItem("boardak_lang", lang); applyLang(); }
 function applyLang(){
   const lang = getLang();
   document.documentElement.lang = lang;
@@ -461,19 +478,22 @@ function setLiveText(txt){ $("liveText").textContent = txt; }
 
 function bumpVisitors(){
   const key="boardak_visitors";
-  let v = parseInt(localStorage.getItem(key) || "5000", 10);
+  let v = parseInt(safeStorage.getItem(key) || "5000", 10);
   v += 1;
-  localStorage.setItem(key, String(v));
+  safeStorage.setItem(key, String(v));
   $("visitors").textContent = String(v);
 }
 
 async function ensureAnon(){
-  const { data } = await sb.auth.getSession();
-  if(!data.session){
+  const { data: sessData, error: sessErr } = await sb.auth.getSession();
+  if(sessErr) console.warn(sessErr);
+
+  if(!sessData.session){
     const { error } = await sb.auth.signInAnonymously();
     if(error) throw error;
   }
-  const { data: u } = await sb.auth.getUser();
+  const { data: u, error: uErr } = await sb.auth.getUser();
+  if(uErr) throw uErr;
   return u.user;
 }
 
@@ -498,18 +518,24 @@ function getRoomFromUrl(){
   return (p.get("room") || "").trim().toUpperCase();
 }
 
+function escapeHtml(s){
+  return String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;");
+}
+
 /* ---------- DB loaders ---------- */
 async function loadSessionMeta(){
   const { data, error } = await sb.from("session_meta").select("*").eq("room_id", State.room.id).maybeSingle();
   if(error) throw error;
   State.sessionMeta = data;
 }
+
 async function loadBoards(){
   const { data, error } = await sb.from("boards").select("*").eq("room_id", State.room.id).order("sort_order",{ascending:true});
   if(error) throw error;
   State.boards = data || [];
   State.currentBoard = State.boards.find(b=>b.visible_to_students) || State.boards[0] || null;
 }
+
 async function ensureStudentBoard(){
   if(!State.currentBoard) return;
   const { data, error } = await sb.from("student_boards")
@@ -519,25 +545,29 @@ async function ensureStudentBoard(){
     .eq("board_id", State.currentBoard.id)
     .maybeSingle();
   if(error) throw error;
+
   if(data){
     State.studentBoard = data;
     return;
   }
-  // create row (needs insert policy patch)
+
   const { data: ins, error: insErr } = await sb.from("student_boards").insert({
     room_id: State.room.id,
     student_user_id: State.user.id,
     board_id: State.currentBoard.id
   }).select().single();
+
   if(insErr) throw insErr;
   State.studentBoard = ins;
 }
+
 async function loadMyEvaluation(){
   if(!State.studentBoard) return;
   const { data, error } = await sb.rpc("ensure_evaluation_v3", { p_student_board_id: State.studentBoard.id });
   if(error){ console.warn(error); return; }
   State.evaluation = data;
 }
+
 async function loadMyCertificate(){
   if(!State.studentBoard) return;
   const { data, error } = await sb.from("certificates").select("*").eq("student_board_id", State.studentBoard.id).maybeSingle();
@@ -553,34 +583,40 @@ function updateOnlineUI(){
 
 function subscribeDb(roomId){
   if(State.dbChannel) sb.removeChannel(State.dbChannel);
+
   const ch = sb.channel(`db:room:${roomId}`)
     .on('postgres_changes', { event:'*', schema:'public', table:'session_meta', filter:`room_id=eq.${roomId}` }, async () => {
-      await loadSessionMeta(); applySessionMetaUI();
+      try { await loadSessionMeta(); applySessionMetaUI(); } catch(e){ console.warn(e); }
     })
     .on('postgres_changes', { event:'*', schema:'public', table:'boards', filter:`room_id=eq.${roomId}` }, async () => {
-      await loadBoards();
-      renderBoardTabs();
-      renderTeacherPreview();
-      if(State.role==="student"){
-        await ensureStudentBoard();
-        renderStudentTeacherPreview();
-      }
+      try {
+        await loadBoards();
+        renderBoardTabs();
+        renderTeacherPreview();
+        if(State.role==="student"){
+          await ensureStudentBoard();
+          renderStudentTeacherPreview();
+        }
+      } catch(e){ console.warn(e); }
     })
     .on('postgres_changes', { event:'*', schema:'public', table:'room_members', filter:`room_id=eq.${roomId}` }, async () => {
-      if(State.role==="teacher") await loadStudentsList();
+      try { if(State.role==="teacher") await loadStudentsList(); } catch(e){ console.warn(e); }
     })
     .on('postgres_changes', { event:'*', schema:'public', table:'student_boards', filter:`room_id=eq.${roomId}` }, async (payload) => {
-      if(State.role==="teacher"){ await loadStudentsList(); }
-      if(State.role==="student" && payload.new && State.studentBoard && payload.new.id===State.studentBoard.id){
-        State.studentBoard = payload.new;
-        if(State.studentBoard.board_data) loadDataUrlToCanvas(sCanvas,sCtx,State.studentBoard.board_data);
-        updateCertButton();
-      }
+      try {
+        if(State.role==="teacher"){ await loadStudentsList(); }
+        if(State.role==="student" && payload.new && State.studentBoard && payload.new.id===State.studentBoard.id){
+          State.studentBoard = payload.new;
+          if(State.studentBoard.board_data) loadDataUrlToCanvas(sCanvas,sCtx,State.studentBoard.board_data);
+          updateCertButton();
+        }
+      } catch(e){ console.warn(e); }
     })
     .on('postgres_changes', { event:'*', schema:'public', table:'certificates', filter:`room_id=eq.${roomId}` }, async () => {
-      if(State.role==="student"){ await loadMyCertificate(); updateCertButton(); }
+      try { if(State.role==="student"){ await loadMyCertificate(); updateCertButton(); } } catch(e){ console.warn(e); }
     })
     .subscribe();
+
   State.dbChannel = ch;
 }
 
@@ -592,21 +628,15 @@ function subscribePresence(roomId, role, name){
     config: { private:true, presence:{ key: State.user.id }, broadcast:{ self:true } }
   });
 
-  ch.on('presence', { event:'sync' }, () => {
+  const recalc = () => {
     const st = ch.presenceState();
     State.onlineCount = Object.keys(st).length;
     updateOnlineUI();
-  });
-  ch.on('presence', { event:'join' }, () => {
-    const st = ch.presenceState();
-    State.onlineCount = Object.keys(st).length;
-    updateOnlineUI();
-  });
-  ch.on('presence', { event:'leave' }, () => {
-    const st = ch.presenceState();
-    State.onlineCount = Object.keys(st).length;
-    updateOnlineUI();
-  });
+  };
+
+  ch.on('presence', { event:'sync' }, recalc);
+  ch.on('presence', { event:'join' }, recalc);
+  ch.on('presence', { event:'leave' }, recalc);
 
   ch.on('broadcast', { event:'help_request' }, (msg) => {
     if(State.role==="teacher"){
@@ -616,7 +646,7 @@ function subscribePresence(roomId, role, name){
 
   ch.subscribe(async (status)=>{
     if(status==="SUBSCRIBED"){
-      await ch.track({ userId: State.user.id, role, name, at: Date.now() });
+      try { await ch.track({ userId: State.user.id, role, name, at: Date.now() }); } catch(e){ console.warn(e); }
     }
   });
 
@@ -632,9 +662,11 @@ async function loadStudentsList(){
     .order("joined_at",{ascending:true});
   if(error) throw error;
 
-  const { data: sbs } = await sb.from("student_boards")
+  const { data: sbs, error: sbErr } = await sb.from("student_boards")
     .select("id,student_user_id,status,help_requested,certificate_granted")
     .eq("room_id", State.room.id);
+
+  if(sbErr) throw sbErr;
 
   const map = new Map((sbs||[]).map(x=>[x.student_user_id, x]));
   renderStudents((data||[]).map(m=>({...m, sb: map.get(m.user_id)||null})));
@@ -658,7 +690,8 @@ function renderStudents(list){
     div.querySelector("button").onclick = async (e)=>{
       const sid = e.target.getAttribute("data-sbid");
       if(!sid) return;
-      await sb.rpc("focus_student_board_v3", { p_room_id: State.room.id, p_student_board_id: sid }).catch(console.warn);
+      const { error } = await sb.rpc("focus_student_board_v3", { p_room_id: State.room.id, p_student_board_id: sid });
+      if(error) console.warn(error);
     };
     wrap.appendChild(div);
   });
@@ -674,7 +707,8 @@ function renderBoardTabs(){
     btn.textContent=b.title||"Board";
     btn.onclick=async ()=>{
       if(State.role==="teacher"){
-        await sb.rpc("set_visible_board_v3", { p_room_id: State.room.id, p_board_id: b.id }).catch(console.warn);
+        const { error } = await sb.rpc("set_visible_board_v3", { p_room_id: State.room.id, p_board_id: b.id });
+        if(error) console.warn(error);
       }
       State.currentBoard=b;
       renderBoardTabs();
@@ -709,10 +743,6 @@ function renderFeedback(){
 
 function updateCertButton(){
   $("downloadCert").classList.toggle("hidden", !State.studentBoard?.certificate_granted);
-}
-
-function escapeHtml(s){
-  return String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;");
 }
 
 /* ---------- Canvas (minimal) ---------- */
@@ -769,25 +799,32 @@ function studentCanEdit(){
 function queueSaveTeacher(){ clearTimeout(saveTimerT); saveTimerT=setTimeout(saveTeacherBoard, 450); }
 async function saveTeacherBoard(){
   if(State.role!=="teacher" || !State.currentBoard) return;
-  const payload = { type:"boardak_v3", version:1, drawing: teacherDataUrl(), preview: teacherDataUrl() };
+  const payload={ type:"boardak_v3", version:1, drawing:teacherDataUrl(), preview:teacherDataUrl() };
 
-  const { error } = await sb
-    .from("boards")
-    .update({ content: payload })
+  const { error } = await sb.from("boards")
+    .update({ content:payload })
     .eq("id", State.currentBoard.id);
 
   if(error){
     console.warn(error);
-    showToast(getLang()==="ar" ? "تعذر حفظ السبورة" : "Failed to save board");
+    showToast(getLang()==="ar"?"تعذر حفظ السبورة":"Failed to save board");
   }
 }
+
 function queueSaveStudent(){ clearTimeout(saveTimerS); saveTimerS=setTimeout(saveStudentBoard, 450); }
 async function saveStudentBoard(){
   if(State.role!=="student" || !State.studentBoard) return;
-  await sb.from("student_boards").update({
-    board_data:studentDataUrl(),
-    status:$("sStatus").value
-  }).eq("id", State.studentBoard.id).catch(console.warn);
+
+  const { error } = await sb.from("student_boards")
+    .update({ board_data:studentDataUrl(), status:$("sStatus").value })
+    .eq("id", State.studentBoard.id);
+
+  if(error){
+    console.warn(error);
+    showToast(getLang()==="ar"?"تعذر حفظ سبورتك":"Failed to save");
+    return;
+  }
+
   $("sHint").textContent = (getLang()==="ar"?"يتم الحفظ...":"Saving...");
   setTimeout(()=>$("sHint").textContent="", 700);
 }
@@ -937,7 +974,8 @@ async function boot(){
 
     $("resetStudents").onclick = async ()=>{
       if(!confirm(getLang()==="ar"?"تصفير أعمال الطلبة؟":"Reset student work?")) return;
-      await sb.rpc("reset_room_students_v3", { p_room_id: State.room.id }).catch(console.warn);
+      const { error } = await sb.rpc("reset_room_students_v3", { p_room_id: State.room.id });
+      if(error) console.warn(error);
       showToast(getLang()==="ar"?"تم التصفير":"Reset done");
     };
 
@@ -946,12 +984,14 @@ async function boot(){
         ? "هل تريد إبقاء الغرفة 24 ساعة؟ (موافق=إبقاء / إلغاء=حذف نهائي)"
         : "Keep room for 24h? (OK=keep / Cancel=delete)");
       if(keep){
-        await sb.rpc("extend_room_24h_v3", { p_room_id: State.room.id }).catch(console.warn);
+        const { error } = await sb.rpc("extend_room_24h_v3", { p_room_id: State.room.id });
+        if(error) console.warn(error);
         showToast(getLang()==="ar"?"تم الإبقاء":"Extended");
       }else{
         const sure = confirm(getLang()==="ar"?"حذف نهائي؟":"Delete permanently?");
         if(!sure) return;
-        await sb.rpc("delete_room_full_v3", { p_room_id: State.room.id }).catch(console.warn);
+        const { error } = await sb.rpc("delete_room_full_v3", { p_room_id: State.room.id });
+        if(error){ console.warn(error); showToast(getLang()==="ar"?"تعذر الحذف":"Delete failed"); return; }
         showToast(getLang()==="ar"?"تم الحذف":"Deleted");
         location.href = location.pathname;
       }
@@ -959,14 +999,17 @@ async function boot(){
 
     $("toggleExplain").onclick = async ()=>{
       const next = !State.sessionMeta?.explanation_mode;
-      await sb.rpc("set_explanation_mode_v3", { p_room_id: State.room.id, p_enabled: next }).catch(console.warn);
+      const { error } = await sb.rpc("set_explanation_mode_v3", { p_room_id: State.room.id, p_enabled: next });
+      if(error) console.warn(error);
     };
     $("toggleLock").onclick = async ()=>{
       const next = !State.sessionMeta?.board_locked;
-      await sb.rpc("set_board_locked_v3", { p_room_id: State.room.id, p_locked: next }).catch(console.warn);
+      const { error } = await sb.rpc("set_board_locked_v3", { p_room_id: State.room.id, p_locked: next });
+      if(error) console.warn(error);
     };
     $("clearFocus").onclick = async ()=>{
-      await sb.rpc("clear_focused_student_board_v3", { p_room_id: State.room.id }).catch(console.warn);
+      const { error } = await sb.rpc("clear_focused_student_board_v3", { p_room_id: State.room.id });
+      if(error) console.warn(error);
     };
 
     $("addBoard").onclick = async ()=>{
@@ -1018,9 +1061,13 @@ async function boot(){
 
     $("helpBtn").onclick=async ()=>{
       if(!State.studentBoard) return;
-      await sb.from("student_boards").update({ help_requested:true }).eq("id", State.studentBoard.id).catch(console.warn);
+      const { error } = await sb.from("student_boards").update({ help_requested:true }).eq("id", State.studentBoard.id);
+      if(error) console.warn(error);
+
       if(State.presenceChannel){
-        await State.presenceChannel.send({ type:"broadcast", event:"help_request", payload:{ studentName:$("sName").value||"Student" } });
+        try{
+          await State.presenceChannel.send({ type:"broadcast", event:"help_request", payload:{ studentName:$("sName").value||"Student" } });
+        }catch(e){ console.warn(e); }
       }
       showToast(getLang()==="ar"?"تم إرسال طلب المساعدة":"Help sent");
     };
