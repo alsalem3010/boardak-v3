@@ -943,8 +943,18 @@ async function boot(){
     $("openFeedback").onclick=()=>showToast(getLang()==="ar"?"قريبًا: تغذية راجعة":"Coming soon: Feedback");
     $("openFreeDraw").onclick=()=>showToast(getLang()==="ar"?"قريبًا: رسم حر":"Coming soon: Free draw");
 
+$("openFreeDraw").onclick=()=>showToast(getLang()==="ar"?"قريبًا: رسم حر":"Coming soon: Free draw");
+
     showView("home");
- ;
+  } catch (e) {
+    console.error(e);
+    showToast("Init error");
+  } finally {
+    loading(false);
+  }
+}
+
+window.addEventListener("load", boot);
 </script>
 </body>
 </html>
