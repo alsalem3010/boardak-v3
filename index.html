@@ -1,0 +1,1046 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Boardak | بوردك</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#f2f6ff;
+      --card:#ffffff;
+      --text:#102033;
+      --muted:#64748b;
+      --blue:#2563eb;
+      --green:#16a34a;
+      --red:#dc2626;
+      --soft:#eef2ff;
+      --shadow:0 12px 30px rgba(0,0,0,.08);
+      --radius:18px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:"Cairo",system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+    .hidden{display:none!important}
+    .app{max-width:1500px;margin:0 auto;padding:20px}
+    .glass{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .topbar{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;margin-bottom:16px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .badge{width:40px;height:40px;border-radius:12px;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800}
+    .title{font-weight:900;font-size:18px}
+    .subtitle{font-size:12px;color:var(--muted)}
+    .right{display:flex;gap:10px;align-items:center}
+    .pill{background:#e8f2ff;padding:6px 12px;border-radius:999px;font-size:13px;display:flex;gap:8px;align-items:center}
+    .dot{width:8px;height:8px;border-radius:50%;background:#22c55e}
+    .btn{border:none;border-radius:12px;padding:10px 14px;font-weight:800;cursor:pointer;transition:.15s}
+    .btn:hover{transform:translateY(-1px)}
+    .btn-soft{background:var(--soft)}
+    .btn-blue{background:var(--blue);color:#fff}
+    .btn-green{background:var(--green);color:#fff}
+    .btn-red{background:var(--red);color:#fff}
+    .btn-sm{padding:6px 10px;border-radius:10px;font-size:12px;font-weight:800}
+    .lang{min-width:70px}
+
+    .view{padding:18px}
+    .hero{display:grid;grid-template-columns:1.2fr .8fr;gap:18px;padding:28px}
+    .hero h1{font-size:40px;font-weight:900;opacity:0;animation:fadeIn .6s ease forwards}
+    .hero p{margin-top:10px;line-height:1.75;color:var(--muted);opacity:0;animation:fadeIn .7s ease .1s forwards}
+    .cards{display:flex;flex-direction:column;gap:14px}
+    .entry{border:none;background:var(--card);box-shadow:var(--shadow);border-radius:22px;padding:18px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:.2s}
+    .entry:hover{transform:translateY(-3px)}
+    .iconCircle{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;animation:float 2.5s ease-in-out infinite}
+    .cGreen{background:#eafff1;color:var(--green)}
+    .cBlue{background:#e8f2ff;color:var(--blue)}
+    .entryTitle{font-weight:900}
+    .entryDesc{font-size:12px;color:var(--muted);margin-top:2px}
+    .miniActions{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+    .mini{display:flex;align-items:center;gap:8px}
+    .mini i{display:inline-block;transition:.25s}
+    .mini:hover i{transform:rotate(12deg)}
+    .footerLine{margin-top:18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;color:var(--muted);font-size:12px}
+    .counter{font-weight:900;color:var(--text)}
+    .toast{position:fixed;bottom:18px;left:18px;background:#111827;color:#fff;padding:10px 14px;border-radius:12px;opacity:0;transform:translateY(6px);transition:.2s}
+    .toast.show{opacity:1;transform:translateY(0)}
+    .loading{position:fixed;inset:0;background:rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;z-index:50}
+    .loadingBox{background:#fff;padding:18px 20px;border-radius:14px;font-weight:900}
+
+    .form{max-width:560px;padding:22px}
+    .grid{display:grid;gap:14px}
+    label{font-size:13px;font-weight:900}
+    input,select{padding:10px 12px;border-radius:12px;border:1px solid #d1d5db;font-family:"Cairo"}
+    .msg{color:var(--muted);font-size:13px;margin-top:8px}
+    .notice{background:#fff7ed;border:1px solid #fed7aa;padding:12px;border-radius:14px;color:#7c2d12}
+    .noticeBtns{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+
+    .roomTop{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:14px 16px;margin-bottom:12px}
+    .roomMeta{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+    .tag{background:var(--soft);padding:6px 10px;border-radius:999px;font-size:12px}
+    .layoutTeacher{display:grid;grid-template-columns:1.4fr .6fr;gap:12px}
+    .layoutStudent{display:grid;grid-template-columns:1.2fr .8fr;gap:12px}
+    .boardWrap{padding:12px}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+    .tool{background:var(--soft);border:none;border-radius:12px;padding:8px 10px;font-weight:900;cursor:pointer}
+    .tool.active{background:var(--blue);color:#fff}
+    .colors{display:flex;gap:6px;align-items:center}
+    .dotBtn{width:22px;height:22px;border-radius:50%;border:2px solid #fff;cursor:pointer;outline:2px solid transparent}
+    .dotBtn.active{outline:2px solid var(--blue)}
+    canvas{width:100%;height:520px;background:#fff;border:1px solid #e5e7eb;border-radius:14px}
+    .side{padding:12px}
+    .side h3{font-size:14px;font-weight:900;margin-bottom:10px}
+    .students{display:flex;flex-direction:column;gap:8px;max-height:560px;overflow:auto}
+    .studentCard{background:#f9fafb;border:1px solid #eef2f7;border-radius:14px;padding:10px;cursor:pointer}
+    .studentCard:hover{background:#eef2ff}
+    .studentRow{display:flex;justify-content:space-between;gap:8px;align-items:center}
+    .small{font-size:12px;color:var(--muted);margin-top:6px}
+    .previewBox{height:300px;border:1px dashed #cbd5e1;border-radius:14px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff}
+    .previewBox img{max-width:100%;max-height:100%}
+    .statusBar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+    @keyframes fadeIn { to { opacity:1 } }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
+  </style>
+
+  <!-- Supabase UMD -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- jsPDF UMD (window.jspdf) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+
+<body>
+  <div id="loading" class="loading hidden"><div class="loadingBox" data-i18n="loading">جاري التحميل...</div></div>
+  <div id="toast" class="toast"></div>
+
+  <div class="app">
+    <header class="topbar glass">
+      <div class="brand">
+        <div class="badge">B</div>
+        <div>
+          <div class="title"><span data-i18n="brand_ar">بوردك</span> | <span data-i18n="brand_en">Boardak</span></div>
+          <div class="subtitle" data-i18n="brand_sub">سوبرتك الذكية - منصة تعليمية هادئة للشرح والمتابعة والتقييم</div>
+        </div>
+      </div>
+
+      <div class="right">
+        <div class="pill">
+          <span class="dot"></span>
+          <span id="liveText" data-i18n="ready">جاهز</span>
+        </div>
+        <button id="langBtn" class="btn btn-soft lang">AR/EN</button>
+      </div>
+    </header>
+
+    <!-- HOME -->
+    <section id="home" class="view glass">
+      <div class="hero">
+        <div>
+          <h1><span data-i18n="home_title_ar">بوردك</span> | <span data-i18n="home_title_en">Boardak</span></h1>
+          <p>
+            <span data-i18n="home_desc_ar">سوبرتك الذكية - منصة تعليمية هادئة للشرح والمتابعة والتقييم</span><br>
+            <span data-i18n="home_desc_en">Your Smart Board - A calm educational platform for explanation, follow-up, and evaluation</span>
+          </p>
+
+          <div class="miniActions">
+            <button class="btn btn-soft mini" id="openErrors"><i>🧰</i><span data-i18n="errors_bank">بنك الأخطاء</span></button>
+            <button class="btn btn-soft mini" id="openFeedback"><i>💬</i><span data-i18n="feedback">تغذية راجعة</span></button>
+            <button class="btn btn-soft mini" id="openFreeDraw"><i>✍️</i><span data-i18n="free_draw">رسم حر</span></button>
+          </div>
+
+          <div class="footerLine">
+            <span data-i18n="dua">اللهم علّمنا ما ينفعنا وانفعنا بما علمتنا</span>
+            <span>—</span>
+            <span data-i18n="credit">إعداد وتصميم: الأستاذ عبدالله السالم</span>
+            <span>—</span>
+            <span><span data-i18n="visitors">الزوار</span>: <span id="visitors" class="counter">5000</span></span>
+          </div>
+        </div>
+
+        <div class="cards">
+          <button class="entry" id="goStudent">
+            <div class="iconCircle cGreen">👥</div>
+            <div>
+              <div class="entryTitle" data-i18n="student_enter">دخول الطالب</div>
+              <div class="entryDesc" data-i18n="student_enter_desc">ادخل بالكود أو الرابط وابدأ العمل على سبورتك.</div>
+            </div>
+          </button>
+
+          <button class="entry" id="goTeacher">
+            <div class="iconCircle cBlue">🎓</div>
+            <div>
+              <div class="entryTitle" data-i18n="teacher_enter">دخول المعلم</div>
+              <div class="entryDesc" data-i18n="teacher_enter_desc">أنشئ الغرفة بسرعة وابدأ الشرح مباشرة.</div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TEACHER ENTRY -->
+    <section id="teacherEntry" class="view glass hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div>
+          <h2 data-i18n="teacher_entry_title">دخول المعلم</h2>
+          <div class="subtitle" data-i18n="teacher_entry_sub">اسم المعلم مطلوب، والكود وعنوان الدرس اختياريان.</div>
+        </div>
+        <button class="btn btn-soft" id="backFromTeacher" data-i18n="back">رجوع</button>
+      </div>
+
+      <div class="form glass">
+        <div class="grid">
+          <div>
+            <label data-i18n="teacher_name">اسم المعلم</label>
+            <input id="tName" placeholder="مثال: عبدالله السالم" />
+          </div>
+          <div>
+            <label data-i18n="room_code">كود الغرفة</label>
+            <input id="tCode" placeholder="اختياري - يتولد تلقائيًا" />
+          </div>
+          <div>
+            <label data-i18n="lesson_title">عنوان الدرس</label>
+            <input id="tTitle" placeholder="اختياري - مثل: الكسور العشرية" />
+          </div>
+
+          <button class="btn btn-blue" id="teacherStart" data-i18n="start_session">ابدأ الجلسة</button>
+          <div id="tMsg" class="msg"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STUDENT ENTRY -->
+    <section id="studentEntry" class="view glass hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div>
+          <h2 data-i18n="student_entry_title">دخول الطالب</h2>
+          <div class="subtitle" data-i18n="student_entry_sub">اكتب الاسم والكود للدخول إلى الغرفة.</div>
+        </div>
+        <button class="btn btn-soft" id="backFromStudent" data-i18n="back">رجوع</button>
+      </div>
+
+      <div class="form glass">
+        <div class="grid">
+          <div>
+            <label data-i18n="student_name">اسم الطالب</label>
+            <input id="sName" placeholder="اسم الطالب" />
+          </div>
+          <div>
+            <label data-i18n="room_code">كود الغرفة</label>
+            <input id="sCode" placeholder="أدخل كود الغرفة" />
+          </div>
+
+          <button class="btn btn-green" id="studentJoin" data-i18n="join_now">انضم الآن</button>
+          <div id="sMsg" class="msg"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TEACHER ROOM -->
+    <section id="teacherRoom" class="view hidden">
+      <div class="roomTop glass">
+        <div>
+          <div style="font-weight:900;font-size:18px" id="tRoomTitle">—</div>
+          <div class="roomMeta">
+            <span class="tag"><span data-i18n="room_code">كود الغرفة</span>: <b id="tRoomCode">—</b></span>
+            <span class="tag"><span data-i18n="teacher_name">اسم المعلم</span>: <b id="tRoomTeacher">—</b></span>
+            <span class="tag"><span data-i18n="online">المتصلون</span>: <b id="tOnline">0</b></span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+          <button class="btn btn-soft btn-sm" id="copyLink" data-i18n="copy_link">نسخ الرابط</button>
+          <button class="btn btn-soft btn-sm" id="resetStudents" data-i18n="reset_class">تصفير الأعمال</button>
+          <button class="btn btn-red btn-sm" id="endRoom" data-i18n="end_session">إنهاء الجلسة</button>
+        </div>
+      </div>
+
+      <div class="layoutTeacher">
+        <div class="glass boardWrap">
+          <div class="statusBar">
+            <div id="boardTabs" class="toolbar"></div>
+            <button class="btn btn-blue btn-sm" id="addBoard" title="+" >+</button>
+          </div>
+
+          <div class="toolbar">
+            <button class="tool active" id="tPen" data-i18n="pen">قلم</button>
+            <button class="tool" id="tEraser" data-i18n="eraser">ممحاة</button>
+            <button class="tool" id="tText" data-i18n="text">نص</button>
+            <div class="colors">
+              <button class="dotBtn active" data-color="#000000" style="background:#000000"></button>
+              <button class="dotBtn" data-color="#dc2626" style="background:#dc2626"></button>
+              <button class="dotBtn" data-color="#16a34a" style="background:#16a34a"></button>
+            </div>
+            <button class="btn btn-soft btn-sm" id="toggleExplain" data-i18n="explain_only">الشرح فقط</button>
+            <button class="btn btn-soft btn-sm" id="toggleLock" data-i18n="lock_board">قفل</button>
+            <button class="btn btn-soft btn-sm" id="clearFocus" data-i18n="focus_mode">إيقاف العرض</button>
+          </div>
+
+          <canvas id="tCanvas" width="1400" height="820"></canvas>
+          <div class="small" id="tHint"></div>
+        </div>
+
+        <div class="glass side">
+          <h3 data-i18n="students_in_room">الطلاب داخل الغرفة</h3>
+          <div id="studentsList" class="students"></div>
+
+          <div style="margin-top:12px">
+            <h3 data-i18n="teacher_preview">المعاينة للطلاب</h3>
+            <div id="teacherPreview" class="previewBox"><span data-i18n="no_content">لا يوجد محتوى بعد</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STUDENT ROOM -->
+    <section id="studentRoom" class="view hidden">
+      <div class="roomTop glass">
+        <div>
+          <div style="font-weight:900;font-size:18px" id="sRoomTitle">—</div>
+          <div class="roomMeta">
+            <span class="tag"><span data-i18n="room_code">كود الغرفة</span>: <b id="sRoomCode">—</b></span>
+            <span class="tag"><span data-i18n="student_name">اسم الطالب</span>: <b id="sRoomStudent">—</b></span>
+            <span class="tag"><span data-i18n="online">المتصلون</span>: <b id="sOnline">0</b></span>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+          <select id="sStatus">
+            <option value="understood" data-i18n="st_understood">فهمت</option>
+            <option value="help" data-i18n="st_help">لم أفهم</option>
+            <option value="done" data-i18n="st_done">انتهيت</option>
+          </select>
+          <button class="btn btn-green btn-sm" id="helpBtn" data-i18n="help_btn">مساعدة</button>
+          <button class="btn btn-soft btn-sm" id="studentExit" data-i18n="exit">خروج</button>
+        </div>
+      </div>
+
+      <div class="layoutStudent">
+        <div class="glass boardWrap">
+          <div class="toolbar">
+            <button class="tool active" id="sPen" data-i18n="pen">قلم</button>
+            <button class="tool" id="sEraser" data-i18n="eraser">ممحاة</button>
+            <div class="colors">
+              <button class="dotBtn active" data-scolor="#000000" style="background:#000000"></button>
+              <button class="dotBtn" data-scolor="#dc2626" style="background:#dc2626"></button>
+              <button class="dotBtn" data-scolor="#16a34a" style="background:#16a34a"></button>
+            </div>
+            <button class="btn btn-soft btn-sm" id="clearStudent" data-i18n="clear">مسح</button>
+            <button class="btn btn-blue btn-sm hidden" id="downloadCert" data-i18n="download_cert">تحميل شهادتك</button>
+          </div>
+          <canvas id="sCanvas" width="1400" height="820"></canvas>
+          <div class="small" id="sHint"></div>
+        </div>
+
+        <div class="glass side">
+          <h3 data-i18n="teacher_board">سبورة المعلم</h3>
+          <div id="studentTeacherPreview" class="previewBox"><span data-i18n="no_content">لا يوجد محتوى بعد</span></div>
+          <div style="margin-top:12px">
+            <h3 data-i18n="feedback_title">التغذية الراجعة</h3>
+            <div class="small" id="feedbackBox">—</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+<script>
+/* =============================
+   CONFIG (ضع بياناتك هنا)
+============================= */
+const SUPABASE_URL = "https://juqqhqbiirmgsjewyols.supabase.co";
+const SUPABASE_KEY = "sb_publishable_GZdVXisuLM1qnAUoiN7bng_UhQ9UQrx";
+
+/* Supabase from CDN global: const { createClient } = supabase; */
+const { createClient } = window.supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true }
+});
+
+/* jsPDF from UMD: const { jsPDF } = window.jspdf; */
+const { jsPDF } = window.jspdf || {};
+
+/* =============================
+   I18N
+============================= */
+const I18N = {
+  ar: {
+    loading:"جاري التحميل...", ready:"جاهز",
+    brand_ar:"بوردك", brand_en:"Boardak",
+    brand_sub:"سوبرتك الذكية - منصة تعليمية هادئة للشرح والمتابعة والتقييم",
+    home_title_ar:"بوردك", home_title_en:"Boardak",
+    home_desc_ar:"سوبرتك الذكية - منصة تعليمية هادئة للشرح والمتابعة والتقييم",
+    home_desc_en:"Your Smart Board - A calm educational platform for explanation, follow-up, and evaluation",
+    student_enter:"دخول الطالب", student_enter_desc:"ادخل بالكود أو الرابط وابدأ العمل على سبورتك.",
+    teacher_enter:"دخول المعلم", teacher_enter_desc:"أنشئ الغرفة بسرعة وابدأ الشرح مباشرة.",
+    errors_bank:"بنك الأخطاء", feedback:"تغذية راجعة", free_draw:"رسم حر",
+    dua:"اللهم علّمنا ما ينفعنا وانفعنا بما علمتنا",
+    credit:"إعداد وتصميم: الأستاذ عبدالله السالم",
+    visitors:"الزوار",
+    back:"رجوع",
+    teacher_entry_title:"دخول المعلم",
+    teacher_entry_sub:"اسم المعلم مطلوب، والكود وعنوان الدرس اختياريان.",
+    student_entry_title:"دخول الطالب",
+    student_entry_sub:"اكتب الاسم والكود للدخول إلى الغرفة.",
+    teacher_name:"اسم المعلم", student_name:"اسم الطالب",
+    room_code:"كود الغرفة", lesson_title:"عنوان الدرس",
+    start_session:"ابدأ الجلسة", join_now:"انضم الآن",
+    copy_link:"نسخ الرابط", reset_class:"تصفير الأعمال", end_session:"إنهاء الجلسة",
+    online:"المتصلون",
+    students_in_room:"الطلاب داخل الغرفة",
+    teacher_preview:"المعاينة للطلاب",
+    no_content:"لا يوجد محتوى بعد",
+    pen:"قلم", eraser:"ممحاة", text:"نص",
+    explain_only:"الشرح فقط", lock_board:"قفل", focus_mode:"عرض جماعي",
+    teacher_board:"سبورة المعلم",
+    feedback_title:"التغذية الراجعة",
+    st_understood:"فهمت", st_help:"لم أفهم", st_done:"انتهيت",
+    help_btn:"مساعدة", exit:"خروج", clear:"مسح",
+    download_cert:"تحميل شهادتك"
+  },
+  en: {
+    loading:"Loading...", ready:"Ready",
+    brand_ar:"Boardak", brand_en:"Boardak",
+    brand_sub:"Your Smart Board - A calm educational platform for explanation, follow-up, and evaluation",
+    home_title_ar:"Boardak", home_title_en:"Boardak",
+    home_desc_ar:"Your Smart Board - A calm educational platform for explanation, follow-up, and evaluation",
+    home_desc_en:"Your Smart Board - A calm educational platform for explanation, follow-up, and evaluation",
+    student_enter:"Student", student_enter_desc:"Enter with a code or link and start working.",
+    teacher_enter:"Teacher", teacher_enter_desc:"Create a room quickly and start teaching.",
+    errors_bank:"Error Bank", feedback:"Feedback", free_draw:"Free Draw",
+    dua:"May God teach us what benefits us and benefit us with what He taught us",
+    credit:"Designed by: Abdullah Al-Salem",
+    visitors:"Visitors",
+    back:"Back",
+    teacher_entry_title:"Teacher Entry",
+    teacher_entry_sub:"Teacher name required. Code & title optional.",
+    student_entry_title:"Student Entry",
+    student_entry_sub:"Enter name and room code.",
+    teacher_name:"Teacher name", student_name:"Student name",
+    room_code:"Room code", lesson_title:"Lesson title",
+    start_session:"Start session", join_now:"Join now",
+    copy_link:"Copy link", reset_class:"Reset class", end_session:"End session",
+    online:"Online",
+    students_in_room:"Students",
+    teacher_preview:"Student preview",
+    no_content:"No content yet",
+    pen:"Pen", eraser:"Eraser", text:"Text",
+    explain_only:"Explain only", lock_board:"Lock", focus_mode:"Focus",
+    teacher_board:"Teacher board",
+    feedback_title:"Feedback",
+    st_understood:"Understood", st_help:"Need help", st_done:"Done",
+    help_btn:"Help", exit:"Exit", clear:"Clear",
+    download_cert:"Download certificate"
+  }
+};
+
+function getLang(){ return localStorage.getItem("boardak_lang") || "ar"; }
+function setLang(lang){ localStorage.setItem("boardak_lang", lang); applyLang(); }
+function applyLang(){
+  const lang = getLang();
+  document.documentElement.lang = lang;
+  document.documentElement.dir = (lang === "ar") ? "rtl" : "ltr";
+  document.querySelectorAll("[data-i18n]").forEach(el=>{
+    const key = el.getAttribute("data-i18n");
+    if(I18N[lang] && I18N[lang][key] != null) el.textContent = I18N[lang][key];
+  });
+}
+
+const $ = (id)=>document.getElementById(id);
+function showToast(msg){
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"), 2200);
+}
+function loading(flag){ $("loading").classList.toggle("hidden", !flag); }
+function showView(id){
+  ["home","teacherEntry","studentEntry","teacherRoom","studentRoom"].forEach(v=>$(v).classList.add("hidden"));
+  $(id).classList.remove("hidden");
+}
+function setLiveText(txt){ $("liveText").textContent = txt; }
+
+function bumpVisitors(){
+  const key="boardak_visitors";
+  let v = parseInt(localStorage.getItem(key) || "5000", 10);
+  v += 1;
+  localStorage.setItem(key, String(v));
+  $("visitors").textContent = String(v);
+}
+
+async function ensureAnon(){
+  const { data } = await sb.auth.getSession();
+  if(!data.session){
+    const { error } = await sb.auth.signInAnonymously();
+    if(error) throw error;
+  }
+  const { data: u } = await sb.auth.getUser();
+  return u.user;
+}
+
+const State = {
+  role:null,
+  user:null,
+  room:null,
+  roomCode:null,
+  sessionMeta:null,
+  boards:[],
+  currentBoard:null,
+  studentBoard:null,
+  evaluation:null,
+  certificate:null,
+  dbChannel:null,
+  presenceChannel:null,
+  onlineCount:0
+};
+
+function getRoomFromUrl(){
+  const p = new URLSearchParams(location.search);
+  return (p.get("room") || "").trim().toUpperCase();
+}
+
+/* ---------- DB loaders ---------- */
+async function loadSessionMeta(){
+  const { data, error } = await sb.from("session_meta").select("*").eq("room_id", State.room.id).maybeSingle();
+  if(error) throw error;
+  State.sessionMeta = data;
+}
+async function loadBoards(){
+  const { data, error } = await sb.from("boards").select("*").eq("room_id", State.room.id).order("sort_order",{ascending:true});
+  if(error) throw error;
+  State.boards = data || [];
+  State.currentBoard = State.boards.find(b=>b.visible_to_students) || State.boards[0] || null;
+}
+async function ensureStudentBoard(){
+  if(!State.currentBoard) return;
+  const { data, error } = await sb.from("student_boards")
+    .select("*")
+    .eq("room_id", State.room.id)
+    .eq("student_user_id", State.user.id)
+    .eq("board_id", State.currentBoard.id)
+    .maybeSingle();
+  if(error) throw error;
+  if(data){
+    State.studentBoard = data;
+    return;
+  }
+  // create row (needs insert policy patch)
+  const { data: ins, error: insErr } = await sb.from("student_boards").insert({
+    room_id: State.room.id,
+    student_user_id: State.user.id,
+    board_id: State.currentBoard.id
+  }).select().single();
+  if(insErr) throw insErr;
+  State.studentBoard = ins;
+}
+async function loadMyEvaluation(){
+  if(!State.studentBoard) return;
+  const { data, error } = await sb.rpc("ensure_evaluation_v3", { p_student_board_id: State.studentBoard.id });
+  if(error){ console.warn(error); return; }
+  State.evaluation = data;
+}
+async function loadMyCertificate(){
+  if(!State.studentBoard) return;
+  const { data, error } = await sb.from("certificates").select("*").eq("student_board_id", State.studentBoard.id).maybeSingle();
+  if(error){ console.warn(error); return; }
+  State.certificate = data;
+}
+
+/* ---------- Presence + Postgres Changes ---------- */
+function updateOnlineUI(){
+  if(State.role==="teacher") $("tOnline").textContent = String(State.onlineCount||0);
+  if(State.role==="student") $("sOnline").textContent = String(State.onlineCount||0);
+}
+
+function subscribeDb(roomId){
+  if(State.dbChannel) sb.removeChannel(State.dbChannel);
+  const ch = sb.channel(`db:room:${roomId}`)
+    .on('postgres_changes', { event:'*', schema:'public', table:'session_meta', filter:`room_id=eq.${roomId}` }, async () => {
+      await loadSessionMeta(); applySessionMetaUI();
+    })
+    .on('postgres_changes', { event:'*', schema:'public', table:'boards', filter:`room_id=eq.${roomId}` }, async () => {
+      await loadBoards();
+      renderBoardTabs();
+      renderTeacherPreview();
+      if(State.role==="student"){
+        await ensureStudentBoard();
+        renderStudentTeacherPreview();
+      }
+    })
+    .on('postgres_changes', { event:'*', schema:'public', table:'room_members', filter:`room_id=eq.${roomId}` }, async () => {
+      if(State.role==="teacher") await loadStudentsList();
+    })
+    .on('postgres_changes', { event:'*', schema:'public', table:'student_boards', filter:`room_id=eq.${roomId}` }, async (payload) => {
+      if(State.role==="teacher"){ await loadStudentsList(); }
+      if(State.role==="student" && payload.new && State.studentBoard && payload.new.id===State.studentBoard.id){
+        State.studentBoard = payload.new;
+        if(State.studentBoard.board_data) loadDataUrlToCanvas(sCanvas,sCtx,State.studentBoard.board_data);
+        updateCertButton();
+      }
+    })
+    .on('postgres_changes', { event:'*', schema:'public', table:'certificates', filter:`room_id=eq.${roomId}` }, async () => {
+      if(State.role==="student"){ await loadMyCertificate(); updateCertButton(); }
+    })
+    .subscribe();
+  State.dbChannel = ch;
+}
+
+function subscribePresence(roomId, role, name){
+  if(State.presenceChannel) sb.removeChannel(State.presenceChannel);
+
+  const topic = `room:${roomId}`;
+  const ch = sb.channel(topic, {
+    config: { private:true, presence:{ key: State.user.id }, broadcast:{ self:true } }
+  });
+
+  ch.on('presence', { event:'sync' }, () => {
+    const st = ch.presenceState();
+    State.onlineCount = Object.keys(st).length;
+    updateOnlineUI();
+  });
+  ch.on('presence', { event:'join' }, () => {
+    const st = ch.presenceState();
+    State.onlineCount = Object.keys(st).length;
+    updateOnlineUI();
+  });
+  ch.on('presence', { event:'leave' }, () => {
+    const st = ch.presenceState();
+    State.onlineCount = Object.keys(st).length;
+    updateOnlineUI();
+  });
+
+  ch.on('broadcast', { event:'help_request' }, (msg) => {
+    if(State.role==="teacher"){
+      showToast("🔔 " + (msg?.payload?.studentName || "Student") + " needs help");
+    }
+  });
+
+  ch.subscribe(async (status)=>{
+    if(status==="SUBSCRIBED"){
+      await ch.track({ userId: State.user.id, role, name, at: Date.now() });
+    }
+  });
+
+  State.presenceChannel = ch;
+}
+
+/* ---------- Teacher students list ---------- */
+async function loadStudentsList(){
+  const { data, error } = await sb.from("room_members")
+    .select("*")
+    .eq("room_id", State.room.id)
+    .eq("role","student")
+    .order("joined_at",{ascending:true});
+  if(error) throw error;
+
+  const { data: sbs } = await sb.from("student_boards")
+    .select("id,student_user_id,status,help_requested,certificate_granted")
+    .eq("room_id", State.room.id);
+
+  const map = new Map((sbs||[]).map(x=>[x.student_user_id, x]));
+  renderStudents((data||[]).map(m=>({...m, sb: map.get(m.user_id)||null})));
+}
+
+function renderStudents(list){
+  const wrap = $("studentsList");
+  if(!list.length){ wrap.innerHTML = `<div class="studentCard">${I18N[getLang()].no_content}</div>`; return; }
+  wrap.innerHTML = "";
+  list.forEach(x=>{
+    const div=document.createElement("div");
+    div.className="studentCard";
+    const help = x.sb?.help_requested ? "🆘" : "";
+    div.innerHTML = `
+      <div class="studentRow">
+        <div style="font-weight:900">${escapeHtml(x.display_name||"Student")} ${help}</div>
+        <button class="btn btn-soft btn-sm" data-sbid="${x.sb?.id||""}">عرض</button>
+      </div>
+      <div class="small">status: ${escapeHtml(x.sb?.status||"—")} | cert: ${x.sb?.certificate_granted?"✅":"—"}</div>
+    `;
+    div.querySelector("button").onclick = async (e)=>{
+      const sid = e.target.getAttribute("data-sbid");
+      if(!sid) return;
+      await sb.rpc("focus_student_board_v3", { p_room_id: State.room.id, p_student_board_id: sid }).catch(console.warn);
+    };
+    wrap.appendChild(div);
+  });
+}
+
+/* ---------- Board tabs + previews ---------- */
+function renderBoardTabs(){
+  const wrap=$("boardTabs");
+  wrap.innerHTML="";
+  State.boards.forEach(b=>{
+    const btn=document.createElement("button");
+    btn.className="tool"+(State.currentBoard && State.currentBoard.id===b.id ? " active":"");
+    btn.textContent=b.title||"Board";
+    btn.onclick=async ()=>{
+      if(State.role==="teacher"){
+        await sb.rpc("set_visible_board_v3", { p_room_id: State.room.id, p_board_id: b.id }).catch(console.warn);
+      }
+      State.currentBoard=b;
+      renderBoardTabs();
+      await refreshCanvas();
+    };
+    wrap.appendChild(btn);
+  });
+}
+
+function renderTeacherPreview(){
+  const wrap=$("teacherPreview");
+  const b=State.boards.find(x=>x.visible_to_students);
+  if(!b){ wrap.innerHTML=`<span>${I18N[getLang()].no_content}</span>`; return; }
+  const preview = b.content?.preview || b.content?.drawing || "";
+  wrap.innerHTML = preview ? `<img alt="preview" src="${preview}">` : `<span>${I18N[getLang()].no_content}</span>`;
+}
+
+function renderStudentTeacherPreview(){
+  const wrap=$("studentTeacherPreview");
+  const b=State.boards.find(x=>x.visible_to_students);
+  if(!b){ wrap.innerHTML=`<span>${I18N[getLang()].no_content}</span>`; return; }
+  const preview = b.content?.preview || b.content?.drawing || "";
+  wrap.innerHTML = preview ? `<img alt="teacher" src="${preview}">` : `<span>${I18N[getLang()].no_content}</span>`;
+}
+
+function renderFeedback(){
+  const box=$("feedbackBox");
+  const ev=State.evaluation;
+  if(!ev){ box.textContent="—"; return; }
+  box.textContent = `points: ${ev.points??0} | badge: ${ev.badge||"—"} | level: ${ev.level||"—"} | note: ${ev.note_sent ? (ev.note||"—"):"—"}`;
+}
+
+function updateCertButton(){
+  $("downloadCert").classList.toggle("hidden", !State.studentBoard?.certificate_granted);
+}
+
+function escapeHtml(s){
+  return String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;");
+}
+
+/* ---------- Canvas (minimal) ---------- */
+let tCanvas,tCtx,tDrawing=false,tTool="pen",tColor="#000000";
+let sCanvas,sCtx,sDrawing=false,sTool="pen",sColor="#000000";
+let saveTimerT=null, saveTimerS=null;
+
+function initCanvas(){
+  tCanvas=$("tCanvas"); tCtx=tCanvas.getContext("2d");
+  sCanvas=$("sCanvas"); sCtx=sCanvas.getContext("2d");
+  [tCtx,sCtx].forEach(ctx=>{ ctx.lineCap="round"; ctx.lineJoin="round"; });
+
+  tCanvas.onpointerdown=(e)=>{ tDrawing=true; const p=pos(tCanvas,e); tCtx.beginPath(); tCtx.moveTo(p.x,p.y); };
+  tCanvas.onpointermove=(e)=>{ if(!tDrawing) return; const p=pos(tCanvas,e);
+    tCtx.lineWidth=4;
+    if(tTool==="eraser"){ tCtx.globalCompositeOperation="destination-out"; tCtx.strokeStyle="#ffffff"; }
+    else { tCtx.globalCompositeOperation="source-over"; tCtx.strokeStyle=tColor; }
+    tCtx.lineTo(p.x,p.y); tCtx.stroke(); queueSaveTeacher();
+  };
+  tCanvas.onpointerup=()=>{ tDrawing=false; tCtx.beginPath(); tCtx.globalCompositeOperation="source-over"; };
+
+  sCanvas.onpointerdown=(e)=>{ if(!studentCanEdit()) return; sDrawing=true; const p=pos(sCanvas,e); sCtx.beginPath(); sCtx.moveTo(p.x,p.y); };
+  sCanvas.onpointermove=(e)=>{ if(!studentCanEdit()) return; if(!sDrawing) return; const p=pos(sCanvas,e);
+    sCtx.lineWidth=4;
+    if(sTool==="eraser"){ sCtx.globalCompositeOperation="destination-out"; sCtx.strokeStyle="#ffffff"; }
+    else { sCtx.globalCompositeOperation="source-over"; sCtx.strokeStyle=sColor; }
+    sCtx.lineTo(p.x,p.y); sCtx.stroke(); queueSaveStudent();
+  };
+  sCanvas.onpointerup=()=>{ sDrawing=false; sCtx.beginPath(); sCtx.globalCompositeOperation="source-over"; };
+}
+
+function pos(canvas,e){
+  const r=canvas.getBoundingClientRect();
+  return { x:(e.clientX-r.left)*(canvas.width/r.width), y:(e.clientY-r.top)*(canvas.height/r.height) };
+}
+function clearCanvas(canvas,ctx){ ctx.clearRect(0,0,canvas.width,canvas.height); }
+function loadDataUrlToCanvas(canvas,ctx,src){
+  if(!src) return;
+  const img=new Image();
+  img.onload=()=>{ clearCanvas(canvas,ctx); ctx.drawImage(img,0,0,canvas.width,canvas.height); };
+  img.src=src;
+}
+function teacherDataUrl(){ return tCanvas.toDataURL("image/png"); }
+function studentDataUrl(){ return sCanvas.toDataURL("image/png"); }
+
+function studentCanEdit(){
+  const m=State.sessionMeta||{};
+  if(m.explanation_mode) return false;
+  if(m.board_locked) return false;
+  if(m.focused_student_board_id) return false;
+  return true;
+}
+
+function queueSaveTeacher(){ clearTimeout(saveTimerT); saveTimerT=setTimeout(saveTeacherBoard, 450); }
+async function saveTeacherBoard(){
+  if(State.role!=="teacher" || !State.currentBoard) return;
+  const payload={ type:"boardak_v3", version:1, drawing:teacherDataUrl(), preview:teacherDataUrl() };
+  await sb.from("boards").update({ content:payload }).eq("id", State.currentBoard.id).catch(console.warn);
+}
+function queueSaveStudent(){ clearTimeout(saveTimerS); saveTimerS=setTimeout(saveStudentBoard, 450); }
+async function saveStudentBoard(){
+  if(State.role!=="student" || !State.studentBoard) return;
+  await sb.from("student_boards").update({
+    board_data:studentDataUrl(),
+    status:$("sStatus").value
+  }).eq("id", State.studentBoard.id).catch(console.warn);
+  $("sHint").textContent = (getLang()==="ar"?"يتم الحفظ...":"Saving...");
+  setTimeout(()=>$("sHint").textContent="", 700);
+}
+
+async function refreshCanvas(){
+  if(State.role==="teacher"){
+    clearCanvas(tCanvas,tCtx);
+    const d=State.currentBoard?.content?.drawing;
+    if(d) loadDataUrlToCanvas(tCanvas,tCtx,d);
+  }else{
+    clearCanvas(sCanvas,sCtx);
+    await ensureStudentBoard();
+    if(State.studentBoard?.board_data) loadDataUrlToCanvas(sCanvas,sCtx,State.studentBoard.board_data);
+    renderStudentTeacherPreview();
+  }
+}
+
+/* ---------- Session meta UI ---------- */
+function applySessionMetaUI(){
+  const m=State.sessionMeta||{};
+  if(State.role==="student"){
+    $("sHint").textContent = studentCanEdit() ? "" : (getLang()==="ar"?"التعديل متوقف مؤقتًا":"Editing disabled");
+  }
+}
+
+/* ---------- Flows ---------- */
+async function teacherStartFlow(){
+  const teacherName=$("tName").value.trim();
+  const code=$("tCode").value.trim();
+  const title=$("tTitle").value.trim();
+  if(!teacherName){ showToast(getLang()==="ar"?"اكتب اسم المعلم":"Enter teacher name"); return; }
+
+  loading(true);
+  try{
+    const { data, error } = await sb.rpc("create_room_v3", {
+      p_code: code || null,
+      p_teacher_name: teacherName,
+      p_title: title || null,
+      p_lang: getLang()
+    });
+    if(error) throw error;
+
+    State.role="teacher";
+    State.room=data;
+    State.roomCode=data.code;
+
+    $("tRoomTitle").textContent = data.title || "درس";
+    $("tRoomCode").textContent = data.code;
+    $("tRoomTeacher").textContent = teacherName;
+
+    initCanvas();
+    await loadSessionMeta();
+    await loadBoards();
+    renderBoardTabs();
+    await refreshCanvas();
+    renderTeacherPreview();
+    await loadStudentsList();
+
+    subscribeDb(data.id);
+    subscribePresence(data.id, "teacher", teacherName);
+
+    const url=new URL(location.href);
+    url.searchParams.set("room", data.code);
+    history.replaceState({}, "", url.toString());
+
+    showView("teacherRoom");
+    setLiveText(getLang()==="ar"?"مباشر":"Live");
+  }catch(e){
+    console.error(e);
+    $("tMsg").textContent=String(e.message||e);
+    showToast(getLang()==="ar"?"تعذر إنشاء الغرفة":"Could not create room");
+  }finally{ loading(false); }
+}
+
+async function studentJoinFlow(){
+  const studentName=$("sName").value.trim();
+  const code=$("sCode").value.trim().toUpperCase();
+  if(!studentName || !code){ showToast(getLang()==="ar"?"اكتب الاسم والكود":"Enter name and code"); return; }
+
+  loading(true);
+  try{
+    const { data, error } = await sb.rpc("join_room_v3", {
+      p_room_code: code,
+      p_student_name: studentName
+    });
+    if(error) throw error;
+
+    const row = Array.isArray(data) ? data[0] : data;
+    State.role="student";
+    State.room = { id: row.room_id, code, teacher_name: row.teacher_name, title: row.title };
+    State.roomCode = code;
+
+    $("sRoomTitle").textContent = row.title || "Room";
+    $("sRoomCode").textContent = code;
+    $("sRoomStudent").textContent = studentName;
+
+    initCanvas();
+    await loadSessionMeta();
+    await loadBoards();
+    await ensureStudentBoard();
+    await loadMyEvaluation();
+    await loadMyCertificate();
+
+    await refreshCanvas();
+    renderStudentTeacherPreview();
+    renderFeedback();
+    updateCertButton();
+    applySessionMetaUI();
+
+    subscribeDb(State.room.id);
+    subscribePresence(State.room.id, "student", studentName);
+
+    showView("studentRoom");
+    setLiveText(getLang()==="ar"?"مباشر":"Live");
+  }catch(e){
+    console.error(e);
+    $("sMsg").textContent=String(e.message||e);
+    showToast(getLang()==="ar"?"تعذر الدخول":"Could not join");
+  }finally{ loading(false); }
+}
+
+/* ---------- Boot ---------- */
+async function boot(){
+  applyLang();
+  bumpVisitors();
+  loading(true);
+  try{
+    State.user = await ensureAnon();
+
+    const code=getRoomFromUrl();
+    if(code) $("sCode").value = code;
+
+    $("langBtn").onclick = ()=> setLang(getLang()==="ar" ? "en" : "ar");
+    $("goTeacher").onclick = ()=> showView("teacherEntry");
+    $("goStudent").onclick = ()=> showView("studentEntry");
+    $("backFromTeacher").onclick = ()=> showView("home");
+    $("backFromStudent").onclick = ()=> showView("home");
+
+    $("teacherStart").onclick = teacherStartFlow;
+    $("studentJoin").onclick = studentJoinFlow;
+
+    $("copyLink").onclick = ()=>{
+      const link = `${location.origin}${location.pathname}?room=${State.roomCode||""}`;
+      navigator.clipboard.writeText(link);
+      showToast(getLang()==="ar"?"تم نسخ الرابط":"Link copied");
+    };
+
+    $("resetStudents").onclick = async ()=>{
+      if(!confirm(getLang()==="ar"?"تصفير أعمال الطلبة؟":"Reset student work?")) return;
+      await sb.rpc("reset_room_students_v3", { p_room_id: State.room.id }).catch(console.warn);
+      showToast(getLang()==="ar"?"تم التصفير":"Reset done");
+    };
+
+    $("endRoom").onclick = async ()=>{
+      const keep = confirm(getLang()==="ar"
+        ? "هل تريد إبقاء الغرفة 24 ساعة؟ (موافق=إبقاء / إلغاء=حذف نهائي)"
+        : "Keep room for 24h? (OK=keep / Cancel=delete)");
+      if(keep){
+        await sb.rpc("extend_room_24h_v3", { p_room_id: State.room.id }).catch(console.warn);
+        showToast(getLang()==="ar"?"تم الإبقاء":"Extended");
+      }else{
+        const sure = confirm(getLang()==="ar"?"حذف نهائي؟":"Delete permanently?");
+        if(!sure) return;
+        await sb.rpc("delete_room_full_v3", { p_room_id: State.room.id }).catch(console.warn);
+        showToast(getLang()==="ar"?"تم الحذف":"Deleted");
+        location.href = location.pathname;
+      }
+    };
+
+    $("toggleExplain").onclick = async ()=>{
+      const next = !State.sessionMeta?.explanation_mode;
+      await sb.rpc("set_explanation_mode_v3", { p_room_id: State.room.id, p_enabled: next }).catch(console.warn);
+    };
+    $("toggleLock").onclick = async ()=>{
+      const next = !State.sessionMeta?.board_locked;
+      await sb.rpc("set_board_locked_v3", { p_room_id: State.room.id, p_locked: next }).catch(console.warn);
+    };
+    $("clearFocus").onclick = async ()=>{
+      await sb.rpc("clear_focused_student_board_v3", { p_room_id: State.room.id }).catch(console.warn);
+    };
+
+    $("addBoard").onclick = async ()=>{
+      const n=(State.boards?.length||0)+1;
+      const title=(getLang()==="ar")?`السبورة ${n}`:`Board ${n}`;
+      const { error } = await sb.from("boards").insert({
+        room_id: State.room.id,
+        title,
+        sort_order: n,
+        visible_to_students: false,
+        content: { type:"boardak_v3", version:1 }
+      });
+      if(error) showToast(getLang()==="ar"?"ربما وصلت حد 10 سبورات":"Maybe reached 10 boards");
+    };
+
+    $("tPen").onclick=()=>{ tTool="pen"; $("tPen").classList.add("active"); $("tEraser").classList.remove("active"); };
+    $("tEraser").onclick=()=>{ tTool="eraser"; $("tEraser").classList.add("active"); $("tPen").classList.remove("active"); };
+    $("tText").onclick=()=>{
+      const text=prompt(getLang()==="ar"?"اكتب النص":"Enter text");
+      if(!text) return;
+      tCtx.save(); tCtx.fillStyle=tColor; tCtx.font="32px Cairo"; tCtx.fillText(text,120,120); tCtx.restore(); queueSaveTeacher();
+    };
+    document.querySelectorAll("[data-color]").forEach(btn=>{
+      btn.onclick=()=>{
+        document.querySelectorAll("[data-color]").forEach(x=>x.classList.remove("active"));
+        btn.classList.add("active");
+        tColor=btn.getAttribute("data-color");
+        tTool="pen";
+        $("tPen").classList.add("active"); $("tEraser").classList.remove("active");
+      };
+    });
+
+    $("sPen").onclick=()=>{ sTool="pen"; $("sPen").classList.add("active"); $("sEraser").classList.remove("active"); };
+    $("sEraser").onclick=()=>{ sTool="eraser"; $("sEraser").classList.add("active"); $("sPen").classList.remove("active"); };
+    document.querySelectorAll("[data-scolor]").forEach(btn=>{
+      btn.onclick=()=>{
+        document.querySelectorAll("[data-scolor]").forEach(x=>x.classList.remove("active"));
+        btn.classList.add("active");
+        sColor=btn.getAttribute("data-scolor");
+        sTool="pen";
+        $("sPen").classList.add("active"); $("sEraser").classList.remove("active");
+      };
+    });
+    $("clearStudent").onclick=()=>{
+      if(!studentCanEdit()){ showToast(getLang()==="ar"?"التعديل متوقف":"Editing disabled"); return; }
+      clearCanvas(sCanvas,sCtx); queueSaveStudent();
+    };
+    $("sStatus").onchange=()=>queueSaveStudent();
+
+    $("helpBtn").onclick=async ()=>{
+      if(!State.studentBoard) return;
+      await sb.from("student_boards").update({ help_requested:true }).eq("id", State.studentBoard.id).catch(console.warn);
+      if(State.presenceChannel){
+        await State.presenceChannel.send({ type:"broadcast", event:"help_request", payload:{ studentName:$("sName").value||"Student" } });
+      }
+      showToast(getLang()==="ar"?"تم إرسال طلب المساعدة":"Help sent");
+    };
+
+    $("downloadCert").onclick=()=>{
+      if(!State.studentBoard?.certificate_granted || !jsPDF) return;
+      const doc=new jsPDF();
+      doc.text("Boardak Certificate",10,10);
+      doc.text(`Student: ${$("sName").value||""}`,10,20);
+      doc.text(`Room: ${State.roomCode||""}`,10,30);
+      doc.save(`Boardak-Certificate-${State.roomCode||"room"}.pdf`);
+    };
+
+    $("studentExit").onclick=()=> location.href = location.pathname;
+
+    $("openErrors").onclick=()=>showToast(getLang()==="ar"?"قريبًا: بنك الأخطاء":"Coming soon: Error bank");
+    $("openFeedback").onclick=()=>showToast(getLang()==="ar"?"قريبًا: تغذية راجعة":"Coming soon: Feedback");
+    $("openFreeDraw").onclick=()=>showToast(getLang()==="ar"?"قريبًا: رسم حر":"Coming soon: Free draw");
+
+    showView("home");
+  }catch(e){
+    console.error(e);
+    showToast("Init error");
+  }finally{
+    loading(false);
+  }
+}
+
+window.addEventListener("load", boot);
+</script>
+</body>
+</html>
