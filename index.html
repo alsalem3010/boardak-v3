@@ -5,9 +5,16 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Boardak | بوردك</title>
 
-  https://fonts.googleapis.com
-  https://fonts.gstatic.com
-  https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap
+  <!-- Google Fonts (Correct) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Supabase JS (Correct) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- jsPDF UMD (Correct) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <style>
     :root{
@@ -62,9 +69,9 @@
     .mini:hover i{transform:rotate(12deg)}
     .footerLine{margin-top:18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;color:var(--muted);font-size:12px}
     .counter{font-weight:900;color:var(--text)}
-    .toast{position:fixed;bottom:18px;left:18px;background:#111827;color:#fff;padding:10px 14px;border-radius:12px;opacity:0;transform:translateY(6px);transition:.2s}
+    .toast{position:fixed;bottom:18px;left:18px;background:#111827;color:#fff;padding:10px 14px;border-radius:12px;opacity:0;transform:translateY(6px);transition:.2s;z-index:999}
     .toast.show{opacity:1;transform:translateY(0)}
-    .loading{position:fixed;inset:0;background:rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;z-index:50}
+    .loading{position:fixed;inset:0;background:rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;z-index:9999}
     .loadingBox{background:#fff;padding:18px 20px;border-radius:14px;font-weight:900}
 
     .form{max-width:560px;padding:22px}
@@ -72,8 +79,6 @@
     label{font-size:13px;font-weight:900}
     input,select{padding:10px 12px;border-radius:12px;border:1px solid #d1d5db;font-family:"Cairo"}
     .msg{color:var(--muted);font-size:13px;margin-top:8px}
-    .notice{background:#fff7ed;border:1px solid #fed7aa;padding:12px;border-radius:14px;color:#7c2d12}
-    .noticeBtns{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 
     .roomTop{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:14px 16px;margin-bottom:12px}
     .roomMeta{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
@@ -97,16 +102,10 @@
     .small{font-size:12px;color:var(--muted);margin-top:6px}
     .previewBox{height:300px;border:1px dashed #cbd5e1;border-radius:14px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff}
     .previewBox img{max-width:100%;max-height:100%}
-    .statusBar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 
     @keyframes fadeIn { to { opacity:1 } }
     @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
   </style>
-
-  <!-- Supabase UMD -->
-  https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2script>
-  <!-- jsPDF UMD -->
-  https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.jsscript>
 </head>
 
 <body>
@@ -255,7 +254,7 @@
 
       <div class="layoutTeacher">
         <div class="glass boardWrap">
-          <div class="statusBar">
+          <div class="toolbar">
             <div id="boardTabs" class="toolbar"></div>
             <button class="btn btn-blue btn-sm" id="addBoard" title="+" >+</button>
           </div>
@@ -351,38 +350,30 @@ const SUPABASE_URL = "https://juqqhqbiirmgsjewyols.supabase.co";
 const SUPABASE_KEY = "sb_publishable_GZdVXisuLM1qnAUoiN7bng_UhQ9UQrx";
 
 /* =============================
-   Safe Storage (reduce storage issues)
-   - Supabase allows custom storage for auth session persistence [3](https://supabase.com/docs/reference/javascript/auth-api)[4](https://deepwiki.com/supabase/supabase-js/2.2-client-configuration)
+   Safe Storage (fallback memory)
+   Supabase warns about missing storage; custom storage is supported. [2](https://onedrive.live.com?cid=CF65B2561CC3661A&id=CF65B2561CC3661A!s3a1be3da1eb04e1d992763cc14a96358)[3](https://onedrive.live.com?cid=CF65B2561CC3661A&id=CF65B2561CC3661A!s5112fd005750442299c7f24e55e79d03)
 ============================= */
 const __mem = new Map();
 const safeStorage = {
-  getItem: (key) => {
-    try { return window.localStorage.getItem(key); } catch(e){ return __mem.get(key) ?? null; }
-  },
-  setItem: (key, value) => {
-    try { window.localStorage.setItem(key, value); } catch(e){ __mem.set(key, value); }
-  },
-  removeItem: (key) => {
-    try { window.localStorage.removeItem(key); } catch(e){ __mem.delete(key); }
-  }
+  getItem: (key) => { try { return localStorage.getItem(key); } catch { return __mem.get(key) ?? null; } },
+  setItem: (key, val) => { try { localStorage.setItem(key, val); } catch { __mem.set(key, val); } },
+  removeItem: (key) => { try { localStorage.removeItem(key); } catch { __mem.delete(key); } }
 };
 
-/* Supabase from CDN global */
+/* Supabase client (UMD global) */
 const { createClient } = window.supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, storage: safeStorage }
 });
 
-/* jsPDF from UMD */
+/* jsPDF */
 const { jsPDF } = window.jspdf || {};
 
 /* =============================
-   I18N
+   i18n (simple)
 ============================= */
 const I18N = {
-  ar: {
-    loading:"جاري التحميل...", ready:"جاهز",
-    brand_ar:"بوردك", brand_en:"Boardak",
+  ar: { loading:"جاري التحميل...", ready:"جاهز", brand_ar:"بوردك", brand_en:"Boardak",
     brand_sub:"سوبرتك الذكية - منصة تعليمية هادئة للشرح والمتابعة والتقييم",
     home_title_ar:"بوردك", home_title_en:"Boardak",
     home_desc_ar:"سوبرتك الذكية - منصة تعليمية هادئة للشرح والمتابعة والتقييم",
@@ -391,32 +382,19 @@ const I18N = {
     teacher_enter:"دخول المعلم", teacher_enter_desc:"أنشئ الغرفة بسرعة وابدأ الشرح مباشرة.",
     errors_bank:"بنك الأخطاء", feedback:"تغذية راجعة", free_draw:"رسم حر",
     dua:"اللهم علّمنا ما ينفعنا وانفعنا بما علمتنا",
-    credit:"إعداد وتصميم: الأستاذ عبدالله السالم",
-    visitors:"الزوار",
-    back:"رجوع",
-    teacher_entry_title:"دخول المعلم",
-    teacher_entry_sub:"اسم المعلم مطلوب، والكود وعنوان الدرس اختياريان.",
-    student_entry_title:"دخول الطالب",
-    student_entry_sub:"اكتب الاسم والكود للدخول إلى الغرفة.",
-    teacher_name:"اسم المعلم", student_name:"اسم الطالب",
-    room_code:"كود الغرفة", lesson_title:"عنوان الدرس",
+    credit:"إعداد وتصميم: الأستاذ عبدالله السالم", visitors:"الزوار",
+    back:"رجوع", teacher_entry_title:"دخول المعلم", teacher_entry_sub:"اسم المعلم مطلوب، والكود وعنوان الدرس اختياريان.",
+    student_entry_title:"دخول الطالب", student_entry_sub:"اكتب الاسم والكود للدخول إلى الغرفة.",
+    teacher_name:"اسم المعلم", student_name:"اسم الطالب", room_code:"كود الغرفة", lesson_title:"عنوان الدرس",
     start_session:"ابدأ الجلسة", join_now:"انضم الآن",
     copy_link:"نسخ الرابط", reset_class:"تصفير الأعمال", end_session:"إنهاء الجلسة",
-    online:"المتصلون",
-    students_in_room:"الطلاب داخل الغرفة",
-    teacher_preview:"المعاينة للطلاب",
-    no_content:"لا يوجد محتوى بعد",
-    pen:"قلم", eraser:"ممحاة", text:"نص",
-    explain_only:"الشرح فقط", lock_board:"قفل", focus_mode:"عرض جماعي",
-    teacher_board:"سبورة المعلم",
-    feedback_title:"التغذية الراجعة",
+    online:"المتصلون", students_in_room:"الطلاب داخل الغرفة", teacher_preview:"المعاينة للطلاب", no_content:"لا يوجد محتوى بعد",
+    pen:"قلم", eraser:"ممحاة", text:"نص", explain_only:"الشرح فقط", lock_board:"قفل", focus_mode:"عرض جماعي",
+    teacher_board:"سبورة المعلم", feedback_title:"التغذية الراجعة",
     st_understood:"فهمت", st_help:"لم أفهم", st_done:"انتهيت",
-    help_btn:"مساعدة", exit:"خروج", clear:"مسح",
-    download_cert:"تحميل شهادتك"
+    help_btn:"مساعدة", exit:"خروج", clear:"مسح", download_cert:"تحميل شهادتك"
   },
-  en: {
-    loading:"Loading...", ready:"Ready",
-    brand_ar:"Boardak", brand_en:"Boardak",
+  en: { loading:"Loading...", ready:"Ready", brand_ar:"Boardak", brand_en:"Boardak",
     brand_sub:"Your Smart Board - A calm educational platform for explanation, follow-up, and evaluation",
     home_title_ar:"Boardak", home_title_en:"Boardak",
     home_desc_ar:"Your Smart Board - A calm educational platform for explanation, follow-up, and evaluation",
@@ -425,28 +403,17 @@ const I18N = {
     teacher_enter:"Teacher", teacher_enter_desc:"Create a room quickly and start teaching.",
     errors_bank:"Error Bank", feedback:"Feedback", free_draw:"Free Draw",
     dua:"May God teach us what benefits us and benefit us with what He taught us",
-    credit:"Designed by: Abdullah Al-Salem",
-    visitors:"Visitors",
-    back:"Back",
-    teacher_entry_title:"Teacher Entry",
-    teacher_entry_sub:"Teacher name required. Code & title optional.",
-    student_entry_title:"Student Entry",
-    student_entry_sub:"Enter name and room code.",
-    teacher_name:"Teacher name", student_name:"Student name",
-    room_code:"Room code", lesson_title:"Lesson title",
+    credit:"Designed by: Abdullah Al-Salem", visitors:"Visitors",
+    back:"Back", teacher_entry_title:"Teacher Entry", teacher_entry_sub:"Teacher name required. Code & title optional.",
+    student_entry_title:"Student Entry", student_entry_sub:"Enter name and room code.",
+    teacher_name:"Teacher name", student_name:"Student name", room_code:"Room code", lesson_title:"Lesson title",
     start_session:"Start session", join_now:"Join now",
     copy_link:"Copy link", reset_class:"Reset class", end_session:"End session",
-    online:"Online",
-    students_in_room:"Students",
-    teacher_preview:"Student preview",
-    no_content:"No content yet",
-    pen:"Pen", eraser:"Eraser", text:"Text",
-    explain_only:"Explain only", lock_board:"Lock", focus_mode:"Focus",
-    teacher_board:"Teacher board",
-    feedback_title:"Feedback",
+    online:"Online", students_in_room:"Students", teacher_preview:"Student preview", no_content:"No content yet",
+    pen:"Pen", eraser:"Eraser", text:"Text", explain_only:"Explain only", lock_board:"Lock", focus_mode:"Focus",
+    teacher_board:"Teacher board", feedback_title:"Feedback",
     st_understood:"Understood", st_help:"Need help", st_done:"Done",
-    help_btn:"Help", exit:"Exit", clear:"Clear",
-    download_cert:"Download certificate"
+    help_btn:"Help", exit:"Exit", clear:"Clear", download_cert:"Download certificate"
   }
 };
 
@@ -462,6 +429,7 @@ function applyLang(){
   });
 }
 
+/* UI helpers */
 const $ = (id)=>document.getElementById(id);
 function showToast(msg){
   const t = $("toast");
@@ -484,11 +452,10 @@ function bumpVisitors(){
   $("visitors").textContent = String(v);
 }
 
+/* Auth anonymous (no .catch misuse) [1](https://github.com/topics/supabase-js) */
 async function ensureAnon(){
-  const { data: sessData, error: sessErr } = await sb.auth.getSession();
-  if(sessErr) console.warn(sessErr);
-
-  if(!sessData.session){
+  const { data: sess } = await sb.auth.getSession();
+  if(!sess.session){
     const { error } = await sb.auth.signInAnonymously();
     if(error) throw error;
   }
@@ -497,6 +464,7 @@ async function ensureAnon(){
   return u.user;
 }
 
+/* State */
 const State = {
   role:null,
   user:null,
@@ -517,25 +485,22 @@ function getRoomFromUrl(){
   const p = new URLSearchParams(location.search);
   return (p.get("room") || "").trim().toUpperCase();
 }
-
 function escapeHtml(s){
   return String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;");
 }
 
-/* ---------- DB loaders ---------- */
+/* DB loaders */
 async function loadSessionMeta(){
   const { data, error } = await sb.from("session_meta").select("*").eq("room_id", State.room.id).maybeSingle();
   if(error) throw error;
   State.sessionMeta = data;
 }
-
 async function loadBoards(){
   const { data, error } = await sb.from("boards").select("*").eq("room_id", State.room.id).order("sort_order",{ascending:true});
   if(error) throw error;
   State.boards = data || [];
   State.currentBoard = State.boards.find(b=>b.visible_to_students) || State.boards[0] || null;
 }
-
 async function ensureStudentBoard(){
   if(!State.currentBoard) return;
   const { data, error } = await sb.from("student_boards")
@@ -546,10 +511,7 @@ async function ensureStudentBoard(){
     .maybeSingle();
   if(error) throw error;
 
-  if(data){
-    State.studentBoard = data;
-    return;
-  }
+  if(data){ State.studentBoard = data; return; }
 
   const { data: ins, error: insErr } = await sb.from("student_boards").insert({
     room_id: State.room.id,
@@ -560,14 +522,12 @@ async function ensureStudentBoard(){
   if(insErr) throw insErr;
   State.studentBoard = ins;
 }
-
 async function loadMyEvaluation(){
   if(!State.studentBoard) return;
   const { data, error } = await sb.rpc("ensure_evaluation_v3", { p_student_board_id: State.studentBoard.id });
   if(error){ console.warn(error); return; }
   State.evaluation = data;
 }
-
 async function loadMyCertificate(){
   if(!State.studentBoard) return;
   const { data, error } = await sb.from("certificates").select("*").eq("student_board_id", State.studentBoard.id).maybeSingle();
@@ -575,12 +535,11 @@ async function loadMyCertificate(){
   State.certificate = data;
 }
 
-/* ---------- Presence + Postgres Changes ---------- */
+/* Realtime */
 function updateOnlineUI(){
   if(State.role==="teacher") $("tOnline").textContent = String(State.onlineCount||0);
   if(State.role==="student") $("sOnline").textContent = String(State.onlineCount||0);
 }
-
 function subscribeDb(roomId){
   if(State.dbChannel) sb.removeChannel(State.dbChannel);
 
@@ -599,108 +558,15 @@ function subscribeDb(roomId){
         }
       } catch(e){ console.warn(e); }
     })
-    .on('postgres_changes', { event:'*', schema:'public', table:'room_members', filter:`room_id=eq.${roomId}` }, async () => {
-      try { if(State.role==="teacher") await loadStudentsList(); } catch(e){ console.warn(e); }
-    })
-    .on('postgres_changes', { event:'*', schema:'public', table:'student_boards', filter:`room_id=eq.${roomId}` }, async (payload) => {
-      try {
-        if(State.role==="teacher"){ await loadStudentsList(); }
-        if(State.role==="student" && payload.new && State.studentBoard && payload.new.id===State.studentBoard.id){
-          State.studentBoard = payload.new;
-          if(State.studentBoard.board_data) loadDataUrlToCanvas(sCanvas,sCtx,State.studentBoard.board_data);
-          updateCertButton();
-        }
-      } catch(e){ console.warn(e); }
-    })
-    .on('postgres_changes', { event:'*', schema:'public', table:'certificates', filter:`room_id=eq.${roomId}` }, async () => {
-      try { if(State.role==="student"){ await loadMyCertificate(); updateCertButton(); } } catch(e){ console.warn(e); }
-    })
     .subscribe();
 
   State.dbChannel = ch;
 }
 
-function subscribePresence(roomId, role, name){
-  if(State.presenceChannel) sb.removeChannel(State.presenceChannel);
-
-  const topic = `room:${roomId}`;
-  const ch = sb.channel(topic, {
-    config: { private:true, presence:{ key: State.user.id }, broadcast:{ self:true } }
-  });
-
-  const recalc = () => {
-    const st = ch.presenceState();
-    State.onlineCount = Object.keys(st).length;
-    updateOnlineUI();
-  };
-
-  ch.on('presence', { event:'sync' }, recalc);
-  ch.on('presence', { event:'join' }, recalc);
-  ch.on('presence', { event:'leave' }, recalc);
-
-  ch.on('broadcast', { event:'help_request' }, (msg) => {
-    if(State.role==="teacher"){
-      showToast("🔔 " + (msg?.payload?.studentName || "Student") + " needs help");
-    }
-  });
-
-  ch.subscribe(async (status)=>{
-    if(status==="SUBSCRIBED"){
-      try { await ch.track({ userId: State.user.id, role, name, at: Date.now() }); } catch(e){ console.warn(e); }
-    }
-  });
-
-  State.presenceChannel = ch;
-}
-
-/* ---------- Teacher students list ---------- */
-async function loadStudentsList(){
-  const { data, error } = await sb.from("room_members")
-    .select("*")
-    .eq("room_id", State.room.id)
-    .eq("role","student")
-    .order("joined_at",{ascending:true});
-  if(error) throw error;
-
-  const { data: sbs, error: sbErr } = await sb.from("student_boards")
-    .select("id,student_user_id,status,help_requested,certificate_granted")
-    .eq("room_id", State.room.id);
-
-  if(sbErr) throw sbErr;
-
-  const map = new Map((sbs||[]).map(x=>[x.student_user_id, x]));
-  renderStudents((data||[]).map(m=>({...m, sb: map.get(m.user_id)||null})));
-}
-
-function renderStudents(list){
-  const wrap = $("studentsList");
-  if(!list.length){ wrap.innerHTML = `<div class="studentCard">${I18N[getLang()].no_content}</div>`; return; }
-  wrap.innerHTML = "";
-  list.forEach(x=>{
-    const div=document.createElement("div");
-    div.className="studentCard";
-    const help = x.sb?.help_requested ? "🆘" : "";
-    div.innerHTML = `
-      <div class="studentRow">
-        <div style="font-weight:900">${escapeHtml(x.display_name||"Student")} ${help}</div>
-        <button class="btn btn-soft btn-sm" data-sbid="${x.sb?.id||""}">عرض</button>
-      </div>
-      <div class="small">status: ${escapeHtml(x.sb?.status||"—")} | cert: ${x.sb?.certificate_granted?"✅":"—"}</div>
-    `;
-    div.querySelector("button").onclick = async (e)=>{
-      const sid = e.target.getAttribute("data-sbid");
-      if(!sid) return;
-      const { error } = await sb.rpc("focus_student_board_v3", { p_room_id: State.room.id, p_student_board_id: sid });
-      if(error) console.warn(error);
-    };
-    wrap.appendChild(div);
-  });
-}
-
-/* ---------- Board tabs + previews ---------- */
+/* UI render */
 function renderBoardTabs(){
-  const wrap=$("boardTabs");
-  wrap.innerHTML="";
+  const wrap = $("boardTabs");
+  wrap.innerHTML = "";
   State.boards.forEach(b=>{
     const btn=document.createElement("button");
     btn.className="tool"+(State.currentBoard && State.currentBoard.id===b.id ? " active":"");
@@ -710,42 +576,38 @@ function renderBoardTabs(){
         const { error } = await sb.rpc("set_visible_board_v3", { p_room_id: State.room.id, p_board_id: b.id });
         if(error) console.warn(error);
       }
-      State.currentBoard=b;
+      State.currentBoard = b;
       renderBoardTabs();
       await refreshCanvas();
     };
     wrap.appendChild(btn);
   });
 }
-
 function renderTeacherPreview(){
   const wrap=$("teacherPreview");
   const b=State.boards.find(x=>x.visible_to_students);
   if(!b){ wrap.innerHTML=`<span>${I18N[getLang()].no_content}</span>`; return; }
-  const preview = b.content?.preview || b.content?.drawing || "";
+  const preview=b.content?.preview || b.content?.drawing || "";
   wrap.innerHTML = preview ? `<img alt="preview" src="${preview}">` : `<span>${I18N[getLang()].no_content}</span>`;
 }
-
 function renderStudentTeacherPreview(){
   const wrap=$("studentTeacherPreview");
   const b=State.boards.find(x=>x.visible_to_students);
   if(!b){ wrap.innerHTML=`<span>${I18N[getLang()].no_content}</span>`; return; }
-  const preview = b.content?.preview || b.content?.drawing || "";
+  const preview=b.content?.preview || b.content?.drawing || "";
   wrap.innerHTML = preview ? `<img alt="teacher" src="${preview}">` : `<span>${I18N[getLang()].no_content}</span>`;
 }
-
 function renderFeedback(){
   const box=$("feedbackBox");
   const ev=State.evaluation;
   if(!ev){ box.textContent="—"; return; }
   box.textContent = `points: ${ev.points??0} | badge: ${ev.badge||"—"} | level: ${ev.level||"—"} | note: ${ev.note_sent ? (ev.note||"—"):"—"}`;
 }
-
 function updateCertButton(){
   $("downloadCert").classList.toggle("hidden", !State.studentBoard?.certificate_granted);
 }
 
-/* ---------- Canvas (minimal) ---------- */
+/* Canvas */
 let tCanvas,tCtx,tDrawing=false,tTool="pen",tColor="#000000";
 let sCanvas,sCtx,sDrawing=false,sTool="pen",sColor="#000000";
 let saveTimerT=null, saveTimerS=null;
@@ -773,7 +635,6 @@ function initCanvas(){
   };
   sCanvas.onpointerup=()=>{ sDrawing=false; sCtx.beginPath(); sCtx.globalCompositeOperation="source-over"; };
 }
-
 function pos(canvas,e){
   const r=canvas.getBoundingClientRect();
   return { x:(e.clientX-r.left)*(canvas.width/r.width), y:(e.clientY-r.top)*(canvas.height/r.height) };
@@ -802,7 +663,7 @@ async function saveTeacherBoard(){
   const payload={ type:"boardak_v3", version:1, drawing:teacherDataUrl(), preview:teacherDataUrl() };
 
   const { error } = await sb.from("boards")
-    .update({ content:payload })
+    .update({ content: payload })
     .eq("id", State.currentBoard.id);
 
   if(error){
@@ -816,7 +677,7 @@ async function saveStudentBoard(){
   if(State.role!=="student" || !State.studentBoard) return;
 
   const { error } = await sb.from("student_boards")
-    .update({ board_data:studentDataUrl(), status:$("sStatus").value })
+    .update({ board_data: studentDataUrl(), status: $("sStatus").value })
     .eq("id", State.studentBoard.id);
 
   if(error){
@@ -842,7 +703,7 @@ async function refreshCanvas(){
   }
 }
 
-/* ---------- Session meta UI ---------- */
+/* Session meta UI */
 function applySessionMetaUI(){
   const m=State.sessionMeta||{};
   if(State.role==="student"){
@@ -850,7 +711,7 @@ function applySessionMetaUI(){
   }
 }
 
-/* ---------- Flows ---------- */
+/* Flows */
 async function teacherStartFlow(){
   const teacherName=$("tName").value.trim();
   const code=$("tCode").value.trim();
@@ -881,10 +742,8 @@ async function teacherStartFlow(){
     renderBoardTabs();
     await refreshCanvas();
     renderTeacherPreview();
-    await loadStudentsList();
 
     subscribeDb(data.id);
-    subscribePresence(data.id, "teacher", teacherName);
 
     const url=new URL(location.href);
     url.searchParams.set("room", data.code);
@@ -935,7 +794,6 @@ async function studentJoinFlow(){
     applySessionMetaUI();
 
     subscribeDb(State.room.id);
-    subscribePresence(State.room.id, "student", studentName);
 
     showView("studentRoom");
     setLiveText(getLang()==="ar"?"مباشر":"Live");
@@ -946,7 +804,7 @@ async function studentJoinFlow(){
   }finally{ loading(false); }
 }
 
-/* ---------- Boot ---------- */
+/* Boot */
 async function boot(){
   applyLang();
   bumpVisitors();
@@ -991,7 +849,11 @@ async function boot(){
         const sure = confirm(getLang()==="ar"?"حذف نهائي؟":"Delete permanently?");
         if(!sure) return;
         const { error } = await sb.rpc("delete_room_full_v3", { p_room_id: State.room.id });
-        if(error){ console.warn(error); showToast(getLang()==="ar"?"تعذر الحذف":"Delete failed"); return; }
+        if(error){
+          console.warn(error);
+          showToast(getLang()==="ar"?"تعذر الحذف":"Delete failed");
+          return;
+        }
         showToast(getLang()==="ar"?"تم الحذف":"Deleted");
         location.href = location.pathname;
       }
@@ -1063,12 +925,6 @@ async function boot(){
       if(!State.studentBoard) return;
       const { error } = await sb.from("student_boards").update({ help_requested:true }).eq("id", State.studentBoard.id);
       if(error) console.warn(error);
-
-      if(State.presenceChannel){
-        try{
-          await State.presenceChannel.send({ type:"broadcast", event:"help_request", payload:{ studentName:$("sName").value||"Student" } });
-        }catch(e){ console.warn(e); }
-      }
       showToast(getLang()==="ar"?"تم إرسال طلب المساعدة":"Help sent");
     };
 
@@ -1088,15 +944,7 @@ async function boot(){
     $("openFreeDraw").onclick=()=>showToast(getLang()==="ar"?"قريبًا: رسم حر":"Coming soon: Free draw");
 
     showView("home");
-  }catch(e){
-    console.error(e);
-    showToast("Init error");
-  }finally{
-    loading(false);
-  }
-}
-
-window.addEventListener("load", boot);
+ ;
 </script>
 </body>
 </html>
