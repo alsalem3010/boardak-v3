@@ -765,7 +765,7 @@ async function studentJoinFlow(){
 
   loading(true);
   try{
-    const { data, error } = await sb.rpc("join_room_v3_fixed", {
+    const { data, error } = await sb.rpc("join_room_v3_sql", {
       p_room_code: code,
       p_student_name: studentName
     });
