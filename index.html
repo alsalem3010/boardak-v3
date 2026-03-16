@@ -898,6 +898,7 @@ async function teacherStartFlow(){
 }
 
 async function studentJoinFlow(){
+  await saveStudentBoard();
   const studentName = $("sName").value.trim();
   const code = $("sCode").value.trim().toUpperCase();
   if(!studentName || !code){ showToast("اكتب الاسم والكود"); return; }
@@ -943,6 +944,26 @@ async function studentJoinFlow(){
    Button bindings
 ============================= */
 function bindUI(){
+  // زر المساعدة (طالب)
+$("helpBtn").onclick = async () => {
+  if (!State.studentBoard) {
+    showToast("ارسم أو افتح السبورة أولاً");
+    return;
+  }
+
+  const { error } = await sb
+    .from("student_boards")
+    .update({ help_requested: true, status: "help" })
+    .eq("id", State.studentBoard.id);
+
+  if (error) {
+    console.warn(error);
+    showToast("تعذر إرسال طلب المساعدة");
+    return;
+  }
+
+  showToast("تم إرسال طلب المساعدة");
+};
   $("langBtn").onclick = ()=> showToast("i18n لاحقًا (جاهز)");
   $("goTeacher").onclick = ()=> showView("teacherEntry");
   $("goStudent").onclick = ()=> showView("studentEntry");
