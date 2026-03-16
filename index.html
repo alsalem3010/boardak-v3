@@ -432,9 +432,9 @@ function bumpVisitors(){
   $("visitors").textContent = String(v);
 }
 
+/* ✅ تصحيح escapeHtml (بدون مضاعفة ترميز) */
 function escapeHtml(s){
-  const str = String(s ?? "");
-  return str
+  return String(s ?? "")
     .replaceAll("&","&amp;")
     .replaceAll("<","&lt;")
     .replaceAll(">","&gt;")
@@ -611,7 +611,6 @@ async function renderStudentsBoards(){
     .eq("room_id", State.room.id);
   if(sbErr) { console.warn(sbErr); return; }
 
-  // أحدث سجل لكل طالب (وإن وجدت لوحات متعددة نفضل الحالية)
   const map = new Map();
   (sbs||[]).forEach(row=>{
     if(State.currentBoard?.id && row.board_id && row.board_id !== State.currentBoard.id) return;
@@ -673,7 +672,6 @@ async function renderStudentsBoards(){
 
       overlay.classList.remove("hidden");
 
-      // معاينة صغيرة على اليمين
       const prev = $("teacherPreview");
       if(prev){
         prev.innerHTML = sbRow?.board_data
@@ -759,7 +757,6 @@ function initCanvas() {
     ctx.lineJoin = "round";
   });
 
-  // Teacher drawing
   tCanvas.onpointerdown = (e) => {
     tDrawing = true;
     const p = pos(tCanvas, e);
@@ -792,7 +789,6 @@ function initCanvas() {
     tCtx.globalCompositeOperation = "source-over";
   };
 
-  // Student drawing
   sCanvas.onpointerdown = (e) => {
     if (!studentCanEdit()) return;
     sDrawing = true;
@@ -839,7 +835,7 @@ function queueSaveStudent() {
 
 function pos(canvas,e){
   const r=canvas.getBoundingClientRect();
-  return { x:(e.clientX-r.left)*(canvas.width/r.width), y:(e.clientY-r.top)*(canvas.height/r.height) };
+  return { x:(e.clientX-r.left)*(canvas.width/r.width), y:(e.clientY-r.top)*(canvas.height/r.top) };
 }
 function clearCanvas(canvas,ctx){ ctx.clearRect(0,0,canvas.width,canvas.height); }
 function loadDataUrlToCanvas(canvas,ctx,src){
@@ -859,7 +855,6 @@ function studentCanEdit(){
   return true;
 }
 
-/* Save teacher board (boards.content) */
 async function saveTeacherBoard(){
   if(State.role!=="teacher" || !State.currentBoard) return;
   const payload = { type:"boardak_v3", version:1, drawing: teacherDataUrl(), preview: teacherDataUrl() };
@@ -867,7 +862,6 @@ async function saveTeacherBoard(){
   if(error){ console.warn(error); showToast("تعذر حفظ السبورة"); }
 }
 
-/* Save student board (student_boards.board_data) */
 async function saveStudentBoard(){
   if(State.role!=="student" || !State.studentBoard) return;
   const { error } = await sb.from("student_boards").update({
@@ -923,7 +917,6 @@ function applySessionMetaUI(){
 
   if (State.role === "student") {
 
-    // ✅ إذا المعلم أغلق الجلسة: أخرج الطالب فورًا
     if (m.session_open === false) {
       showToast("انتهت الجلسة — انتظر دخول المعلم");
       setTimeout(() => {
@@ -997,6 +990,7 @@ async function teacherStartFlow(){
 
 async function studentJoinFlow(){
   if(!State.user) State.user = await ensureAnon();
+
   const studentName = $("sName").value.trim();
   const code = $("sCode").value.trim().toUpperCase();
   if(!studentName || !code){ showToast("اكتب الاسم والكود"); return; }
@@ -1033,11 +1027,14 @@ async function studentJoinFlow(){
   }catch(e){
     console.error(e);
     $("sMsg").textContent = e?.message || JSON.stringify(e);
-const msg = String(e?.message || "");
-if (msg.includes("ROOM_NOT_FOUND")) showToast("الغرفة غير موجودة");
-else if (msg.includes("SESSION_CLOSED")) showToast("لا يمكن الدخول — المعلم غير موجود");
-else if (msg.includes("AUTH_REQUIRED")) showToast("انتظر لحظة ثم حاول مرة أخرى");
-else  }finally{ loading(false); }
+
+    const msg = String(e?.message || "");
+    if (msg.includes("ROOM_NOT_FOUND")) showToast("الغرفة غير موجودة");
+    else if (msg.includes("SESSION_CLOSED")) showToast("لا يمكن الدخول — المعلم غير موجود");
+    else if (msg.includes("AUTH_REQUIRED")) showToast("انتظر لحظة ثم حاول مرة أخرى");
+    else showToast("تعذر الدخول");
+
+  }finally{ loading(false); }
 }
 
 /* =============================
@@ -1045,7 +1042,6 @@ else  }finally{ loading(false); }
 ============================= */
 function bindUI(){
 
-  // Overlay close (مرة واحدة)
   const closeOverlayBtn = $("closeOverlay");
   if (closeOverlayBtn) {
     closeOverlayBtn.onclick = () => {
@@ -1124,7 +1120,6 @@ function bindUI(){
     if(error){ console.warn(error); showToast("ربما وصلت حد 10 سبورات"); }
   };
 
-  // tools: teacher
   $("tPen").onclick = ()=>{ tTool="pen"; $("tPen").classList.add("active"); $("tEraser").classList.remove("active"); };
   $("tEraser").onclick = ()=>{ tTool="eraser"; $("tEraser").classList.add("active"); $("tPen").classList.remove("active"); };
   $("tText").onclick = ()=>{
@@ -1147,7 +1142,6 @@ function bindUI(){
     };
   });
 
-  // tools: student
   $("sPen").onclick = ()=>{ sTool="pen"; $("sPen").classList.add("active"); $("sEraser").classList.remove("active"); };
   $("sEraser").onclick = ()=>{ sTool="eraser"; $("sEraser").classList.add("active"); $("sPen").classList.remove("active"); };
   document.querySelectorAll("[data-scolor]").forEach(btn=>{
@@ -1168,7 +1162,6 @@ function bindUI(){
 
   $("sStatus").onchange = ()=> queueSaveStudent();
 
-  // helpBtn (مرة واحدة فقط)
   $("helpBtn").onclick = async ()=>{
     if (!State.studentBoard) {
       showToast("ارسم أو افتح السبورة أولاً");
@@ -1209,7 +1202,7 @@ async function boot(){
   } finally {
     loading(false);
   }
-}  // ✅ إغلاق دالة boot
+}
 
 window.addEventListener("load", boot);
 </script>
