@@ -1024,17 +1024,28 @@ async function studentJoinFlow(){
 
     showView("studentRoom");
     $("liveText").textContent = "مباشر";
-  }catch(e){
-    console.error(e);
-    $("sMsg").textContent = e?.message || JSON.stringify(e);
+ } catch (e) {
+  console.error("JOIN ERROR FULL:", e);
 
-    const msg = String(e?.message || "");
-    if (msg.includes("ROOM_NOT_FOUND")) showToast("الغرفة غير موجودة");
-    else if (msg.includes("SESSION_CLOSED")) showToast("لا يمكن الدخول — المعلم غير موجود");
-    else if (msg.includes("AUTH_REQUIRED")) showToast("انتظر لحظة ثم حاول مرة أخرى");
-    else showToast("تعذر الدخول");
+  const code = e?.code;
+  const msg  = e?.message;
+  const det  = e?.details;
 
-  }finally{ loading(false); }
+  alert(
+    "JOIN ERROR\n" +
+    "code: " + code + "\n" +
+    "message: " + msg + "\n" +
+    "details: " + det
+  );
+
+  if (String(msg).includes("ROOM_NOT_FOUND"))
+    showToast("الغرفة غير موجودة");
+  else if (String(msg).includes("SESSION_CLOSED"))
+    showToast("الجلسة مغلقة");
+  else if (String(msg).includes("AUTH_REQUIRED"))
+    showToast("مشكلة تسجيل الدخول");
+  else
+    showToast("تعذّر الدخول");
 }
 
 /* =============================
