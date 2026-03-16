@@ -920,13 +920,29 @@ function applySessionMetaUI(){
       (m.focused_student_board_id ? ((m.explanation_mode||m.board_locked) ? " | " : "") + "🖥️ العرض الجماعي مفعل" : "")
     );
   }
-  if(State.role==="student"){
-    if(m.explanation_mode) setStudentBar("👀 المعلم يشرح الآن (التعديل متوقف)");
-    else if(m.board_locked) setStudentBar("🔒 السبورة مقفلة (التعديل متوقف)");
-    else if(m.focused_student_board_id) setStudentBar("🖥️ عرض جماعي (التعديل متوقف)");
-    else setStudentBar("");
-    renderStudentTeacherPreview();
+
+ if (State.role === "student") {
+  const m = State.sessionMeta || {};
+
+  // ✅ إذا المعلم أغلق الجلسة: أخرج الطالب فورًا
+  if (m.session_open === false) {
+    showToast("انتهت الجلسة — انتظر دخول المعلم");
+    setTimeout(() => {
+      location.href = location.pathname;
+    }, 800);
+    return;
   }
+
+  if (m.explanation_mode)
+    setStudentBar("👀 المعلم يشرح الآن (التعديل متوقف)");
+  else if (m.board_locked)
+    setStudentBar("🔒 السبورة مقفلة (التعديل متوقف)");
+  else if (m.focused_student_board_id)
+    setStudentBar("🖥️ عرض جماعي (التعديل متوقف)");
+  else
+    setStudentBar("");
+
+  renderStudentTeacherPreview();
 }
 
 /* =============================
