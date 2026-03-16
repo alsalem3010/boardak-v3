@@ -546,7 +546,7 @@ function subscribeDb(roomId){
           await ensureStudentBoard();
           renderStudentTeacherPreview();
         }
-       catch(e){ console.warn(e); }
+     } catch(e){ console.warn(e); }
     })
     .on('postgres_changes', { event:'*', schema:'public', table:'room_members', filter:`room_id=eq.${roomId}` }, async () => {
       try { if(State.role==="teacher") await renderStudentsBoards(); } catch(e){ console.warn(e); }
@@ -996,13 +996,14 @@ async function studentJoinFlow(){
   if(!studentName || !code){ showToast("اكتب الاسم والكود"); return; }
 
   loading(true);
+  let joinedOk = false;
   try{
     const { data, error } = await sb.rpc("join_room_v3_sql", {
       p_room_code: code,
       p_student_name: studentName
     });
     if(error) throw error;
-
+    joinedOk = true;
     const row = Array.isArray(data) ? data[0] : data;
     State.role="student";
     State.room = { id: row.room_id, code, teacher_name: row.teacher_name, title: row.title };
@@ -1024,8 +1025,14 @@ async function studentJoinFlow(){
 
     showView("studentRoom");
     $("liveText").textContent = "مباشر";
- } catch (e) {
+} catch (e) {
   console.error("JOIN ERROR FULL:", e);
+
+  // ✅ إذا كان الانضمام نجح، لا نعتبره فشل دخول
+  if (joinedOk) {
+    showToast("تم الدخول، لكن حصل خطأ في التهيئة");
+    return;
+  }
 
   const code = e?.code;
   const msg  = e?.message;
