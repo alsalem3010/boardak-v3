@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Boardak | بوردك</title>
 
-  <!-- Google Fonts (Correct) -->
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
 
-  <!-- Supabase JS (Correct) -->
+  <!-- Supabase JS v2 (UMD) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- jsPDF UMD (Correct) -->
+  <!-- jsPDF (optional, certificate download placeholder) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <style>
@@ -28,6 +28,7 @@
       --soft:#eef2ff;
       --shadow:0 12px 30px rgba(0,0,0,.08);
       --radius:18px;
+      --line:#e5e7eb;
     }
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:"Cairo",system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
@@ -53,20 +54,16 @@
 
     .view{padding:18px}
     .hero{display:grid;grid-template-columns:1.2fr .8fr;gap:18px;padding:28px}
-    .hero h1{font-size:40px;font-weight:900;opacity:0;animation:fadeIn .6s ease forwards}
-    .hero p{margin-top:10px;line-height:1.75;color:var(--muted);opacity:0;animation:fadeIn .7s ease .1s forwards}
+    .hero h1{font-size:40px;font-weight:900}
+    .hero p{margin-top:10px;line-height:1.75;color:var(--muted)}
     .cards{display:flex;flex-direction:column;gap:14px}
     .entry{border:none;background:var(--card);box-shadow:var(--shadow);border-radius:22px;padding:18px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:.2s}
     .entry:hover{transform:translateY(-3px)}
-    .iconCircle{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;animation:float 2.5s ease-in-out infinite}
+    .iconCircle{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px}
     .cGreen{background:#eafff1;color:var(--green)}
     .cBlue{background:#e8f2ff;color:var(--blue)}
     .entryTitle{font-weight:900}
     .entryDesc{font-size:12px;color:var(--muted);margin-top:2px}
-    .miniActions{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
-    .mini{display:flex;align-items:center;gap:8px}
-    .mini i{display:inline-block;transition:.25s}
-    .mini:hover i{transform:rotate(12deg)}
     .footerLine{margin-top:18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;color:var(--muted);font-size:12px}
     .counter{font-weight:900;color:var(--text)}
     .toast{position:fixed;bottom:18px;left:18px;background:#111827;color:#fff;padding:10px 14px;border-radius:12px;opacity:0;transform:translateY(6px);transition:.2s;z-index:999}
@@ -83,6 +80,7 @@
     .roomTop{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:14px 16px;margin-bottom:12px}
     .roomMeta{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
     .tag{background:var(--soft);padding:6px 10px;border-radius:999px;font-size:12px}
+
     .layoutTeacher{display:grid;grid-template-columns:1.4fr .6fr;gap:12px}
     .layoutStudent{display:grid;grid-template-columns:1.2fr .8fr;gap:12px}
     .boardWrap{padding:12px}
@@ -92,7 +90,7 @@
     .colors{display:flex;gap:6px;align-items:center}
     .dotBtn{width:22px;height:22px;border-radius:50%;border:2px solid #fff;cursor:pointer;outline:2px solid transparent}
     .dotBtn.active{outline:2px solid var(--blue)}
-    canvas{width:100%;height:520px;background:#fff;border:1px solid #e5e7eb;border-radius:14px}
+    canvas{width:100%;height:520px;background:#fff;border:1px solid var(--line);border-radius:14px}
     .side{padding:12px}
     .side h3{font-size:14px;font-weight:900;margin-bottom:10px}
     .students{display:flex;flex-direction:column;gap:8px;max-height:560px;overflow:auto}
@@ -102,14 +100,12 @@
     .small{font-size:12px;color:var(--muted);margin-top:6px}
     .previewBox{height:300px;border:1px dashed #cbd5e1;border-radius:14px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff}
     .previewBox img{max-width:100%;max-height:100%}
-
-    @keyframes fadeIn { to { opacity:1 } }
-    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
+    .alertbar{margin-top:8px;padding:10px 12px;border-radius:14px;background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;font-size:13px}
   </style>
 </head>
 
 <body>
-  <div id="loading" class="loading hidden"><div class="loadingBox" data-i18n="loading">جاري التحميل...</div></div>
+  <div id="loading" class="loading hidden"><div class="loadingBox">جاري التحميل...</div></div>
   <div id="toast" class="toast"></div>
 
   <div class="app">
@@ -117,15 +113,15 @@
       <div class="brand">
         <div class="badge">B</div>
         <div>
-          <div class="title"><span data-i18n="brand_ar">بوردك</span> | <span data-i18n="brand_en">Boardak</span></div>
-          <div class="subtitle" data-i18n="brand_sub">سوبرتك الذكية - منصة تعليمية هادئة للشرح والمتابعة والتقييم</div>
+          <div class="title">بوردك | Boardak</div>
+          <div class="subtitle">Your Smart Board - A calm educational platform</div>
         </div>
       </div>
 
       <div class="right">
         <div class="pill">
           <span class="dot"></span>
-          <span id="liveText" data-i18n="ready">جاهز</span>
+          <span id="liveText">جاهز</span>
         </div>
         <button id="langBtn" class="btn btn-soft lang">AR/EN</button>
       </div>
@@ -135,24 +131,15 @@
     <section id="home" class="view glass">
       <div class="hero">
         <div>
-          <h1><span data-i18n="home_title_ar">بوردك</span> | <span data-i18n="home_title_en">Boardak</span></h1>
-          <p>
-            <span data-i18n="home_desc_ar">سوبرتك الذكية - منصة تعليمية هادئة للشرح والمتابعة والتقييم</span><br>
-            <span data-i18n="home_desc_en">Your Smart Board - A calm educational platform for explanation, follow-up, and evaluation</span>
-          </p>
-
-          <div class="miniActions">
-            <button class="btn btn-soft mini" id="openErrors"><i>🧰</i><span data-i18n="errors_bank">بنك الأخطاء</span></button>
-            <button class="btn btn-soft mini" id="openFeedback"><i>💬</i><span data-i18n="feedback">تغذية راجعة</span></button>
-            <button class="btn btn-soft mini" id="openFreeDraw"><i>✍️</i><span data-i18n="free_draw">رسم حر</span></button>
-          </div>
+          <h1>بوردك | Boardak</h1>
+          <p>سوبرتك الذكية - منصة تعليمية هادئة للشرح والمتابعة والتقييم</p>
 
           <div class="footerLine">
-            <span data-i18n="dua">اللهم علّمنا ما ينفعنا وانفعنا بما علمتنا</span>
+            <span>اللهم علّمنا ما ينفعنا وانفعنا بما علمتنا</span>
             <span>—</span>
-            <span data-i18n="credit">إعداد وتصميم: الأستاذ عبدالله السالم</span>
+            <span>إعداد وتصميم: الأستاذ عبدالله السالم</span>
             <span>—</span>
-            <span><span data-i18n="visitors">الزوار</span>: <span id="visitors" class="counter">5000</span></span>
+            <span>الزوار: <span id="visitors" class="counter">5000</span></span>
           </div>
         </div>
 
@@ -160,16 +147,16 @@
           <button class="entry" id="goStudent">
             <div class="iconCircle cGreen">👥</div>
             <div>
-              <div class="entryTitle" data-i18n="student_enter">دخول الطالب</div>
-              <div class="entryDesc" data-i18n="student_enter_desc">ادخل بالكود أو الرابط وابدأ العمل على سبورتك.</div>
+              <div class="entryTitle">دخول الطالب</div>
+              <div class="entryDesc">ادخل بالكود أو الرابط وابدأ العمل على سبورتك.</div>
             </div>
           </button>
 
           <button class="entry" id="goTeacher">
             <div class="iconCircle cBlue">🎓</div>
             <div>
-              <div class="entryTitle" data-i18n="teacher_enter">دخول المعلم</div>
-              <div class="entryDesc" data-i18n="teacher_enter_desc">أنشئ الغرفة بسرعة وابدأ الشرح مباشرة.</div>
+              <div class="entryTitle">دخول المعلم</div>
+              <div class="entryDesc">أنشئ الغرفة بسرعة وابدأ الشرح مباشرة.</div>
             </div>
           </button>
         </div>
@@ -180,28 +167,28 @@
     <section id="teacherEntry" class="view glass hidden">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div>
-          <h2 data-i18n="teacher_entry_title">دخول المعلم</h2>
-          <div class="subtitle" data-i18n="teacher_entry_sub">اسم المعلم مطلوب، والكود وعنوان الدرس اختياريان.</div>
+          <h2>دخول المعلم</h2>
+          <div class="subtitle">اسم المعلم مطلوب، والكود وعنوان الدرس اختياريان.</div>
         </div>
-        <button class="btn btn-soft" id="backFromTeacher" data-i18n="back">رجوع</button>
+        <button class="btn btn-soft" id="backFromTeacher">رجوع</button>
       </div>
 
       <div class="form glass">
         <div class="grid">
           <div>
-            <label data-i18n="teacher_name">اسم المعلم</label>
+            <label>اسم المعلم</label>
             <input id="tName" placeholder="مثال: عبدالله السالم" />
           </div>
           <div>
-            <label data-i18n="room_code">كود الغرفة</label>
-            <input id="tCode" placeholder="اختياري - يتولد تلقائيًا" />
+            <label>كود الغرفة (اختياري)</label>
+            <input id="tCode" placeholder="يتولد تلقائيًا إن تركته فارغًا" />
           </div>
           <div>
-            <label data-i18n="lesson_title">عنوان الدرس</label>
-            <input id="tTitle" placeholder="اختياري - مثل: الكسور العشرية" />
+            <label>عنوان الدرس (اختياري)</label>
+            <input id="tTitle" placeholder="مثال: الكسور العشرية" />
           </div>
 
-          <button class="btn btn-blue" id="teacherStart" data-i18n="start_session">ابدأ الجلسة</button>
+          <button class="btn btn-blue" id="teacherStart">ابدأ الجلسة</button>
           <div id="tMsg" class="msg"></div>
         </div>
       </div>
@@ -211,24 +198,24 @@
     <section id="studentEntry" class="view glass hidden">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div>
-          <h2 data-i18n="student_entry_title">دخول الطالب</h2>
-          <div class="subtitle" data-i18n="student_entry_sub">اكتب الاسم والكود للدخول إلى الغرفة.</div>
+          <h2>دخول الطالب</h2>
+          <div class="subtitle">اكتب الاسم والكود للدخول إلى الغرفة.</div>
         </div>
-        <button class="btn btn-soft" id="backFromStudent" data-i18n="back">رجوع</button>
+        <button class="btn btn-soft" id="backFromStudent">رجوع</button>
       </div>
 
       <div class="form glass">
         <div class="grid">
           <div>
-            <label data-i18n="student_name">اسم الطالب</label>
+            <label>اسم الطالب</label>
             <input id="sName" placeholder="اسم الطالب" />
           </div>
           <div>
-            <label data-i18n="room_code">كود الغرفة</label>
+            <label>كود الغرفة</label>
             <input id="sCode" placeholder="أدخل كود الغرفة" />
           </div>
 
-          <button class="btn btn-green" id="studentJoin" data-i18n="join_now">انضم الآن</button>
+          <button class="btn btn-green" id="studentJoin">انضم الآن</button>
           <div id="sMsg" class="msg"></div>
         </div>
       </div>
@@ -240,15 +227,16 @@
         <div>
           <div style="font-weight:900;font-size:18px" id="tRoomTitle">—</div>
           <div class="roomMeta">
-            <span class="tag"><span data-i18n="room_code">كود الغرفة</span>: <b id="tRoomCode">—</b></span>
-            <span class="tag"><span data-i18n="teacher_name">اسم المعلم</span>: <b id="tRoomTeacher">—</b></span>
-            <span class="tag"><span data-i18n="online">المتصلون</span>: <b id="tOnline">0</b></span>
+            <span class="tag">كود الغرفة: <b id="tRoomCode">—</b></span>
+            <span class="tag">المعلم: <b id="tRoomTeacher">—</b></span>
+            <span class="tag">المتصلون: <b id="tOnline">0</b></span>
           </div>
+          <div id="tBar" class="alertbar hidden"></div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-          <button class="btn btn-soft btn-sm" id="copyLink" data-i18n="copy_link">نسخ الرابط</button>
-          <button class="btn btn-soft btn-sm" id="resetStudents" data-i18n="reset_class">تصفير الأعمال</button>
-          <button class="btn btn-red btn-sm" id="endRoom" data-i18n="end_session">إنهاء الجلسة</button>
+          <button class="btn btn-soft btn-sm" id="copyLink">نسخ الرابط</button>
+          <button class="btn btn-soft btn-sm" id="resetStudents">تصفير أعمال الطلبة</button>
+          <button class="btn btn-red btn-sm" id="endRoom">إنهاء الجلسة</button>
         </div>
       </div>
 
@@ -260,17 +248,18 @@
           </div>
 
           <div class="toolbar">
-            <button class="tool active" id="tPen" data-i18n="pen">قلم</button>
-            <button class="tool" id="tEraser" data-i18n="eraser">ممحاة</button>
-            <button class="tool" id="tText" data-i18n="text">نص</button>
+            <button class="tool active" id="tPen">قلم</button>
+            <button class="tool" id="tEraser">ممحاة</button>
+            <button class="tool" id="tText">نص</button>
             <div class="colors">
               <button class="dotBtn active" data-color="#000000" style="background:#000000"></button>
               <button class="dotBtn" data-color="#dc2626" style="background:#dc2626"></button>
               <button class="dotBtn" data-color="#16a34a" style="background:#16a34a"></button>
             </div>
-            <button class="btn btn-soft btn-sm" id="toggleExplain" data-i18n="explain_only">الشرح فقط</button>
-            <button class="btn btn-soft btn-sm" id="toggleLock" data-i18n="lock_board">قفل</button>
-            <button class="btn btn-soft btn-sm" id="clearFocus" data-i18n="focus_mode">إيقاف العرض</button>
+
+            <button class="btn btn-soft btn-sm" id="toggleExplain">الشرح فقط</button>
+            <button class="btn btn-soft btn-sm" id="toggleLock">قفل</button>
+            <button class="btn btn-soft btn-sm" id="toggleFocus">عرض جماعي</button>
           </div>
 
           <canvas id="tCanvas" width="1400" height="820"></canvas>
@@ -278,12 +267,12 @@
         </div>
 
         <div class="glass side">
-          <h3 data-i18n="students_in_room">الطلاب داخل الغرفة</h3>
+          <h3>الطلاب داخل الغرفة</h3>
           <div id="studentsList" class="students"></div>
 
           <div style="margin-top:12px">
-            <h3 data-i18n="teacher_preview">المعاينة للطلاب</h3>
-            <div id="teacherPreview" class="previewBox"><span data-i18n="no_content">لا يوجد محتوى بعد</span></div>
+            <h3>معاينة (المعلم/طالب)</h3>
+            <div id="teacherPreview" class="previewBox"><span>لا يوجد محتوى بعد</span></div>
           </div>
         </div>
       </div>
@@ -295,45 +284,47 @@
         <div>
           <div style="font-weight:900;font-size:18px" id="sRoomTitle">—</div>
           <div class="roomMeta">
-            <span class="tag"><span data-i18n="room_code">كود الغرفة</span>: <b id="sRoomCode">—</b></span>
-            <span class="tag"><span data-i18n="student_name">اسم الطالب</span>: <b id="sRoomStudent">—</b></span>
-            <span class="tag"><span data-i18n="online">المتصلون</span>: <b id="sOnline">0</b></span>
+            <span class="tag">كود الغرفة: <b id="sRoomCode">—</b></span>
+            <span class="tag">الطالب: <b id="sRoomStudent">—</b></span>
+            <span class="tag">المتصلون: <b id="sOnline">0</b></span>
           </div>
+          <div id="sBar" class="alertbar hidden"></div>
         </div>
 
         <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
           <select id="sStatus">
-            <option value="understood" data-i18n="st_understood">فهمت</option>
-            <option value="help" data-i18n="st_help">لم أفهم</option>
-            <option value="done" data-i18n="st_done">انتهيت</option>
+            <option value="understood">فهمت</option>
+            <option value="help">لم أفهم</option>
+            <option value="done">انتهيت</option>
           </select>
-          <button class="btn btn-green btn-sm" id="helpBtn" data-i18n="help_btn">مساعدة</button>
-          <button class="btn btn-soft btn-sm" id="studentExit" data-i18n="exit">خروج</button>
+          <button class="btn btn-green btn-sm" id="helpBtn">مساعدة</button>
+          <button class="btn btn-soft btn-sm" id="studentExit">خروج</button>
         </div>
       </div>
 
       <div class="layoutStudent">
         <div class="glass boardWrap">
           <div class="toolbar">
-            <button class="tool active" id="sPen" data-i18n="pen">قلم</button>
-            <button class="tool" id="sEraser" data-i18n="eraser">ممحاة</button>
+            <button class="tool active" id="sPen">قلم</button>
+            <button class="tool" id="sEraser">ممحاة</button>
             <div class="colors">
               <button class="dotBtn active" data-scolor="#000000" style="background:#000000"></button>
               <button class="dotBtn" data-scolor="#dc2626" style="background:#dc2626"></button>
               <button class="dotBtn" data-scolor="#16a34a" style="background:#16a34a"></button>
             </div>
-            <button class="btn btn-soft btn-sm" id="clearStudent" data-i18n="clear">مسح</button>
-            <button class="btn btn-blue btn-sm hidden" id="downloadCert" data-i18n="download_cert">تحميل شهادتك</button>
+            <button class="btn btn-soft btn-sm" id="clearStudent">مسح</button>
+            <button class="btn btn-blue btn-sm hidden" id="downloadCert">تحميل شهادتك</button>
           </div>
           <canvas id="sCanvas" width="1400" height="820"></canvas>
           <div class="small" id="sHint"></div>
         </div>
 
         <div class="glass side">
-          <h3 data-i18n="teacher_board">سبورة المعلم</h3>
-          <div id="studentTeacherPreview" class="previewBox"><span data-i18n="no_content">لا يوجد محتوى بعد</span></div>
+          <h3>سبورة المعلم / العرض الجماعي</h3>
+          <div id="studentTeacherPreview" class="previewBox"><span>لا يوجد محتوى بعد</span></div>
+
           <div style="margin-top:12px">
-            <h3 data-i18n="feedback_title">التغذية الراجعة</h3>
+            <h3>التغذية الراجعة</h3>
             <div class="small" id="feedbackBox">—</div>
           </div>
         </div>
@@ -344,92 +335,32 @@
 
 <script>
 /* =============================
-   CONFIG (ضع بياناتك هنا)
+   CONFIG
 ============================= */
 const SUPABASE_URL = "https://juqqhqbiirmgsjewyols.supabase.co";
 const SUPABASE_KEY = "sb_publishable_GZdVXisuLM1qnAUoiN7bng_UhQ9UQrx";
 
 /* =============================
    Safe Storage (fallback memory)
-   Supabase warns about missing storage; custom storage is supported. [2](https://onedrive.live.com?cid=CF65B2561CC3661A&id=CF65B2561CC3661A!s3a1be3da1eb04e1d992763cc14a96358)[3](https://onedrive.live.com?cid=CF65B2561CC3661A&id=CF65B2561CC3661A!s5112fd005750442299c7f24e55e79d03)
 ============================= */
 const __mem = new Map();
 const safeStorage = {
-  getItem: (key) => { try { return localStorage.getItem(key); } catch { return __mem.get(key) ?? null; } },
-  setItem: (key, val) => { try { localStorage.setItem(key, val); } catch { __mem.set(key, val); } },
-  removeItem: (key) => { try { localStorage.removeItem(key); } catch { __mem.delete(key); } }
+  getItem: (k)=>{ try{return localStorage.getItem(k);}catch{return __mem.get(k) ?? null;} },
+  setItem: (k,v)=>{ try{localStorage.setItem(k,v);}catch{__mem.set(k,v);} },
+  removeItem:(k)=>{ try{localStorage.removeItem(k);}catch{__mem.delete(k);} }
 };
 
-/* Supabase client (UMD global) */
+/* Supabase client */
 const { createClient } = window.supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: { persistSession: true, autoRefreshToken: true, storage: safeStorage }
+  auth: { persistSession:true, autoRefreshToken:true, storage: safeStorage }
 });
 
-/* jsPDF */
 const { jsPDF } = window.jspdf || {};
 
 /* =============================
-   i18n (simple)
+   UI helpers
 ============================= */
-const I18N = {
-  ar: { loading:"جاري التحميل...", ready:"جاهز", brand_ar:"بوردك", brand_en:"Boardak",
-    brand_sub:"سوبرتك الذكية - منصة تعليمية هادئة للشرح والمتابعة والتقييم",
-    home_title_ar:"بوردك", home_title_en:"Boardak",
-    home_desc_ar:"سوبرتك الذكية - منصة تعليمية هادئة للشرح والمتابعة والتقييم",
-    home_desc_en:"Your Smart Board - A calm educational platform for explanation, follow-up, and evaluation",
-    student_enter:"دخول الطالب", student_enter_desc:"ادخل بالكود أو الرابط وابدأ العمل على سبورتك.",
-    teacher_enter:"دخول المعلم", teacher_enter_desc:"أنشئ الغرفة بسرعة وابدأ الشرح مباشرة.",
-    errors_bank:"بنك الأخطاء", feedback:"تغذية راجعة", free_draw:"رسم حر",
-    dua:"اللهم علّمنا ما ينفعنا وانفعنا بما علمتنا",
-    credit:"إعداد وتصميم: الأستاذ عبدالله السالم", visitors:"الزوار",
-    back:"رجوع", teacher_entry_title:"دخول المعلم", teacher_entry_sub:"اسم المعلم مطلوب، والكود وعنوان الدرس اختياريان.",
-    student_entry_title:"دخول الطالب", student_entry_sub:"اكتب الاسم والكود للدخول إلى الغرفة.",
-    teacher_name:"اسم المعلم", student_name:"اسم الطالب", room_code:"كود الغرفة", lesson_title:"عنوان الدرس",
-    start_session:"ابدأ الجلسة", join_now:"انضم الآن",
-    copy_link:"نسخ الرابط", reset_class:"تصفير الأعمال", end_session:"إنهاء الجلسة",
-    online:"المتصلون", students_in_room:"الطلاب داخل الغرفة", teacher_preview:"المعاينة للطلاب", no_content:"لا يوجد محتوى بعد",
-    pen:"قلم", eraser:"ممحاة", text:"نص", explain_only:"الشرح فقط", lock_board:"قفل", focus_mode:"عرض جماعي",
-    teacher_board:"سبورة المعلم", feedback_title:"التغذية الراجعة",
-    st_understood:"فهمت", st_help:"لم أفهم", st_done:"انتهيت",
-    help_btn:"مساعدة", exit:"خروج", clear:"مسح", download_cert:"تحميل شهادتك"
-  },
-  en: { loading:"Loading...", ready:"Ready", brand_ar:"Boardak", brand_en:"Boardak",
-    brand_sub:"Your Smart Board - A calm educational platform for explanation, follow-up, and evaluation",
-    home_title_ar:"Boardak", home_title_en:"Boardak",
-    home_desc_ar:"Your Smart Board - A calm educational platform for explanation, follow-up, and evaluation",
-    home_desc_en:"Your Smart Board - A calm educational platform for explanation, follow-up, and evaluation",
-    student_enter:"Student", student_enter_desc:"Enter with a code or link and start working.",
-    teacher_enter:"Teacher", teacher_enter_desc:"Create a room quickly and start teaching.",
-    errors_bank:"Error Bank", feedback:"Feedback", free_draw:"Free Draw",
-    dua:"May God teach us what benefits us and benefit us with what He taught us",
-    credit:"Designed by: Abdullah Al-Salem", visitors:"Visitors",
-    back:"Back", teacher_entry_title:"Teacher Entry", teacher_entry_sub:"Teacher name required. Code & title optional.",
-    student_entry_title:"Student Entry", student_entry_sub:"Enter name and room code.",
-    teacher_name:"Teacher name", student_name:"Student name", room_code:"Room code", lesson_title:"Lesson title",
-    start_session:"Start session", join_now:"Join now",
-    copy_link:"Copy link", reset_class:"Reset class", end_session:"End session",
-    online:"Online", students_in_room:"Students", teacher_preview:"Student preview", no_content:"No content yet",
-    pen:"Pen", eraser:"Eraser", text:"Text", explain_only:"Explain only", lock_board:"Lock", focus_mode:"Focus",
-    teacher_board:"Teacher board", feedback_title:"Feedback",
-    st_understood:"Understood", st_help:"Need help", st_done:"Done",
-    help_btn:"Help", exit:"Exit", clear:"Clear", download_cert:"Download certificate"
-  }
-};
-
-function getLang(){ return safeStorage.getItem("boardak_lang") || "ar"; }
-function setLang(lang){ safeStorage.setItem("boardak_lang", lang); applyLang(); }
-function applyLang(){
-  const lang = getLang();
-  document.documentElement.lang = lang;
-  document.documentElement.dir = (lang === "ar") ? "rtl" : "ltr";
-  document.querySelectorAll("[data-i18n]").forEach(el=>{
-    const key = el.getAttribute("data-i18n");
-    if(I18N[lang] && I18N[lang][key] != null) el.textContent = I18N[lang][key];
-  });
-}
-
-/* UI helpers */
 const $ = (id)=>document.getElementById(id);
 function showToast(msg){
   const t = $("toast");
@@ -442,8 +373,6 @@ function showView(id){
   ["home","teacherEntry","studentEntry","teacherRoom","studentRoom"].forEach(v=>$(v).classList.add("hidden"));
   $(id).classList.remove("hidden");
 }
-function setLiveText(txt){ $("liveText").textContent = txt; }
-
 function bumpVisitors(){
   const key="boardak_visitors";
   let v = parseInt(safeStorage.getItem(key) || "5000", 10);
@@ -452,7 +381,35 @@ function bumpVisitors(){
   $("visitors").textContent = String(v);
 }
 
-/* Auth anonymous (no .catch misuse) [1](https://github.com/topics/supabase-js) */
+/* =============================
+   State
+============================= */
+const State = {
+  role:null,
+  user:null,
+  room:null,
+  roomCode:null,
+  sessionMeta:null,
+  boards:[],
+  currentBoard:null,
+  studentBoard:null,
+  focusedStudentBoard:null,
+  evaluation:null,
+  certificate:null,
+  dbChannel:null,
+  presenceChannel:null,
+  onlineCount:0,
+  selectedStudentBoardId:null,
+};
+
+function updateOnlineUI(){
+  if(State.role==="teacher") $("tOnline").textContent = String(State.onlineCount||0);
+  if(State.role==="student") $("sOnline").textContent = String(State.onlineCount||0);
+}
+
+/* =============================
+   Auth
+============================= */
 async function ensureAnon(){
   const { data: sess } = await sb.auth.getSession();
   if(!sess.session){
@@ -464,43 +421,33 @@ async function ensureAnon(){
   return u.user;
 }
 
-/* State */
-const State = {
-  role:null,
-  user:null,
-  room:null,
-  roomCode:null,
-  sessionMeta:null,
-  boards:[],
-  currentBoard:null,
-  studentBoard:null,
-  evaluation:null,
-  certificate:null,
-  dbChannel:null,
-  presenceChannel:null,
-  onlineCount:0
-};
-
 function getRoomFromUrl(){
   const p = new URLSearchParams(location.search);
   return (p.get("room") || "").trim().toUpperCase();
 }
+
 function escapeHtml(s){
   return String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;");
 }
 
-/* DB loaders */
+/* =============================
+   DB loaders
+============================= */
 async function loadSessionMeta(){
   const { data, error } = await sb.from("session_meta").select("*").eq("room_id", State.room.id).maybeSingle();
   if(error) throw error;
   State.sessionMeta = data;
+  applySessionMetaUI();
 }
+
 async function loadBoards(){
   const { data, error } = await sb.from("boards").select("*").eq("room_id", State.room.id).order("sort_order",{ascending:true});
   if(error) throw error;
   State.boards = data || [];
   State.currentBoard = State.boards.find(b=>b.visible_to_students) || State.boards[0] || null;
+  renderBoardTabs();
 }
+
 async function ensureStudentBoard(){
   if(!State.currentBoard) return;
   const { data, error } = await sb.from("student_boards")
@@ -522,35 +469,20 @@ async function ensureStudentBoard(){
   if(insErr) throw insErr;
   State.studentBoard = ins;
 }
-async function loadMyEvaluation(){
-  if(!State.studentBoard) return;
-  const { data, error } = await sb.rpc("ensure_evaluation_v3", { p_student_board_id: State.studentBoard.id });
-  if(error){ console.warn(error); return; }
-  State.evaluation = data;
-}
-async function loadMyCertificate(){
-  if(!State.studentBoard) return;
-  const { data, error } = await sb.from("certificates").select("*").eq("student_board_id", State.studentBoard.id).maybeSingle();
-  if(error){ console.warn(error); return; }
-  State.certificate = data;
-}
 
-/* Realtime */
-function updateOnlineUI(){
-  if(State.role==="teacher") $("tOnline").textContent = String(State.onlineCount||0);
-  if(State.role==="student") $("sOnline").textContent = String(State.onlineCount||0);
-}
+/* =============================
+   Realtime: Postgres Changes
+============================= */
 function subscribeDb(roomId){
   if(State.dbChannel) sb.removeChannel(State.dbChannel);
 
-  const ch = sb.channel(`db:room:${roomId}`)
+  const ch = sb.channel(`db:${roomId}`)
     .on('postgres_changes', { event:'*', schema:'public', table:'session_meta', filter:`room_id=eq.${roomId}` }, async () => {
-      try { await loadSessionMeta(); applySessionMetaUI(); } catch(e){ console.warn(e); }
+      try { await loadSessionMeta(); } catch(e){ console.warn(e); }
     })
     .on('postgres_changes', { event:'*', schema:'public', table:'boards', filter:`room_id=eq.${roomId}` }, async () => {
       try {
         await loadBoards();
-        renderBoardTabs();
         renderTeacherPreview();
         if(State.role==="student"){
           await ensureStudentBoard();
@@ -558,20 +490,121 @@ function subscribeDb(roomId){
         }
       } catch(e){ console.warn(e); }
     })
+    .on('postgres_changes', { event:'*', schema:'public', table:'room_members', filter:`room_id=eq.${roomId}` }, async () => {
+      try {
+        if(State.role==="teacher") await renderStudentsBoards(); // update list
+      } catch(e){ console.warn(e); }
+    })
+    .on('postgres_changes', { event:'*', schema:'public', table:'student_boards', filter:`room_id=eq.${roomId}` }, async () => {
+      try {
+        if(State.role==="teacher") await renderStudentsBoards();
+        if(State.role==="student") await ensureStudentBoard();
+      } catch(e){ console.warn(e); }
+    })
     .subscribe();
 
   State.dbChannel = ch;
 }
 
-/* UI render */
+/* =============================
+   Presence: online count
+============================= */
+function subscribePresence(roomId){
+  if(State.presenceChannel) sb.removeChannel(State.presenceChannel);
+
+  const channel = sb.channel(`presence:room:${roomId}`, {
+    config: { presence: { key: State.user.id } }
+  });
+
+  const recalc = () => {
+    const state = channel.presenceState();
+    State.onlineCount = Object.keys(state).length;
+    updateOnlineUI();
+  };
+
+  channel
+    .on('presence', { event: 'sync' }, recalc)
+    .on('presence', { event: 'join' }, recalc)
+    .on('presence', { event: 'leave' }, recalc);
+
+  channel.subscribe(async (status) => {
+    if(status === 'SUBSCRIBED'){
+      await channel.track({
+        role: State.role,
+        name: State.role === "teacher" ? $("tRoomTeacher").textContent : $("sRoomStudent").textContent
+      });
+    }
+  });
+
+  State.presenceChannel = channel;
+}
+
+/* =============================
+   Teacher: students list + preview
+============================= */
+async function renderStudentsBoards(){
+  // members
+  const { data: members, error: mErr } = await sb.from("room_members")
+    .select("user_id, display_name, joined_at")
+    .eq("room_id", State.room.id)
+    .eq("role","student")
+    .order("joined_at",{ascending:true});
+  if(mErr) { console.warn(mErr); return; }
+
+  // student boards (latest board for each student)
+  const { data: sbs, error: sbErr } = await sb.from("student_boards")
+    .select("id, student_user_id, board_data, status, help_requested, certificate_granted, updated_at")
+    .eq("room_id", State.room.id);
+  if(sbErr) { console.warn(sbErr); return; }
+
+  const map = new Map((sbs||[]).map(x=>[x.student_user_id, x]));
+  const wrap = $("studentsList");
+  wrap.innerHTML = "";
+
+  if(!members?.length){
+    wrap.innerHTML = `<div class="studentCard">لا يوجد طلاب بعد</div>`;
+    return;
+  }
+
+  members.forEach(mem=>{
+    const sbRow = map.get(mem.user_id);
+    const help = sbRow?.help_requested ? "🆘" : "";
+    const status = sbRow?.status || "—";
+    const card = document.createElement("div");
+    card.className = "studentCard";
+    card.innerHTML = `
+      <div class="studentRow">
+        <div style="font-weight:900">${escapeHtml(mem.display_name)} ${help}</div>
+        <button class="btn btn-soft btn-sm">عرض</button>
+      </div>
+      <div class="small">الحالة: ${escapeHtml(status)} | شهادة: ${sbRow?.certificate_granted ? "✅" : "—"}</div>
+    `;
+    card.querySelector("button").onclick = async () => {
+      if(!sbRow?.id){ showToast("لا توجد سبورة لهذا الطالب بعد"); return; }
+      State.selectedStudentBoardId = sbRow.id;
+
+      // preview
+      if(sbRow.board_data){
+        $("teacherPreview").innerHTML = `<img src="${sbRow.board_data}" alt="student board">`;
+      } else {
+        $("teacherPreview").innerHTML = `<span>لا يوجد محتوى بعد</span>`;
+      }
+    };
+    wrap.appendChild(card);
+  });
+}
+
+/* =============================
+   Boards UI
+============================= */
 function renderBoardTabs(){
   const wrap = $("boardTabs");
   wrap.innerHTML = "";
-  State.boards.forEach(b=>{
-    const btn=document.createElement("button");
-    btn.className="tool"+(State.currentBoard && State.currentBoard.id===b.id ? " active":"");
-    btn.textContent=b.title||"Board";
-    btn.onclick=async ()=>{
+  (State.boards||[]).forEach(b=>{
+    const btn = document.createElement("button");
+    btn.className = "tool" + (State.currentBoard && State.currentBoard.id===b.id ? " active":"");
+    btn.textContent = b.title || "Board";
+    btn.onclick = async ()=>{
       if(State.role==="teacher"){
         const { error } = await sb.rpc("set_visible_board_v3", { p_room_id: State.room.id, p_board_id: b.id });
         if(error) console.warn(error);
@@ -583,58 +616,71 @@ function renderBoardTabs(){
     wrap.appendChild(btn);
   });
 }
+
 function renderTeacherPreview(){
-  const wrap=$("teacherPreview");
-  const b=State.boards.find(x=>x.visible_to_students);
-  if(!b){ wrap.innerHTML=`<span>${I18N[getLang()].no_content}</span>`; return; }
-  const preview=b.content?.preview || b.content?.drawing || "";
-  wrap.innerHTML = preview ? `<img alt="preview" src="${preview}">` : `<span>${I18N[getLang()].no_content}</span>`;
-}
-function renderStudentTeacherPreview(){
-  const wrap=$("studentTeacherPreview");
-  const b=State.boards.find(x=>x.visible_to_students);
-  if(!b){ wrap.innerHTML=`<span>${I18N[getLang()].no_content}</span>`; return; }
-  const preview=b.content?.preview || b.content?.drawing || "";
-  wrap.innerHTML = preview ? `<img alt="teacher" src="${preview}">` : `<span>${I18N[getLang()].no_content}</span>`;
-}
-function renderFeedback(){
-  const box=$("feedbackBox");
-  const ev=State.evaluation;
-  if(!ev){ box.textContent="—"; return; }
-  box.textContent = `points: ${ev.points??0} | badge: ${ev.badge||"—"} | level: ${ev.level||"—"} | note: ${ev.note_sent ? (ev.note||"—"):"—"}`;
-}
-function updateCertButton(){
-  $("downloadCert").classList.toggle("hidden", !State.studentBoard?.certificate_granted);
+  if(State.role!=="teacher") return;
+  const wrap = $("teacherPreview");
+  const b = State.boards.find(x=>x.visible_to_students);
+  if(!b){ wrap.innerHTML = "<span>لا يوجد محتوى بعد</span>"; return; }
+  const preview = b.content?.preview || b.content?.drawing || "";
+  wrap.innerHTML = preview ? `<img src="${preview}" alt="preview">` : `<span>لا يوجد محتوى بعد</span>`;
 }
 
-/* Canvas */
+function renderStudentTeacherPreview(){
+  if(State.role!=="student") return;
+  const wrap = $("studentTeacherPreview");
+  const m = State.sessionMeta || {};
+  // focus mode: show focused student board instead of teacher board
+  if(m.focused_student_board_id){
+    // show focused board by fetching it
+    showFocusedBoard().catch(console.warn);
+    return;
+  }
+  const b = State.boards.find(x=>x.visible_to_students);
+  if(!b){ wrap.innerHTML = "<span>لا يوجد محتوى بعد</span>"; return; }
+  const preview = b.content?.preview || b.content?.drawing || "";
+  wrap.innerHTML = preview ? `<img src="${preview}" alt="teacher">` : `<span>لا يوجد محتوى بعد</span>`;
+}
+
+async function showFocusedBoard(){
+  const wrap = $("studentTeacherPreview");
+  const fid = State.sessionMeta?.focused_student_board_id;
+  if(!fid){ return; }
+  const { data, error } = await sb.from("student_boards").select("board_data").eq("id", fid).maybeSingle();
+  if(error){ console.warn(error); wrap.innerHTML = "<span>لا يمكن عرض السبورة</span>"; return; }
+  wrap.innerHTML = data?.board_data ? `<img src="${data.board_data}" alt="focus">` : "<span>لا يوجد محتوى بعد</span>";
+}
+
+/* =============================
+   Canvas drawing
+============================= */
 let tCanvas,tCtx,tDrawing=false,tTool="pen",tColor="#000000";
 let sCanvas,sCtx,sDrawing=false,sTool="pen",sColor="#000000";
 let saveTimerT=null, saveTimerS=null;
 
 function initCanvas(){
-  tCanvas=$("tCanvas"); tCtx=tCanvas.getContext("2d");
-  sCanvas=$("sCanvas"); sCtx=sCanvas.getContext("2d");
-  [tCtx,sCtx].forEach(ctx=>{ ctx.lineCap="round"; ctx.lineJoin="round"; });
-
-  tCanvas.onpointerdown=(e)=>{ tDrawing=true; const p=pos(tCanvas,e); tCtx.beginPath(); tCtx.moveTo(p.x,p.y); };
-  tCanvas.onpointermove=(e)=>{ if(!tDrawing) return; const p=pos(tCanvas,e);
+  tCanvas = $("tCanvas"); tCtx = tCanvas.getContext("2d");
+  sCanvas = $("sCanvas"); sCtx = sCanvas.getContext("2d");
+  [tCtx,sCtx].forEach(ctx=>{ ctx.lineCap="round";eTo(p.x,p.y); };
+  tCanvas.onpointermove = (e)=>{ if(!tDrawing) return; const p=pos(tCanvas,e);
     tCtx.lineWidth=4;
-    if(tTool==="eraser"){ tCtx.globalCompositeOperation="destination-out"; tCtx.strokeStyle="#ffffff"; }
+    if(tTool==="eraser"){ tCtx.globalCompositeOperation="destination-out"; tCtx.strokeStyle="#fff"; }
     else { tCtx.globalCompositeOperation="source-over"; tCtx.strokeStyle=tColor; }
     tCtx.lineTo(p.x,p.y); tCtx.stroke(); queueSaveTeacher();
   };
-  tCanvas.onpointerup=()=>{ tDrawing=false; tCtx.beginPath(); tCtx.globalCompositeOperation="source-over"; };
+  tCanvas.onpointerup = ()=>{ tDrawing=false; tCtx.beginPath(); tCtx.globalCompositeOperation="source-over"; };
 
-  sCanvas.onpointerdown=(e)=>{ if(!studentCanEdit()) return; sDrawing=true; const p=pos(sCanvas,e); sCtx.beginPath(); sCtx.moveTo(p.x,p.y); };
-  sCanvas.onpointermove=(e)=>{ if(!studentCanEdit()) return; if(!sDrawing) return; const p=pos(sCanvas,e);
+  // student
+  sCanvas.onpointerdown = (e)=>{ if(!studentCanEdit()) return; sDrawing=true; const p=pos(sCanvas,e); sCtx.beginPath(); sCtx.moveTo(p.x,p.y); };
+  sCanvas.onpointermove = (e)=>{ if(!studentCanEdit()) return; if(!sDrawing) return; const p=pos(sCanvas,e);
     sCtx.lineWidth=4;
-    if(sTool==="eraser"){ sCtx.globalCompositeOperation="destination-out"; sCtx.strokeStyle="#ffffff"; }
+    if(sTool==="eraser"){ sCtx.globalCompositeOperation="destination-out"; sCtx.strokeStyle="#fff"; }
     else { sCtx.globalCompositeOperation="source-over"; sCtx.strokeStyle=sColor; }
     sCtx.lineTo(p.x,p.y); sCtx.stroke(); queueSaveStudent();
   };
-  sCanvas.onpointerup=()=>{ sDrawing=false; sCtx.beginPath(); sCtx.globalCompositeOperation="source-over"; };
+  sCanvas.onpointerup = ()=>{ sDrawing=false; sCtx.beginPath(); sCtx.globalCompositeOperation="source-over"; };
 }
+
 function pos(canvas,e){
   const r=canvas.getBoundingClientRect();
   return { x:(e.clientX-r.left)*(canvas.width/r.width), y:(e.clientY-r.top)*(canvas.height/r.height) };
@@ -650,52 +696,41 @@ function teacherDataUrl(){ return tCanvas.toDataURL("image/png"); }
 function studentDataUrl(){ return sCanvas.toDataURL("image/png"); }
 
 function studentCanEdit(){
-  const m=State.sessionMeta||{};
+  const m = State.sessionMeta || {};
   if(m.explanation_mode) return false;
   if(m.board_locked) return false;
   if(m.focused_student_board_id) return false;
   return true;
 }
 
+/* Save teacher board (boards.content) */
 function queueSaveTeacher(){ clearTimeout(saveTimerT); saveTimerT=setTimeout(saveTeacherBoard, 450); }
 async function saveTeacherBoard(){
   if(State.role!=="teacher" || !State.currentBoard) return;
-  const payload={ type:"boardak_v3", version:1, drawing:teacherDataUrl(), preview:teacherDataUrl() };
-
-  const { error } = await sb.from("boards")
-    .update({ content: payload })
-    .eq("id", State.currentBoard.id);
-
-  if(error){
-    console.warn(error);
-    showToast(getLang()==="ar"?"تعذر حفظ السبورة":"Failed to save board");
-  }
+  const payload = { type:"boardak_v3", version:1, drawing: teacherDataUrl(), preview: teacherDataUrl() };
+  const { error } = await sb.from("boards").update({ content: payload }).eq("id", State.currentBoard.id);
+  if(error){ console.warn(error); showToast("تعذر حفظ السبورة"); }
 }
 
+/* Save student board (student_boards.board_data) */
 function queueSaveStudent(){ clearTimeout(saveTimerS); saveTimerS=setTimeout(saveStudentBoard, 450); }
 async function saveStudentBoard(){
   if(State.role!=="student" || !State.studentBoard) return;
-
-  const { error } = await sb.from("student_boards")
-    .update({ board_data: studentDataUrl(), status: $("sStatus").value })
-    .eq("id", State.studentBoard.id);
-
-  if(error){
-    console.warn(error);
-    showToast(getLang()==="ar"?"تعذر حفظ سبورتك":"Failed to save");
-    return;
-  }
-
-  $("sHint").textContent = (getLang()==="ar"?"يتم الحفظ...":"Saving...");
+  const { error } = await sb.from("student_boards").update({
+    board_data: studentDataUrl(),
+    status: $("sStatus").value
+  }).eq("id", State.studentBoard.id);
+  if(error){ console.warn(error); showToast("تعذر حفظ سبورتك"); return; }
+  $("sHint").textContent = "يتم الحفظ...";
   setTimeout(()=>$("sHint").textContent="", 700);
 }
 
 async function refreshCanvas(){
   if(State.role==="teacher"){
     clearCanvas(tCanvas,tCtx);
-    const d=State.currentBoard?.content?.drawing;
+    const d = State.currentBoard?.content?.drawing;
     if(d) loadDataUrlToCanvas(tCanvas,tCtx,d);
-  }else{
+  } else {
     clearCanvas(sCanvas,sCtx);
     await ensureStudentBoard();
     if(State.studentBoard?.board_data) loadDataUrlToCanvas(sCanvas,sCtx,State.studentBoard.board_data);
@@ -703,20 +738,52 @@ async function refreshCanvas(){
   }
 }
 
-/* Session meta UI */
+/* =============================
+   Session meta UI
+============================= */
+function setTeacherBar(msg){
+  const el = $("tBar");
+  if(!msg){ el.classList.add("hidden"); el.textContent=""; return; }
+  el.textContent = msg;
+  el.classList.remove("hidden");
+}
+function setStudentBar(msg){
+  const el = $("sBar");
+  if(!msg){ el.classList.add("hidden"); el.textContent=""; return; }
+  el.textContent = msg;
+  el.classList.remove("hidden");
+}
+
 function applySessionMetaUI(){
-  const m=State.sessionMeta||{};
+  const m = State.sessionMeta || {};
+  // update button labels
+  if(State.role==="teacher"){
+    $("toggleExplain").textContent = m.explanation_mode ? "إيقاف الشرح" : "الشرح فقط";
+    $("toggleLock").textContent = m.board_locked ? "فتح القفل" : "قفل";
+    $("toggleFocus").textContent = m.focused_student_board_id ? "إيقاف العرض" : "عرض جماعي";
+    setTeacherBar(
+      (m.explanation_mode ? "👀 وضع الشرح مفعل" : "") +
+      (m.board_locked ? (m.explanation_mode ? " | " : "") + "🔒 السبورة مقفلة" : "") +
+      (m.focused_student_board_id ? ((m.explanation_mode||m.board_locked) ? " | " : "") + "🖥️ العرض الجماعي مفعل" : "")
+    );
+  }
   if(State.role==="student"){
-    $("sHint").textContent = studentCanEdit() ? "" : (getLang()==="ar"?"التعديل متوقف مؤقتًا":"Editing disabled");
+    if(m.explanation_mode) setStudentBar("👀 المعلم يشرح الآن (التعديل متوقف)");
+    else if(m.board_locked) setStudentBar("🔒 السبورة مقفلة (التعديل متوقف)");
+    else if(m.focused_student_board_id) setStudentBar("🖥️ عرض جماعي (التعديل متوقف)");
+    else setStudentBar("");
+    renderStudentTeacherPreview();
   }
 }
 
-/* Flows */
+/* =============================
+   Flows
+============================= */
 async function teacherStartFlow(){
-  const teacherName=$("tName").value.trim();
-  const code=$("tCode").value.trim();
-  const title=$("tTitle").value.trim();
-  if(!teacherName){ showToast(getLang()==="ar"?"اكتب اسم المعلم":"Enter teacher name"); return; }
+  const teacherName = $("tName").value.trim();
+  const code = $("tCode").value.trim();
+  const title = $("tTitle").value.trim();
+  if(!teacherName){ showToast("اكتب اسم المعلم"); return; }
 
   loading(true);
   try{
@@ -724,7 +791,7 @@ async function teacherStartFlow(){
       p_code: code || null,
       p_teacher_name: teacherName,
       p_title: title || null,
-      p_lang: getLang()
+      p_lang: "ar"
     });
     if(error) throw error;
 
@@ -739,32 +806,34 @@ async function teacherStartFlow(){
     initCanvas();
     await loadSessionMeta();
     await loadBoards();
-    renderBoardTabs();
     await refreshCanvas();
     renderTeacherPreview();
 
     subscribeDb(data.id);
+    subscribePresence(data.id);
+    await renderStudentsBoards();
 
     const url=new URL(location.href);
     url.searchParams.set("room", data.code);
     history.replaceState({}, "", url.toString());
 
     showView("teacherRoom");
-    setLiveText(getLang()==="ar"?"مباشر":"Live");
+    $("liveText").textContent = "مباشر";
   }catch(e){
     console.error(e);
-    $("tMsg").textContent=String(e.message||e);
-    showToast(getLang()==="ar"?"تعذر إنشاء الغرفة":"Could not create room");
+    $("tMsg").textContent = e?.message || JSON.stringify(e);
+    showToast("تعذر إنشاء الغرفة");
   }finally{ loading(false); }
 }
 
 async function studentJoinFlow(){
-  const studentName=$("sName").value.trim();
-  const code=$("sCode").value.trim().toUpperCase();
-  if(!studentName || !code){ showToast(getLang()==="ar"?"اكتب الاسم والكود":"Enter name and code"); return; }
+  const studentName = $("sName").value.trim();
+  const code = $("sCode").value.trim().toUpperCase();
+  if(!studentName || !code){ showToast("اكتب الاسم والكود"); return; }
 
   loading(true);
   try{
+    // ✅ نستخدم join_room_v3_sql (اللي اشتغل معك)
     const { data, error } = await sb.rpc("join_room_v3_sql", {
       p_room_code: code,
       p_student_name: studentName
@@ -784,172 +853,168 @@ async function studentJoinFlow(){
     await loadSessionMeta();
     await loadBoards();
     await ensureStudentBoard();
-    await loadMyEvaluation();
-    await loadMyCertificate();
-
     await refreshCanvas();
     renderStudentTeacherPreview();
-    renderFeedback();
-    updateCertButton();
-    applySessionMetaUI();
 
     subscribeDb(State.room.id);
+    subscribePresence(State.room.id);
 
     showView("studentRoom");
-    setLiveText(getLang()==="ar"?"مباشر":"Live");
+    $("liveText").textContent = "مباشر";
   }catch(e){
     console.error(e);
-    $("sMsg").textContent=String(e.message||e);
-    showToast(getLang()==="ar"?"تعذر الدخول":"Could not join");
+    $("sMsg").textContent = e?.message || JSON.stringify(e);
+    showToast("تعذر الدخول");
   }finally{ loading(false); }
 }
 
-/* Boot */
+/* =============================
+   Button bindings
+============================= */
+function bindUI(){
+  $("langBtn").onclick = ()=> showToast("i18n لاحقًا (جاهز)");
+  $("goTeacher").onclick = ()=> showView("teacherEntry");
+  $("goStudent").onclick = ()=> showView("studentEntry");
+  $("backFromTeacher").onclick = ()=> showView("home");
+  $("backFromStudent").onclick = ()=> showView("home");
+
+  $("teacherStart").onclick = teacherStartFlow;
+  $("studentJoin").onclick = studentJoinFlow;
+
+  $("copyLink").onclick = ()=>{
+    const link = `${location.origin}${location.pathname}?room=${State.roomCode||""}`;
+    navigator.clipboard.writeText(link);
+    showToast("تم نسخ الرابط");
+  };
+
+  $("resetStudents").onclick = async ()=>{
+    if(!confirm("تصفير أعمال الطلبة؟")) return;
+    const { error } = await sb.rpc("reset_room_students_v3", { p_room_id: State.room.id });
+    if(error){ console.warn(error); showToast("فشل التصفير"); return; }
+    showToast("تم التصفير");
+  };
+
+  $("endRoom").onclick = async ()=>{
+    const sure = confirm("إنهاء الجلسة وحذف الغرفة نهائيًا؟");
+    if(!sure) return;
+    const { error } = await sb.rpc("delete_room_full_v3", { p_room_id: State.room.id });
+    if(error){ console.warn(error); showToast("فشل إنهاء الجلسة"); return; }
+    showToast("تم إنهاء الجلسة");
+    location.href = location.pathname;
+  };
+
+  $("toggleExplain").onclick = async ()=>{
+    const next = !State.sessionMeta?.explanation_mode;
+    const { error } = await sb.rpc("set_explanation_mode_v3", { p_room_id: State.room.id, p_enabled: next });
+    if(error) console.warn(error);
+  };
+
+  $("toggleLock").onclick = async ()=>{
+    const next = !State.sessionMeta?.board_locked;
+    const { error } = await sb.rpc("set_board_locked_v3", { p_room_id: State.room.id, p_locked: next });
+    if(error) console.warn(error);
+  };
+
+  $("toggleFocus").onclick = async ()=>{
+    // إذا ما محدد طالب: نعرض توست
+    if(!State.sessionMeta?.focused_student_board_id){
+      if(!State.selectedStudentBoardId){
+        showToast("اختر طالبًا ثم اضغط عرض جماعي");
+        return;
+      }
+      const { error } = await sb.rpc("focus_student_board_v3", { p_room_id: State.room.id, p_student_board_id: State.selectedStudentBoardId });
+      if(error) console.warn(error);
+    } else {
+      const { error } = await sb.rpc("clear_focused_student_board_v3", { p_room_id: State.room.id });
+      if(error) console.warn(error);
+    }
+  };
+
+  $("addBoard").onclick = async ()=>{
+    const n = (State.boards?.length||0)+1;
+    const { error } = await sb.from("boards").insert({
+      room_id: State.room.id,
+      title: `السبورة ${n}`,
+      sort_order: n,
+      visible_to_students: false,
+      content: { type:"boardak_v3", version:1 }
+    });
+    if(error){ console.warn(error); showToast("ربما وصلت حد 10 سبورات"); }
+  };
+
+  // tools: teacher
+  $("tPen").onclick = ()=>{ tTool="pen"; $("tPen").classList.add("active"); $("tEraser").classList.remove("active"); };
+  $("tEraser").onclick = ()=>{ tTool="eraser"; $("tEraser").classList.add("active"); $("tPen").classList.remove("active"); };
+  $("tText").onclick = ()=>{
+    const text = prompt("اكتب النص");
+    if(!text) return;
+    tCtx.save(); tCtx.fillStyle=tColor; tCtx.font="32px Cairo"; tCtx.fillText(text,120,120); tCtx.restore();
+    queueSaveTeacher();
+  };
+  document.querySelectorAll("[data-color]").forEach(btn=>{
+    btn.onclick=()=>{
+      document.querySelectorAll("[data-color]").forEach(x=>x.classList.remove("active"));
+      btn.classList.add("active");
+      tColor = btn.getAttribute("data-color");
+      tTool="pen";
+      $("tPen").classList.add("active"); $("tEraser").classList.remove("active");
+    };
+  });
+
+  // tools: student
+  $("sPen").onclick = ()=>{ sTool="pen"; $("sPen").classList.add("active"); $("sEraser").classList.remove("active"); };
+  $("sEraser").onclick = ()=>{ sTool="eraser"; $("sEraser").classList.add("active"); $("sPen").classList.remove("active"); };
+  document.querySelectorAll("[data-scolor]").forEach(btn=>{
+    btn.onclick=()=>{
+      document.querySelectorAll("[data-scolor]").forEach(x=>x.classList.remove("active"));
+      btn.classList.add("active");
+      sColor = btn.getAttribute("data-scolor");
+      sTool="pen";
+      $("sPen").classList.add("active"); $("sEraser").classList.remove("active");
+    };
+  });
+
+  $("clearStudent").onclick = ()=>{
+    if(!studentCanEdit()){ showToast("التعديل متوقف"); return; }
+    clearCanvas(sCanvas,sCtx);
+    queueSaveStudent();
+  };
+
+  $("sStatus").onchange = ()=> queueSaveStudent();
+
+  $("helpBtn").onclick = async ()=>{
+    if(!State.studentBoard) return;
+    const { error } = await sb.from("student_boards").update({ help_requested:true, status:"help" }).eq("id", State.studentBoard.id);
+    if(error) console.warn(error);
+    showToast("تم إرسال طلب المساعدة");
+  };
+
+  $("studentExit").onclick = ()=> location.href = location.pathname;
+}
+
+/* =============================
+   Boot
+============================= */
 async function boot(){
-  applyLang();
   bumpVisitors();
+  bindUI();
+
   loading(true);
   try{
     State.user = await ensureAnon();
 
-    const code=getRoomFromUrl();
-    if(code) $("sCode").value = code;
+    const code = getRoomFromUrl();
+    if(code){
+      $("sCode").value = code;
+      showView("studentEntry");
+    } else {
+      showView("home");
+    }
 
-    $("langBtn").onclick = ()=> setLang(getLang()==="ar" ? "en" : "ar");
-    $("goTeacher").onclick = ()=> showView("teacherEntry");
-    $("goStudent").onclick = ()=> showView("studentEntry");
-    $("backFromTeacher").onclick = ()=> showView("home");
-    $("backFromStudent").onclick = ()=> showView("home");
-
-    $("teacherStart").onclick = teacherStartFlow;
-    $("studentJoin").onclick = studentJoinFlow;
-
-    $("copyLink").onclick = ()=>{
-      const link = `${location.origin}${location.pathname}?room=${State.roomCode||""}`;
-      navigator.clipboard.writeText(link);
-      showToast(getLang()==="ar"?"تم نسخ الرابط":"Link copied");
-    };
-
-    $("resetStudents").onclick = async ()=>{
-      if(!confirm(getLang()==="ar"?"تصفير أعمال الطلبة؟":"Reset student work?")) return;
-      const { error } = await sb.rpc("reset_room_students_v3", { p_room_id: State.room.id });
-      if(error) console.warn(error);
-      showToast(getLang()==="ar"?"تم التصفير":"Reset done");
-    };
-
-    $("endRoom").onclick = async ()=>{
-      const keep = confirm(getLang()==="ar"
-        ? "هل تريد إبقاء الغرفة 24 ساعة؟ (موافق=إبقاء / إلغاء=حذف نهائي)"
-        : "Keep room for 24h? (OK=keep / Cancel=delete)");
-      if(keep){
-        const { error } = await sb.rpc("extend_room_24h_v3", { p_room_id: State.room.id });
-        if(error) console.warn(error);
-        showToast(getLang()==="ar"?"تم الإبقاء":"Extended");
-      }else{
-        const sure = confirm(getLang()==="ar"?"حذف نهائي؟":"Delete permanently?");
-        if(!sure) return;
-        const { error } = await sb.rpc("delete_room_full_v3", { p_room_id: State.room.id });
-        if(error){
-          console.warn(error);
-          showToast(getLang()==="ar"?"تعذر الحذف":"Delete failed");
-          return;
-        }
-        showToast(getLang()==="ar"?"تم الحذف":"Deleted");
-        location.href = location.pathname;
-      }
-    };
-
-    $("toggleExplain").onclick = async ()=>{
-      const next = !State.sessionMeta?.explanation_mode;
-      const { error } = await sb.rpc("set_explanation_mode_v3", { p_room_id: State.room.id, p_enabled: next });
-      if(error) console.warn(error);
-    };
-    $("toggleLock").onclick = async ()=>{
-      const next = !State.sessionMeta?.board_locked;
-      const { error } = await sb.rpc("set_board_locked_v3", { p_room_id: State.room.id, p_locked: next });
-      if(error) console.warn(error);
-    };
-    $("clearFocus").onclick = async ()=>{
-      const { error } = await sb.rpc("clear_focused_student_board_v3", { p_room_id: State.room.id });
-      if(error) console.warn(error);
-    };
-
-    $("addBoard").onclick = async ()=>{
-      const n=(State.boards?.length||0)+1;
-      const title=(getLang()==="ar")?`السبورة ${n}`:`Board ${n}`;
-      const { error } = await sb.from("boards").insert({
-        room_id: State.room.id,
-        title,
-        sort_order: n,
-        visible_to_students: false,
-        content: { type:"boardak_v3", version:1 }
-      });
-      if(error) showToast(getLang()==="ar"?"ربما وصلت حد 10 سبورات":"Maybe reached 10 boards");
-    };
-
-    $("tPen").onclick=()=>{ tTool="pen"; $("tPen").classList.add("active"); $("tEraser").classList.remove("active"); };
-    $("tEraser").onclick=()=>{ tTool="eraser"; $("tEraser").classList.add("active"); $("tPen").classList.remove("active"); };
-    $("tText").onclick=()=>{
-      const text=prompt(getLang()==="ar"?"اكتب النص":"Enter text");
-      if(!text) return;
-      tCtx.save(); tCtx.fillStyle=tColor; tCtx.font="32px Cairo"; tCtx.fillText(text,120,120); tCtx.restore(); queueSaveTeacher();
-    };
-    document.querySelectorAll("[data-color]").forEach(btn=>{
-      btn.onclick=()=>{
-        document.querySelectorAll("[data-color]").forEach(x=>x.classList.remove("active"));
-        btn.classList.add("active");
-        tColor=btn.getAttribute("data-color");
-        tTool="pen";
-        $("tPen").classList.add("active"); $("tEraser").classList.remove("active");
-      };
-    });
-
-    $("sPen").onclick=()=>{ sTool="pen"; $("sPen").classList.add("active"); $("sEraser").classList.remove("active"); };
-    $("sEraser").onclick=()=>{ sTool="eraser"; $("sEraser").classList.add("active"); $("sPen").classList.remove("active"); };
-    document.querySelectorAll("[data-scolor]").forEach(btn=>{
-      btn.onclick=()=>{
-        document.querySelectorAll("[data-scolor]").forEach(x=>x.classList.remove("active"));
-        btn.classList.add("active");
-        sColor=btn.getAttribute("data-scolor");
-        sTool="pen";
-        $("sPen").classList.add("active"); $("sEraser").classList.remove("active");
-      };
-    });
-    $("clearStudent").onclick=()=>{
-      if(!studentCanEdit()){ showToast(getLang()==="ar"?"التعديل متوقف":"Editing disabled"); return; }
-      clearCanvas(sCanvas,sCtx); queueSaveStudent();
-    };
-    $("sStatus").onchange=()=>queueSaveStudent();
-
-    $("helpBtn").onclick=async ()=>{
-      if(!State.studentBoard) return;
-      const { error } = await sb.from("student_boards").update({ help_requested:true }).eq("id", State.studentBoard.id);
-      if(error) console.warn(error);
-      showToast(getLang()==="ar"?"تم إرسال طلب المساعدة":"Help sent");
-    };
-
-    $("downloadCert").onclick=()=>{
-      if(!State.studentBoard?.certificate_granted || !jsPDF) return;
-      const doc=new jsPDF();
-      doc.text("Boardak Certificate",10,10);
-      doc.text(`Student: ${$("sName").value||""}`,10,20);
-      doc.text(`Room: ${State.roomCode||""}`,10,30);
-      doc.save(`Boardak-Certificate-${State.roomCode||"room"}.pdf`);
-    };
-
-    $("studentExit").onclick=()=> location.href = location.pathname;
-
-    $("openErrors").onclick=()=>showToast(getLang()==="ar"?"قريبًا: بنك الأخطاء":"Coming soon: Error bank");
-    $("openFeedback").onclick=()=>showToast(getLang()==="ar"?"قريبًا: تغذية راجعة":"Coming soon: Feedback");
-    $("openFreeDraw").onclick=()=>showToast(getLang()==="ar"?"قريبًا: رسم حر":"Coming soon: Free draw");
-
-$("openFreeDraw").onclick=()=>showToast(getLang()==="ar"?"قريبًا: رسم حر":"Coming soon: Free draw");
-
-    showView("home");
-  } catch (e) {
+  }catch(e){
     console.error(e);
-    showToast("Init error");
-  } finally {
+    showToast("Auth error");
+  }finally{
     loading(false);
   }
 }
