@@ -921,28 +921,28 @@ function applySessionMetaUI(){
     );
   }
 
- if (State.role === "student") {
-  const m = State.sessionMeta || {};
+  if (State.role === "student") {
 
-  // ✅ إذا المعلم أغلق الجلسة: أخرج الطالب فورًا
-  if (m.session_open === false) {
-    showToast("انتهت الجلسة — انتظر دخول المعلم");
-    setTimeout(() => {
-      location.href = location.pathname;
-    }, 800);
-    return;
+    // ✅ إذا المعلم أغلق الجلسة: أخرج الطالب فورًا
+    if (m.session_open === false) {
+      showToast("انتهت الجلسة — انتظر دخول المعلم");
+      setTimeout(() => {
+        location.href = location.pathname;
+      }, 800);
+      return;
+    }
+
+    if (m.explanation_mode)
+      setStudentBar("👀 المعلم يشرح الآن (التعديل متوقف)");
+    else if (m.board_locked)
+      setStudentBar("🔒 السبورة مقفلة (التعديل متوقف)");
+    else if (m.focused_student_board_id)
+      setStudentBar("🖥️ عرض جماعي (التعديل متوقف)");
+    else
+      setStudentBar("");
+
+    renderStudentTeacherPreview();
   }
-
-  if (m.explanation_mode)
-    setStudentBar("👀 المعلم يشرح الآن (التعديل متوقف)");
-  else if (m.board_locked)
-    setStudentBar("🔒 السبورة مقفلة (التعديل متوقف)");
-  else if (m.focused_student_board_id)
-    setStudentBar("🖥️ عرض جماعي (التعديل متوقف)");
-  else
-    setStudentBar("");
-
-  renderStudentTeacherPreview();
 }
 
 /* =============================
@@ -1199,13 +1199,13 @@ async function boot(){
       showView("home");
     }
 
-} catch(e){
+  } catch(e){
     console.error(e);
     showToast("Auth error");
   } finally {
     loading(false);
   }
-}  // ✅ هذا القوس كان مفقود (إغلاق دالة boot)
+}  // ✅ إغلاق دالة boot
 
 window.addEventListener("load", boot);
 </script>
