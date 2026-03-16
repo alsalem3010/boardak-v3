@@ -833,9 +833,16 @@ function queueSaveStudent() {
   saveTimerS = setTimeout(saveStudentBoard, 450);
 }
 
-function pos(canvas,e){
-  const r=canvas.getBoundingClientRect();
-  return { x:(e.clientX-r.left)*(canvas.width/r.width), y:(e.clientY-r.top)*(canvas.height/r.top) };
+function pos(canvas, e){
+  const rect = canvas.getBoundingClientRect();
+
+  const ox = (typeof e.offsetX === "number") ? e.offsetX : (e.clientX - rect.left);
+  const oy = (typeof e.offsetY === "number") ? e.offsetY : (e.clientY - rect.top);
+
+  const scaleX = canvas.width  / canvas.clientWidth;
+  const scaleY = canvas.height / canvas.clientHeight;
+
+  return { x: ox * scaleX, y: oy * scaleY };
 }
 function clearCanvas(canvas,ctx){ ctx.clearRect(0,0,canvas.width,canvas.height); }
 function loadDataUrlToCanvas(canvas,ctx,src){
