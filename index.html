@@ -546,7 +546,7 @@ function subscribeDb(roomId){
           await ensureStudentBoard();
           renderStudentTeacherPreview();
         }
-      } catch(e){ console.warn(e); }
+       catch(e){ console.warn(e); }
     })
     .on('postgres_changes', { event:'*', schema:'public', table:'room_members', filter:`room_id=eq.${roomId}` }, async () => {
       try { if(State.role==="teacher") await renderStudentsBoards(); } catch(e){ console.warn(e); }
