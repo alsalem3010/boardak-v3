@@ -1199,13 +1199,13 @@ async function boot(){
       showView("home");
     }
 
-  }catch(e){
+} catch(e){
     console.error(e);
     showToast("Auth error");
-  }finally{
+  } finally {
     loading(false);
   }
-
+}  // ✅ هذا القوس كان مفقود (إغلاق دالة boot)
 
 window.addEventListener("load", boot);
 </script>
