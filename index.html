@@ -751,39 +751,7 @@ function queueSaveStudent() {
   clearTimeout(saveTimerS);
   saveTimerS = setTimeout(saveStudentBoard, 450);
 }
-// student
-sCanvas.onpointerdown = (e) => {
-  if (!studentCanEdit()) return;
-  sDrawing = true;
-  const p = pos(sCanvas, e);
-  sCtx.beginPath();
-  sCtx.moveTo(p.x, p.y);
-};
 
-sCanvas.onpointermove = (e) => {
-  if (!studentCanEdit()) return;
-  if (!sDrawing) return;
-  const p = pos(sCanvas, e);
-
-  sCtx.lineWidth = 4;
-  if (sTool === "eraser") {
-    sCtx.globalCompositeOperation = "destination-out";
-    sCtx.strokeStyle = "#fff";
-  } else {
-    sCtx.globalCompositeOperation = "source-over";
-    sCtx.strokeStyle = sColor;
-  }
-
-  sCtx.lineTo(p.x, p.y);
-  sCtx.stroke();
-  queueSaveStudent();
-};
-
-sCanvas.onpointerup = () => {
-  sDrawing = false;
-  sCtx.beginPath();
-  sCtx.globalCompositeOperation = "source-over";
-};
 function pos(canvas,e){
   const r=canvas.getBoundingClientRect();
   return { x:(e.clientX-r.left)*(canvas.width/r.width), y:(e.clientY-r.top)*(canvas.height/r.height) };
