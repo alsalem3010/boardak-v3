@@ -244,7 +244,7 @@
         <div class="glass boardWrap">
           <div class="toolbar">
             <div id="boardTabs" class="toolbar"></div>
-            <button class="btn btn-blue btn-sm" id="addBoard" title="+" >+</button>
+            <button class="btn btn-blue btn-sm" id="addBoard" title="+">+</button>
           </div>
 
           <div class="toolbar">
@@ -262,57 +262,59 @@
             <button class="btn btn-soft btn-sm" id="toggleFocus">عرض جماعي</button>
           </div>
 
-         <div style="position:relative;">
-  <canvas id="tCanvas" width="1400" height="820"></canvas>
+          <div style="position:relative;">
+            <canvas id="tCanvas" width="1400" height="820"></canvas>
 
-  <!-- 🔹 Overlay لمعاينة سبورة الطالب فوق سبورة المعلم -->
-  <div id="teacherOverlay" 
-       class="hidden"
-       style="
-         position:absolute;
-         inset:0;
-         background:rgba(15,23,42,0.60);
-         display:flex;
-         align-items:center;
-         justify-content:center;
-         flex-direction:column;
-         z-index:20;
-       ">
-    <div style="
-        background:#ffffff;
-        border-radius:18px;
-        padding:12px;
-        max-width:95%;
-        max-height:95%;
-        display:flex;
-        flex-direction:column;
-        gap:8px;
-        box-shadow:0 20px 40px rgba(0,0,0,0.35);
-      ">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div style="font-weight:900;font-size:14px;">عرض سبورة الطالب</div>
-        <button id="closeOverlay" class="btn btn-soft btn-sm">رجوع لسبورتي</button>
-      </div>
-      <div style="
-          border-radius:14px;
-          border:1px solid #e5e7eb;
-          overflow:hidden;
-          background:#f9fafb;
-          display:flex;
-          align-items:center;
-          justify-content:center;
-        ">
-        <img id="teacherOverlayImg" 
-             src="" 
-             alt="student board full" 
-             style="max-width:100%;max-height:80vh;object-fit:contain;" />
-      </div>
-    </div>
-  </div>
-</div>
+            <!-- Overlay لمعاينة سبورة الطالب فوق سبورة المعلم -->
+            <div id="teacherOverlay"
+                 class="hidden"
+                 style="
+                   position:absolute;
+                   inset:0;
+                   background:rgba(15,23,42,0.60);
+                   display:flex;
+                   align-items:center;
+                   justify-content:center;
+                   flex-direction:column;
+                   z-index:20;
+                 ">
+              <div style="
+                  background:#ffffff;
+                  border-radius:18px;
+                  padding:12px;
+                  max-width:95%;
+                  max-height:95%;
+                  display:flex;
+                  flex-direction:column;
+                  gap:8px;
+                  box-shadow:0 20px 40px rgba(0,0,0,0.35);
+                ">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <div id="teacherOverlayTitle" style="font-weight:900;font-size:14px;">عرض سبورة الطالب</div>
+                  <button id="closeOverlay" class="btn btn-soft btn-sm">رجوع لسبورتي</button>
+                </div>
 
-<div class="small" id="tHint"></div>
+                <div id="teacherOverlayMsg" style="font-size:13px;color:#64748b;text-align:center;"></div>
 
+                <div style="
+                    border-radius:14px;
+                    border:1px solid #e5e7eb;
+                    overflow:hidden;
+                    background:#f9fafb;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                  ">
+                  <img id="teacherOverlayImg"
+                       src=""
+                       alt="student board full"
+                       style="max-width:100%;max-height:80vh;object-fit:contain;" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="small" id="tHint"></div>
         </div>
 
         <div class="glass side">
@@ -430,6 +432,16 @@ function bumpVisitors(){
   $("visitors").textContent = String(v);
 }
 
+function escapeHtml(s){
+  const str = String(s ?? "");
+  return str
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#39;");
+}
+
 /* =============================
    State
 ============================= */
@@ -475,10 +487,6 @@ function getRoomFromUrl(){
   return (p.get("room") || "").trim().toUpperCase();
 }
 
-function escapeHtml(s){
-  return String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;");
-}
-
 /* =============================
    DB loaders
 ============================= */
@@ -499,6 +507,7 @@ async function loadBoards(){
 
 async function ensureStudentBoard(){
   if(!State.currentBoard) return;
+
   const { data, error } = await sb.from("student_boards")
     .select("*")
     .eq("room_id", State.room.id)
@@ -540,9 +549,7 @@ function subscribeDb(roomId){
       } catch(e){ console.warn(e); }
     })
     .on('postgres_changes', { event:'*', schema:'public', table:'room_members', filter:`room_id=eq.${roomId}` }, async () => {
-      try {
-        if(State.role==="teacher") await renderStudentsBoards(); // update list
-      } catch(e){ console.warn(e); }
+      try { if(State.role==="teacher") await renderStudentsBoards(); } catch(e){ console.warn(e); }
     })
     .on('postgres_changes', { event:'*', schema:'public', table:'student_boards', filter:`room_id=eq.${roomId}` }, async () => {
       try {
@@ -589,10 +596,9 @@ function subscribePresence(roomId){
 }
 
 /* =============================
-   Teacher: students list + preview
+   Teacher: students list + overlay preview (CLEAN)
 ============================= */
 async function renderStudentsBoards(){
-  // members
   const { data: members, error: mErr } = await sb.from("room_members")
     .select("user_id, display_name, joined_at")
     .eq("room_id", State.room.id)
@@ -600,13 +606,22 @@ async function renderStudentsBoards(){
     .order("joined_at",{ascending:true});
   if(mErr) { console.warn(mErr); return; }
 
-  // student boards (latest board for each student)
   const { data: sbs, error: sbErr } = await sb.from("student_boards")
-    .select("id, student_user_id, board_data, status, help_requested, certificate_granted, updated_at")
+    .select("id, student_user_id, board_id, board_data, status, help_requested, certificate_granted, updated_at")
     .eq("room_id", State.room.id);
   if(sbErr) { console.warn(sbErr); return; }
 
-  const map = new Map((sbs||[]).map(x=>[x.student_user_id, x]));
+  // أحدث سجل لكل طالب (وإن وجدت لوحات متعددة نفضل الحالية)
+  const map = new Map();
+  (sbs||[]).forEach(row=>{
+    if(State.currentBoard?.id && row.board_id && row.board_id !== State.currentBoard.id) return;
+    const prev = map.get(row.student_user_id);
+    if(!prev) return map.set(row.student_user_id, row);
+    const prevT = prev.updated_at ? new Date(prev.updated_at).getTime() : 0;
+    const curT  = row.updated_at  ? new Date(row.updated_at).getTime()  : 0;
+    if(curT >= prevT) map.set(row.student_user_id, row);
+  });
+
   const wrap = $("studentsList");
   wrap.innerHTML = "";
 
@@ -619,6 +634,7 @@ async function renderStudentsBoards(){
     const sbRow = map.get(mem.user_id);
     const help = sbRow?.help_requested ? "🆘" : "";
     const status = sbRow?.status || "—";
+
     const card = document.createElement("div");
     card.className = "studentCard";
     card.innerHTML = `
@@ -628,68 +644,44 @@ async function renderStudentsBoards(){
       </div>
       <div class="small">الحالة: ${escapeHtml(status)} | شهادة: ${sbRow?.certificate_granted ? "✅" : "—"}</div>
     `;
- card.querySelector("button").onclick = async () => {
-  if (!sbRow?.id) {
-    showToast("لا توجد سبورة لهذا الطالب بعد");
-    return;
-  }
 
-  // نخزن أي سبورة طالب نعرضها الآن (مفيد لزر "عرض جماعي")
-  State.selectedStudentBoardId = sbRow.id;
+    card.querySelector("button").onclick = () => {
+      const overlay = $("teacherOverlay");
+      const imgEl = $("teacherOverlayImg");
+      const msgEl = $("teacherOverlayMsg");
+      const titleEl = $("teacherOverlayTitle");
 
-  const overlay = $("teacherOverlay");
-  const imgEl   = $("teacherOverlayImg");
+      if(!overlay || !imgEl || !msgEl || !titleEl){
+        console.error("Overlay elements missing");
+        showToast("خطأ في واجهة العرض");
+        return;
+      }
 
-  if (!overlay || !imgEl) {
-    console.error("teacherOverlay أو teacherOverlayImg غير موجود في الـ DOM");
-    showToast("خطأ في واجهة العرض");
-    return;
-  }
+      State.selectedStudentBoardId = sbRow?.id || null;
 
-  if (sbRow.board_data) {
-    imgEl.src = sbRow.board_data;
-  } else {
-    imgEl.src = "";
-    showToast("السبورة فارغة حاليًا");
-  }
+      titleEl.textContent = `عرض سبورة: ${mem.display_name}`;
+      msgEl.textContent = "";
+      imgEl.src = "";
 
-  // إظهار الـ overlay فوق سبورة المعلم
-  overlay.classList.remove("hidden");
+      if(!sbRow?.id){
+        msgEl.textContent = "لا توجد سبورة لهذا الطالب بعد";
+      }else if(!sbRow.board_data){
+        msgEl.textContent = "السبورة فارغة حاليًا";
+      }else{
+        imgEl.src = sbRow.board_data;
+      }
 
-  // (اختياري) تحديث المعاينة الصغيرة كذلك:
-  if (sbRow.board_data) {
-    $("teacherPreview").innerHTML = `${sbRow.board_data}`;
-  } else {
-    $("teacherPreview").innerHTML = `<span>لا يوجد محتوى بعد</span>`;
-  }
-};
+      overlay.classList.remove("hidden");
 
-  // نخزن أي طالب نعرضه الآن (مفيد لزر 'عرض جماعي')
-  State.selectedStudentBoardId = sbRow.id;
+      // معاينة صغيرة على اليمين
+      const prev = $("teacherPreview");
+      if(prev){
+        prev.innerHTML = sbRow?.board_data
+          ? `<img src="${sbRow.board_data}" alt="student preview">`
+          : `<span>لا يوجد محتوى بعد</span>`;
+      }
+    };
 
-  const overlay = $("teacherOverlay");
-  const imgEl = $("teacherOverlayImg");
-
-  if (!overlay || !imgEl) {
-    console.error("teacherOverlay أو teacherOverlayImg غير موجود في الـ DOM");
-    showToast("خطأ في واجهة العرض");
-    return;
-  }
-
-  if (sbRow.board_data) {
-    imgEl.src = sbRow.board_data;
-  } else {
-    // سبورة موجودة لكن ما فيها بيانات → نعرض رسالة بدل صورة
-    imgEl.src = "";
-    overlay.querySelector("div div:nth-child(2)")?.insertAdjacentHTML(
-      "beforeend",
-      `<div style="padding:8px;font-size:13px;color:#64748b;text-align:center;">السبورة فارغة حاليًا</div>`
-    );
-  }
-
-  // نظهر الـ overlay فوق سبورة المعلم
-  overlay.classList.remove("hidden");
-};
     wrap.appendChild(card);
   });
 }
@@ -730,9 +722,7 @@ function renderStudentTeacherPreview(){
   if(State.role!=="student") return;
   const wrap = $("studentTeacherPreview");
   const m = State.sessionMeta || {};
-  // focus mode: show focused student board instead of teacher board
   if(m.focused_student_board_id){
-    // show focused board by fetching it
     showFocusedBoard().catch(console.warn);
     return;
   }
@@ -752,26 +742,24 @@ async function showFocusedBoard(){
 }
 
 /* =============================
-   Canvas drawing (FIXED)
+   Canvas drawing
 ============================= */
 let tCanvas, tCtx, tDrawing = false, tTool = "pen", tColor = "#000000";
 let sCanvas, sCtx, sDrawing = false, sTool = "pen", sColor = "#000000";
 let saveTimerT = null, saveTimerS = null;
 
 function initCanvas() {
-  // اجلب الكانفس
   tCanvas = $("tCanvas");
   tCtx = tCanvas.getContext("2d");
   sCanvas = $("sCanvas");
   sCtx = sCanvas.getContext("2d");
 
-  // إعدادات عامة
   [tCtx, sCtx].forEach(ctx => {
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
   });
 
-  // ===== Teacher drawing =====
+  // Teacher drawing
   tCanvas.onpointerdown = (e) => {
     tDrawing = true;
     const p = pos(tCanvas, e);
@@ -804,7 +792,7 @@ function initCanvas() {
     tCtx.globalCompositeOperation = "source-over";
   };
 
-  // ===== Student drawing =====
+  // Student drawing
   sCanvas.onpointerdown = (e) => {
     if (!studentCanEdit()) return;
     sDrawing = true;
@@ -840,13 +828,10 @@ function initCanvas() {
   };
 }
 
-// حفظ رسم المعلم (تأكد أن هذه الدالة موجودة عندك)
 function queueSaveTeacher() {
   clearTimeout(saveTimerT);
   saveTimerT = setTimeout(saveTeacherBoard, 450);
 }
-
-// حفظ رسم الطالب (تأكد أن هذه الدالة موجودة عندك)
 function queueSaveStudent() {
   clearTimeout(saveTimerS);
   saveTimerS = setTimeout(saveStudentBoard, 450);
@@ -875,7 +860,6 @@ function studentCanEdit(){
 }
 
 /* Save teacher board (boards.content) */
-function queueSaveTeacher(){ clearTimeout(saveTimerT); saveTimerT=setTimeout(saveTeacherBoard, 450); }
 async function saveTeacherBoard(){
   if(State.role!=="teacher" || !State.currentBoard) return;
   const payload = { type:"boardak_v3", version:1, drawing: teacherDataUrl(), preview: teacherDataUrl() };
@@ -884,7 +868,6 @@ async function saveTeacherBoard(){
 }
 
 /* Save student board (student_boards.board_data) */
-function queueSaveStudent(){ clearTimeout(saveTimerS); saveTimerS=setTimeout(saveStudentBoard, 450); }
 async function saveStudentBoard(){
   if(State.role!=="student" || !State.studentBoard) return;
   const { error } = await sb.from("student_boards").update({
@@ -927,7 +910,6 @@ function setStudentBar(msg){
 
 function applySessionMetaUI(){
   const m = State.sessionMeta || {};
-  // update button labels
   if(State.role==="teacher"){
     $("toggleExplain").textContent = m.explanation_mode ? "إيقاف الشرح" : "الشرح فقط";
     $("toggleLock").textContent = m.board_locked ? "فتح القفل" : "قفل";
@@ -998,14 +980,12 @@ async function teacherStartFlow(){
 }
 
 async function studentJoinFlow(){
-  await saveStudentBoard();
   const studentName = $("sName").value.trim();
   const code = $("sCode").value.trim().toUpperCase();
   if(!studentName || !code){ showToast("اكتب الاسم والكود"); return; }
 
   loading(true);
   try{
-    // ✅ نستخدم join_room_v3_sql (اللي اشتغل معك)
     const { data, error } = await sb.rpc("join_room_v3_sql", {
       p_room_code: code,
       p_student_name: studentName
@@ -1041,38 +1021,20 @@ async function studentJoinFlow(){
 }
 
 /* =============================
-   Button bindings
+   Button bindings (CLEAN)
 ============================= */
 function bindUI(){
-  // زر المساعدة (طالب)
-$("helpBtn").onclick = async () => {
-  if (!State.studentBoard) {
-    showToast("ارسم أو افتح السبورة أولاً");
-    return;
+
+  // Overlay close (مرة واحدة)
+  const closeOverlayBtn = $("closeOverlay");
+  if (closeOverlayBtn) {
+    closeOverlayBtn.onclick = () => {
+      $("teacherOverlay")?.classList.add("hidden");
+      $("teacherOverlayImg").src = "";
+      $("teacherOverlayMsg").textContent = "";
+    };
   }
 
-  const { error } = await sb
-    .from("student_boards")
-    .update({ help_requested: true, status: "help" })
-    .eq("id", State.studentBoard.id);
-
-  if (error) {
-    console.warn(error);
-    showToast("تعذر إرسال طلب المساعدة");
-    return;
-  }
-
-  showToast("تم إرسال طلب المساعدة");
-  // زر الرجوع من overlay (عرض سبورة الطالب) إلى سبورة المعلم
-const closeOverlayBtn = $("closeOverlay");
-if (closeOverlayBtn) {
-  closeOverlayBtn.onclick = () => {
-    $("teacherOverlay").classList.add("hidden");
-    // (اختياري) لو حاب تمسح اختيار الطالب:
-    // State.selectedStudentBoardId = null;
-  };
-}
-};
   $("langBtn").onclick = ()=> showToast("i18n لاحقًا (جاهز)");
   $("goTeacher").onclick = ()=> showView("teacherEntry");
   $("goStudent").onclick = ()=> showView("studentEntry");
@@ -1117,7 +1079,6 @@ if (closeOverlayBtn) {
   };
 
   $("toggleFocus").onclick = async ()=>{
-    // إذا ما محدد طالب: نعرض توست
     if(!State.sessionMeta?.focused_student_board_id){
       if(!State.selectedStudentBoardId){
         showToast("اختر طالبًا ثم اضغط عرض جماعي");
@@ -1149,7 +1110,11 @@ if (closeOverlayBtn) {
   $("tText").onclick = ()=>{
     const text = prompt("اكتب النص");
     if(!text) return;
-    tCtx.save(); tCtx.fillStyle=tColor; tCtx.font="32px Cairo"; tCtx.fillText(text,120,120); tCtx.restore();
+    tCtx.save();
+    tCtx.fillStyle=tColor;
+    tCtx.font="32px Cairo";
+    tCtx.fillText(text,120,120);
+    tCtx.restore();
     queueSaveTeacher();
   };
   document.querySelectorAll("[data-color]").forEach(btn=>{
@@ -1183,10 +1148,16 @@ if (closeOverlayBtn) {
 
   $("sStatus").onchange = ()=> queueSaveStudent();
 
+  // helpBtn (مرة واحدة فقط)
   $("helpBtn").onclick = async ()=>{
-    if(!State.studentBoard) return;
-    const { error } = await sb.from("student_boards").update({ help_requested:true, status:"help" }).eq("id", State.studentBoard.id);
-    if(error) console.warn(error);
+    if (!State.studentBoard) {
+      showToast("ارسم أو افتح السبورة أولاً");
+      return;
+    }
+    const { error } = await sb.from("student_boards")
+      .update({ help_requested:true, status:"help" })
+      .eq("id", State.studentBoard.id);
+    if(error){ console.warn(error); showToast("تعذر إرسال طلب المساعدة"); return; }
     showToast("تم إرسال طلب المساعدة");
   };
 
