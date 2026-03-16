@@ -661,7 +661,6 @@ let saveTimerT=null, saveTimerS=null;
 function initCanvas(){
   tCanvas = $("tCanvas"); tCtx = tCanvas.getContext("2d");
   sCanvas = $("sCanvas"); sCtx = sCanvas.getContext("2d");
-  [tCtx,sCtx].forEach(ctx=>{ ctx.lineCap="round";eTo(p.x,p.y); };
   tCanvas.onpointermove = (e)=>{ if(!tDrawing) return; const p=pos(tCanvas,e);
     tCtx.lineWidth=4;
     if(tTool==="eraser"){ tCtx.globalCompositeOperation="destination-out"; tCtx.strokeStyle="#fff"; }
