@@ -262,8 +262,57 @@
             <button class="btn btn-soft btn-sm" id="toggleFocus">عرض جماعي</button>
           </div>
 
-          <canvas id="tCanvas" width="1400" height="820"></canvas>
-          <div class="small" id="tHint"></div>
+         <div style="position:relative;">
+  <canvas id="tCanvas" width="1400" height="820"></canvas>
+
+  <!-- 🔹 Overlay لمعاينة سبورة الطالب فوق سبورة المعلم -->
+  <div id="teacherOverlay" 
+       class="hidden"
+       style="
+         position:absolute;
+         inset:0;
+         background:rgba(15,23,42,0.60);
+         display:flex;
+         align-items:center;
+         justify-content:center;
+         flex-direction:column;
+         z-index:20;
+       ">
+    <div style="
+        background:#ffffff;
+        border-radius:18px;
+        padding:12px;
+        max-width:95%;
+        max-height:95%;
+        display:flex;
+        flex-direction:column;
+        gap:8px;
+        box-shadow:0 20px 40px rgba(0,0,0,0.35);
+      ">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-weight:900;font-size:14px;">عرض سبورة الطالب</div>
+        <button id="closeOverlay" class="btn btn-soft btn-sm">رجوع لسبورتي</button>
+      </div>
+      <div style="
+          border-radius:14px;
+          border:1px solid #e5e7eb;
+          overflow:hidden;
+          background:#f9fafb;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+        ">
+        <img id="teacherOverlayImg" 
+             src="" 
+             alt="student board full" 
+             style="max-width:100%;max-height:80vh;object-fit:contain;" />
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="small" id="tHint"></div>
+
         </div>
 
         <div class="glass side">
@@ -579,17 +628,68 @@ async function renderStudentsBoards(){
       </div>
       <div class="small">الحالة: ${escapeHtml(status)} | شهادة: ${sbRow?.certificate_granted ? "✅" : "—"}</div>
     `;
-    card.querySelector("button").onclick = async () => {
-      if(!sbRow?.id){ showToast("لا توجد سبورة لهذا الطالب بعد"); return; }
-      State.selectedStudentBoardId = sbRow.id;
+ card.querySelector("button").onclick = async () => {
+  if (!sbRow?.id) {
+    showToast("لا توجد سبورة لهذا الطالب بعد");
+    return;
+  }
 
-      // preview
-      if(sbRow.board_data){
-        $("teacherPreview").innerHTML = `<img src="${sbRow.board_data}" alt="student board">`;
-      } else {
-        $("teacherPreview").innerHTML = `<span>لا يوجد محتوى بعد</span>`;
-      }
-    };
+  // نخزن أي سبورة طالب نعرضها الآن (مفيد لزر "عرض جماعي")
+  State.selectedStudentBoardId = sbRow.id;
+
+  const overlay = $("teacherOverlay");
+  const imgEl   = $("teacherOverlayImg");
+
+  if (!overlay || !imgEl) {
+    console.error("teacherOverlay أو teacherOverlayImg غير موجود في الـ DOM");
+    showToast("خطأ في واجهة العرض");
+    return;
+  }
+
+  if (sbRow.board_data) {
+    imgEl.src = sbRow.board_data;
+  } else {
+    imgEl.src = "";
+    showToast("السبورة فارغة حاليًا");
+  }
+
+  // إظهار الـ overlay فوق سبورة المعلم
+  overlay.classList.remove("hidden");
+
+  // (اختياري) تحديث المعاينة الصغيرة كذلك:
+  if (sbRow.board_data) {
+    $("teacherPreview").innerHTML = `${sbRow.board_data}`;
+  } else {
+    $("teacherPreview").innerHTML = `<span>لا يوجد محتوى بعد</span>`;
+  }
+};
+
+  // نخزن أي طالب نعرضه الآن (مفيد لزر 'عرض جماعي')
+  State.selectedStudentBoardId = sbRow.id;
+
+  const overlay = $("teacherOverlay");
+  const imgEl = $("teacherOverlayImg");
+
+  if (!overlay || !imgEl) {
+    console.error("teacherOverlay أو teacherOverlayImg غير موجود في الـ DOM");
+    showToast("خطأ في واجهة العرض");
+    return;
+  }
+
+  if (sbRow.board_data) {
+    imgEl.src = sbRow.board_data;
+  } else {
+    // سبورة موجودة لكن ما فيها بيانات → نعرض رسالة بدل صورة
+    imgEl.src = "";
+    overlay.querySelector("div div:nth-child(2)")?.insertAdjacentHTML(
+      "beforeend",
+      `<div style="padding:8px;font-size:13px;color:#64748b;text-align:center;">السبورة فارغة حاليًا</div>`
+    );
+  }
+
+  // نظهر الـ overlay فوق سبورة المعلم
+  overlay.classList.remove("hidden");
+};
     wrap.appendChild(card);
   });
 }
@@ -963,6 +1063,15 @@ $("helpBtn").onclick = async () => {
   }
 
   showToast("تم إرسال طلب المساعدة");
+  // زر الرجوع من overlay (عرض سبورة الطالب) إلى سبورة المعلم
+const closeOverlayBtn = $("closeOverlay");
+if (closeOverlayBtn) {
+  closeOverlayBtn.onclick = () => {
+    $("teacherOverlay").classList.add("hidden");
+    // (اختياري) لو حاب تمسح اختيار الطالب:
+    // State.selectedStudentBoardId = null;
+  };
+}
 };
   $("langBtn").onclick = ()=> showToast("i18n لاحقًا (جاهز)");
   $("goTeacher").onclick = ()=> showView("teacherEntry");
