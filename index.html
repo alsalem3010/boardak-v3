@@ -760,7 +760,7 @@ function queueSaveStudent() {
     sCtx.lineTo(p.x,p.y); sCtx.stroke(); queueSaveStudent();
   };
   sCanvas.onpointerup = ()=>{ sDrawing=false; sCtx.beginPath(); sCtx.globalCompositeOperation="source-over"; };
-}
+
 
 function pos(canvas,e){
   const r=canvas.getBoundingClientRect();
