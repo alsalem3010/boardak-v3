@@ -996,6 +996,7 @@ async function studentJoinFlow(){
   if(!studentName || !code){ showToast("اكتب الاسم والكود"); return; }
 
   loading(true);
+
   let joinedOk = false;
   try{
     const { data, error } = await sb.rpc("join_room_v3_sql", {
@@ -1003,7 +1004,9 @@ async function studentJoinFlow(){
       p_student_name: studentName
     });
     if(error) throw error;
+
     joinedOk = true;
+
     const row = Array.isArray(data) ? data[0] : data;
     State.role="student";
     State.room = { id: row.room_id, code, teacher_name: row.teacher_name, title: row.title };
@@ -1025,36 +1028,40 @@ async function studentJoinFlow(){
 
     showView("studentRoom");
     $("liveText").textContent = "مباشر";
-} catch (e) {
-  console.error("JOIN ERROR FULL:", e);
 
-  // ✅ إذا كان الانضمام نجح، لا نعتبره فشل دخول
-  if (joinedOk) {
-    showToast("تم الدخول، لكن حصل خطأ في التهيئة");
-    return;
+  } catch (e) {
+    console.error("JOIN ERROR FULL:", e);
+
+    // ✅ إذا كان الانضمام نجح، لا نعتبره فشل دخول
+    if (joinedOk) {
+      showToast("تم الدخول، لكن حصل خطأ في التهيئة");
+      return;
+    }
+
+    const codeErr = e?.code;
+    const msg  = e?.message;
+    const det  = e?.details;
+
+    alert(
+      "JOIN ERROR\n" +
+      "code: " + codeErr + "\n" +
+      "message: " + msg + "\n" +
+      "details: " + det
+    );
+
+    if (String(msg).includes("ROOM_NOT_FOUND"))
+      showToast("الغرفة غير موجودة");
+    else if (String(msg).includes("SESSION_CLOSED"))
+      showToast("الجلسة مغلقة");
+    else if (String(msg).includes("AUTH_REQUIRED"))
+      showToast("مشكلة تسجيل الدخول");
+    else
+      showToast("تعذّر الدخول");
+
+  } finally {
+    loading(false);
   }
-
-  const code = e?.code;
-  const msg  = e?.message;
-  const det  = e?.details;
-
-  alert(
-    "JOIN ERROR\n" +
-    "code: " + code + "\n" +
-    "message: " + msg + "\n" +
-    "details: " + det
-  );
-
-  if (String(msg).includes("ROOM_NOT_FOUND"))
-    showToast("الغرفة غير موجودة");
-  else if (String(msg).includes("SESSION_CLOSED"))
-    showToast("الجلسة مغلقة");
-  else if (String(msg).includes("AUTH_REQUIRED"))
-    showToast("مشكلة تسجيل الدخول");
-  else
-    showToast("تعذّر الدخول");
 }
-
 /* =============================
    Button bindings (CLEAN)
 ============================= */
