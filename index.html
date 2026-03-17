@@ -1092,6 +1092,29 @@ function commitTextsToCanvas(){
   TextState.mode = null;
   TextState.dragStart = null;
 } 
+  function commitImagesToCanvas(){
+  if(!tCanvas || !tCtx) return;
+  if(!TextState.backing) return;
+
+  // ارجع الخلفية الحالية
+  tCtx.putImageData(TextState.backing, 0, 0);
+
+  // ارسم كل الصور بدون إطار
+  (ImageState.items || []).forEach(im => {
+    if(im.img){
+      tCtx.drawImage(im.img, im.x, im.y, im.w, im.h);
+    }
+  });
+
+  // ثبت الخلفية الجديدة بعد دمج الصور
+  TextState.backing = tCtx.getImageData(0,0,tCanvas.width,tCanvas.height);
+
+  // صفّر حالة الصور (إنهاء التحرير)
+  ImageState.items = [];
+  ImageState.activeId = null;
+  ImageState.mode = null;
+  ImageState.dragStart = null;
+}
  function _measureTextBox(ctx, item){
   ctx.save();
   ctx.font = `${item.size}px Cairo`;
@@ -1607,16 +1630,24 @@ if(sSizeEl){
   };
 
 $("tPen").onclick = () => {
-  // ✅ لو كنت بالمؤشر وفيه نصوص: ثبّت النصوص أولاً
-  if(tTool === "pointer" && TextState.items.length){
+
+  // ✅ لو في صورة قيد التحرير: ثبّتها أولًا
+  if (ImageState.items.length) {
+    commitImagesToCanvas();
+    queueSaveTeacher();
+  }
+
+  // ✅ لو في نص قيد التحرير: ثبّته
+  if (TextState.items.length) {
     commitTextsToCanvas();
     queueSaveTeacher();
   }
 
-  tTool="pen";
+  tTool = "pen";
   $("tPen").classList.add("active");
   $("tEraser").classList.remove("active");
   $("tPointer").classList.remove("active");
+  $("tImage").classList.remove("active");
   $("tCanvas").style.cursor = "default";
 };
  $("tEraser").onclick = () => {
