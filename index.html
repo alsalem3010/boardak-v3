@@ -101,6 +101,10 @@
     .previewBox{height:300px;border:1px dashed #cbd5e1;border-radius:14px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff}
     .previewBox img{max-width:100%;max-height:100%}
     .alertbar{margin-top:8px;padding:10px 12px;border-radius:14px;background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;font-size:13px}
+ .sizeWrap{display:flex;align-items:center;gap:8px;background:var(--soft);padding:8px 10px;border-radius:12px}
+.sizeIcon{font-weight:900;font-size:14px;opacity:.8;user-select:none}
+.sizeWrap input[type="range"]{width:120px}
+.sizeVal{min-width:18px;text-align:center;font-weight:900;font-size:12px;color:var(--muted)} 
   </style>
 </head>
 
@@ -251,17 +255,20 @@
             <button class="tool active" id="tPen">قلم</button>
             <button class="tool" id="tEraser">ممحاة</button>
             <button class="tool" id="tText">نص</button>
+            <div class="sizeWrap">
+               <span class="sizeIcon">↔</span>
+              <input id="tSize" type="range" min="2" max="18" value="4" />
+              <span id="tSizeVal" class="sizeVal">4</span>
+              </div>
             <div class="colors">
               <button class="dotBtn active" data-color="#000000" style="background:#000000"></button>
               <button class="dotBtn" data-color="#dc2626" style="background:#dc2626"></button>
               <button class="dotBtn" data-color="#16a34a" style="background:#16a34a"></button>
             </div>
-
             <button class="btn btn-soft btn-sm" id="toggleExplain">الشرح فقط</button>
             <button class="btn btn-soft btn-sm" id="toggleLock">قفل</button>
             <button class="btn btn-soft btn-sm" id="toggleFocus">عرض جماعي</button>
           </div>
-
           <div style="position:relative;">
             <canvas id="tCanvas" width="1400" height="820"></canvas>
 
@@ -358,6 +365,11 @@
           <div class="toolbar">
             <button class="tool active" id="sPen">قلم</button>
             <button class="tool" id="sEraser">ممحاة</button>
+            <div class="sizeWrap">
+  <span class="sizeIcon">↔</span>
+  <input id="sSize" type="range" min="2" max="18" value="4" />
+  <span id="sSizeVal" class="sizeVal">4</span>
+</div>
             <div class="colors">
               <button class="dotBtn active" data-scolor="#000000" style="background:#000000"></button>
               <button class="dotBtn" data-scolor="#dc2626" style="background:#dc2626"></button>
@@ -742,8 +754,8 @@ async function showFocusedBoard(){
 /* =============================
    Canvas drawing
 ============================= */
-let tCanvas, tCtx, tDrawing = false, tTool = "pen", tColor = "#000000";
-let sCanvas, sCtx, sDrawing = false, sTool = "pen", sColor = "#000000";
+let tCanvas, tCtx, tDrawing = false, tTool = "pen", tColor = "#000000", tSize = 4;
+let sCanvas, sCtx, sDrawing = false, sTool = "pen", sColor = "#000000", sSize = 4;
 let saveTimerT = null, saveTimerS = null;
 
 function initCanvas() {
@@ -768,8 +780,7 @@ function initCanvas() {
     if (!tDrawing) return;
     const p = pos(tCanvas, e);
 
-    tCtx.lineWidth = 4;
-
+tCtx.lineWidth = tSize;
     if (tTool === "eraser") {
       tCtx.globalCompositeOperation = "destination-out";
       tCtx.strokeStyle = "#fff";
@@ -802,7 +813,7 @@ function initCanvas() {
     if (!sDrawing) return;
     const p = pos(sCanvas, e);
 
-    sCtx.lineWidth = 4;
+    sCtx.lineWidth = sSize;
 
     if (sTool === "eraser") {
       sCtx.globalCompositeOperation = "destination-out";
@@ -1073,6 +1084,26 @@ async function studentJoinFlow(){
    Button bindings (CLEAN)
 ============================= */
 function bindUI(){
+  const tSizeEl = $("tSize");
+if(tSizeEl){
+  tSize = parseInt(tSizeEl.value,10) || 4;
+  $("tSizeVal").textContent = String(tSize);
+  tSizeEl.oninput = () => {
+    tSize = parseInt(tSizeEl.value,10) || 4;
+    $("tSizeVal").textContent = String(tSize);
+  };
+}
+
+const sSizeEl = $("sSize");
+if(sSizeEl){
+  sSize = parseInt(sSizeEl.value,10) || 4;
+  $("sSizeVal").textContent = String(sSize);
+  sSizeEl.oninput = () => {
+    sSize = parseInt(sSizeEl.value,10) || 4;
+    $("sSizeVal").textContent = String(sSize);
+  };
+}
+
 
   const closeOverlayBtn = $("closeOverlay");
   if (closeOverlayBtn) {
