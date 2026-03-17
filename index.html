@@ -800,7 +800,6 @@ function ensureLayers(){
   inkCtx.lineJoin = "round";
 }
   // ===== Base drawing layer (strokes only) =====
-let baseCanvas, baseCtx;
 
 // ===== 3-layer system (bg + objects + ink) =====
 
@@ -1325,19 +1324,28 @@ function _hitTestImageItem(item, px, py){
 }
 function _redrawTeacherCanvas(){
   if(!tCanvas || !tCtx) return;
-  if(!baseCanvas || !baseCtx) return;
+  if(!bgCanvas || !inkCanvas) return;
 
-  // 1) ارسم الخلفية (الرسم بالقلم/الممحاة)
-  tCtx.clearRect(0,0,tCanvas.width,tCanvas.height);
-  tCtx.drawImage(baseCanvas, 0, 0);
+  // امسح العرض
+  tCtx.clearRect(0, 0, tCanvas.width, tCanvas.height);
 
-  // 2) ارسم الصور فوقها
+  // 1) الخلفية (آخر حفظ من DB)
+  tCtx.drawImage(bgCanvas, 0, 0);
+
+  // 2) الصور
   const activeImg = ImageState.activeId;
-  (ImageState.items || []).forEach(im => _drawImageItem(tCtx, im, im.id === activeImg));
+  (ImageState.items || []).forEach(im =>
+    _drawImageItem(tCtx, im, im.id === activeImg)
+  );
 
-  // 3) ارسم النصوص فوق الصور
+  // 3) النصوص
   const activeText = TextState.activeId;
-  (TextState.items || []).forEach(tx => _drawTextItem(tCtx, tx, tx.id === activeText));
+  (TextState.items || []).forEach(tx =>
+    _drawTextItem(tCtx, tx, tx.id === activeText)
+  );
+
+  // ✅ 4) الحبر (القلم/الممحاة) — فوق كل شيء
+  tCtx.drawImage(inkCanvas, 0, 0);
 }
 function clearCanvas(canvas,ctx){ ctx.clearRect(0,0,canvas.width,canvas.height); }
 function loadDataUrlToCanvas(canvas,ctx,src){
