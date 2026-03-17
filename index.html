@@ -530,9 +530,8 @@ function startTimerTicker(){
 }
 
 async function timerUpdate(action){
-  // action: start | pause | reset
+// action: start | pause | reset 
   const meta = State.sessionMeta || {};
-
   if(action==='start'){
     const mins = parseInt($('timerMinutesInput')?.value||'0',10);
     if(!mins || mins<=0){ showToast('أدخل عدد الدقائق'); return; }
