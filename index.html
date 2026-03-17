@@ -251,7 +251,24 @@ canvas.cursor-resize{cursor:nwse-resize}
 
       <div class="layoutTeacher">
         <div class="glass boardWrap">
-          <div class="toolbar">
+          <div class="toolbar" style="justify-content:space-between;align-items:center">
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <span style="font-weight:900">⏱️ المؤقّت:</span>
+    <span id="timerDisplayT" class="tag" style="font-weight:900">00:00</span>
+    <span id="timerStateT" class="tag">—</span>
+  </div>
+  <div id="timerControlsT" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+    <input id="timerMinutesInput" type="number" min="1" placeholder="دقائق" style="width:90px" />
+    <button id="timerStartBtn" class="btn btn-green btn-sm">▶ تشغيل</button>
+    <button id="timerPauseBtn" class="btn btn-soft btn-sm">⏸ إيقاف</button>
+    <button id="timerResetBtn" class="btn btn-red btn-sm">⏹ تصفير</button>
+    <select id="timerAction" style="padding:8px 10px;border-radius:12px;border:1px solid #d1d5db;font-family:Cairo">
+      <option value="alert">تنبيه فقط</option>
+      <option value="lock">قفل السبورة</option>
+    </select>
+  </div>
+</div>
+<div class="toolbar">
             <div id="boardTabs" class="toolbar"></div>
             <button class="btn btn-blue btn-sm" id="addBoard" title="+">+</button>
           </div>
@@ -357,6 +374,8 @@ canvas.cursor-resize{cursor:nwse-resize}
         </div>
 
         <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+          <span id="timerDisplayS" class="tag" style="font-weight:900">00:00</span>
+          <span id="timerStateS" class="tag">—</span>
           <select id="sStatus">
             <option value="understood">فهمت</option>
             <option value="help">لم أفهم</option>
@@ -461,6 +480,124 @@ function escapeHtml(s){
     .replaceAll("'","&#39;");
 }
 
+
+/* =============================
+   Session Timer (Synced)
+============================= */
+let __timerTick = null;
+
+function _fmtMMSS(totalSec){
+  const sec = Math.max(0, parseInt(totalSec||0,10) || 0);
+  const m = Math.floor(sec/60);
+  const s = sec%60;
+  return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+
+function _computeRemaining(meta){
+  if(!meta) return 0;
+  let remaining = parseInt(meta.timer_seconds||0,10) || 0;
+  if(meta.timer_enabled && meta.timer_started_at){
+    const start = new Date(meta.timer_started_at).getTime();
+    const now = Date.now();
+    const diff = Math.floor((now-start)/1000);
+    remaining = Math.max(0, remaining - diff);
+  }
+  return remaining;
+}
+
+function renderTimerUI(){
+  const meta = State.sessionMeta || {};
+  const remaining = _computeRemaining(meta);
+  const mmss = _fmtMMSS(remaining);
+
+  if(State.role==='teacher'){
+    const d = $('timerDisplayT');
+    const st = $('timerStateT');
+    if(d) d.textContent = mmss;
+    if(st) st.textContent = meta.timer_enabled ? 'يعمل' : (meta.timer_started_at ? 'موقوف' : 'غير مفعل');
+  }
+  if(State.role==='student'){
+    const d = $('timerDisplayS');
+    const st = $('timerStateS');
+    if(d) d.textContent = mmss;
+    if(st) st.textContent = meta.timer_enabled ? 'يعمل' : (meta.timer_started_at ? 'موقوف' : 'غير مفعل');
+  }
+
+  // إذا انتهى المؤقت ومعلم اختار قفل
+  if(State.role==='teacher'){
+    if(remaining===0 && meta.timer_enabled){
+      // أوقف المؤقت مرة واحدة
+      // نستخدم تحديث مباشر لأن RPC غير موجود ضمن قائمتك الحالية
+      sb.from('session_meta')
+        .update({ timer_enabled:false, timer_action:'done', updated_at: new Date().toISOString() })
+        .eq('room_id', State.room.id)
+        .then(()=>{})
+        .catch(()=>{});
+
+      if(meta.timer_action==='lock' || meta.timer_action==='lock_board'){
+        // اطلب قفل السبورة عبر RPC الموجود
+        sb.rpc('set_board_locked_v3', { p_room_id: State.room.id, p_locked: true }).catch(()=>{});
+      }
+    }
+  }
+}
+
+function startTimerTicker(){
+  if(__timerTick) clearInterval(__timerTick);
+  __timerTick = setInterval(renderTimerUI, 1000);
+}
+
+async function timerUpdate(action){
+  // action: start | pause | reset
+  const meta = State.sessionMeta || {};
+
+  if(action==='start'){
+    const mins = parseInt($('timerMinutesInput')?.value||'0',10);
+    if(!mins || mins<=0){ showToast('أدخل عدد الدقائق'); return; }
+    const sec = mins*60;
+    const timer_action = $('timerAction')?.value || 'alert';
+
+    // تحديث مباشر لـ session_meta (اعتمادًا على أعمدتك الحالية)
+    const { error } = await sb.from('session_meta').update({
+      timer_enabled: true,
+      timer_seconds: sec,
+      timer_started_at: new Date().toISOString(),
+      timer_action: timer_action,
+      updated_at: new Date().toISOString()
+    }).eq('room_id', State.room.id);
+
+    if(error){ console.warn(error); showToast('تعذر تشغيل المؤقت'); return; }
+    return;
+  }
+
+  if(action==='pause'){
+    // احسب المتبقي واحفظه ثم أوقف
+    const remaining = _computeRemaining(meta);
+    const { error } = await sb.from('session_meta').update({
+      timer_enabled: false,
+      timer_seconds: remaining,
+      timer_started_at: meta.timer_started_at,
+      updated_at: new Date().toISOString()
+    }).eq('room_id', State.room.id);
+
+    if(error){ console.warn(error); showToast('تعذر إيقاف المؤقت'); }
+    return;
+  }
+
+  if(action==='reset'){
+    const { error } = await sb.from('session_meta').update({
+      timer_enabled: false,
+      timer_seconds: 0,
+      timer_started_at: null,
+      timer_action: 'reset',
+      updated_at: new Date().toISOString()
+    }).eq('room_id', State.room.id);
+
+    if(error){ console.warn(error); showToast('تعذر تصفير المؤقت'); }
+    return;
+  }
+}
+
 /* =============================
    State
 ============================= */
@@ -559,6 +696,8 @@ async function loadSessionMeta(){
   if(error) throw error;
   State.sessionMeta = data;
   applySessionMetaUI();
+  renderTimerUI();
+  startTimerTicker();
 }
 
 async function loadBoards(){
@@ -1542,6 +1681,7 @@ function applySessionMetaUI(){
 
     renderStudentTeacherPreview();
   }
+  renderTimerUI();
 }
 
 /* =============================
@@ -1939,7 +2079,19 @@ $("tText").onclick = () => {
     showToast("تم إرسال طلب المساعدة");
   };
 
-  $("studentExit").onclick = ()=> location.href = location.pathname;
+  
+
+  /* Timer bindings */
+  const tc = $('timerControlsT');
+  if(tc){
+    // اخفِ التحكم عند الطالب
+    if(State.role !== 'teacher') tc.classList.add('hidden');
+
+    $('timerStartBtn') && ($('timerStartBtn').onclick = () => timerUpdate('start'));
+    $('timerPauseBtn') && ($('timerPauseBtn').onclick = () => timerUpdate('pause'));
+    $('timerResetBtn') && ($('timerResetBtn').onclick = () => timerUpdate('reset'));
+  }
+$("studentExit").onclick = ()=> location.href = location.pathname;
 }
 
 /* =============================
