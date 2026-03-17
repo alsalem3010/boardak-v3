@@ -46,13 +46,16 @@
   color:#fff;
 }
 
-.timerBar button:last-of-type{
-  background:#dc2626;
-}
+#timerResetBtn{background:#dc2626;}
 
 #timerDisplayT{
   min-width:42px;
   text-align:center;
+}
+.timerBar .time{
+  background:var(--soft);
+  padding:4px 10px;
+  border-radius:999px;
 }
     :root{
       --bg:#f2f6ff;
@@ -128,7 +131,7 @@
     .colors{display:flex;gap:6px;align-items:center}
     .dotBtn{width:22px;height:22px;border-radius:50%;border:2px solid #fff;cursor:pointer;outline:2px solid transparent}
     .dotBtn.active{outline:2px solid var(--blue)}
-    canvas{width:100%;height:520px;background:#fff;border:0;border-radius:14px}
+    canvas{width:100%;height:calc(100vh - 320px);min-height:600px;background:#fff;border:0;border-radius:14px}
     .side{padding:12px}
     .side h3{font-size:14px;font-weight:900;margin-bottom:10px}
     .students{display:flex;flex-direction:column;gap:8px;max-height:560px;overflow:auto}
@@ -151,7 +154,13 @@ canvas.cursor-resize{cursor:nwse-resize}
 .tool{padding:6px 8px !important; font-size:12px !important;}
 .dotBtn{width:18px !important; height:18px !important;}
 .sizeWrap{padding:6px 8px !important;}
-canvas{height:calc(100vh - 320px) !important; min-height:560px;}
+
+
+    /* ✅ Fix big tools */
+    .tool{padding:6px 8px !important; font-size:12px !important;}
+    .dotBtn{width:18px !important; height:18px !important;}
+    .sizeWrap{padding:6px 8px !important;}
+
   </style>
 </head>
 
@@ -293,25 +302,16 @@ canvas{height:calc(100vh - 320px) !important; min-height:560px;}
 
       <div class="layoutTeacher">
         <div class="glass boardWrap">
-       
- <!-- ✅ TIMER COMPACT -->
-<div class="timerBar">
-  <span>⏱️</span>
-
-  <input
-    id="timerMinutesInput"
-    type="number"
-    min="1"
-    placeholder="د"
-  />
-
-  <button id="timerStartBtn">▶</button>
-  <button id="timerResetBtn">⏹</button>
-
-  <span id="timerDisplayT">00:00</span>
-</div>
-</div>
-<div class="toolbar">
+          <!-- ✅ TIMER COMPACT (ONE) -->
+          <div class="timerBar" style="margin-bottom:10px;">
+            <span>⏱️</span>
+            <input id="timerMinutesInput" type="number" min="1" placeholder="د" />
+            <button id="timerStartBtn" type="button">▶</button>
+            <button id="timerResetBtn" type="button" class="reset">⏹</button>
+            <span id="timerDisplayT" class="time">00:00</span>
+            <span id="timerStateT" class="tag">—</span>
+          </div>
+          <div class="toolbar">
             <div id="boardTabs" class="toolbar"></div>
             <button class="btn btn-blue btn-sm" id="addBoard" title="+">+</button>
           </div>
@@ -599,14 +599,14 @@ async function timerUpdate(action){
   const meta = State.sessionMeta || {};
 
   if(action === 'start'){
-    const mins = parseInt($('timerMinutesInput').value, 10);
+    const mins = parseInt($('timerMinutesInput')?.value || '0', 10);
     if(!mins || mins <= 0){
       showToast("أدخل عدد الدقائق");
       return;
     }
 
     const sec = mins * 60;
-    const timer_action = $('timerAction').value || 'alert';
+    const timer_action = 'alert';
 
     const { error } = await sb.from('session_meta')
       .update({
@@ -2174,17 +2174,11 @@ $("tText").onclick = () => {
 
   
 
-  /* Timer bindings */
-  const tc = $('timerControlsT');
-  if(tc){
-    // اخفِ التحكم عند الطالب
-    if(State.role !== 'teacher') tc.classList.add('hidden');
+    /* Timer bindings */
+  if($('timerStartBtn')) $('timerStartBtn').onclick = () => timerUpdate('start');
+  if($('timerResetBtn')) $('timerResetBtn').onclick = () => timerUpdate('reset');
 
-    $('timerStartBtn') && ($('timerStartBtn').onclick = () => timerUpdate('start'));
-    $('timerPauseBtn') && ($('timerPauseBtn').onclick = () => timerUpdate('pause'));
-    $('timerResetBtn') && ($('timerResetBtn').onclick = () => timerUpdate('reset'));
-  }
-$("studentExit").onclick = ()=> location.href = location.pathname;
+  $("studentExit").onclick = ()=> location.href = location.pathname;
 }
 
 /* =============================
