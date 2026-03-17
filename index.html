@@ -851,6 +851,12 @@ function subscribeDb(roomId){
    Presence: online count
 ============================= */
 function subscribePresence(roomId){
+  // ✅ حماية: إذا المستخدم غير جاهز لا تشغّل presence
+  if(!State.user || !State.user.id){
+    console.warn("presence skipped: State.user missing");
+    return;
+  }
+
   if(State.presenceChannel) sb.removeChannel(State.presenceChannel);
 
   const channel = sb.channel(`presence:room:${roomId}`, {
@@ -872,13 +878,17 @@ function subscribePresence(roomId){
     if(status === 'SUBSCRIBED'){
       await channel.track({
         role: State.role,
-        name: State.role === "teacher" ? $("tRoomTeacher").textContent : $("sRoomStudent").textContent
+        name: State.role === "teacher"
+          ? $("tRoomTeacher").textContent
+          : $("sRoomStudent").textContent
       });
     }
   });
 
   State.presenceChannel = channel;
 }
+
+ 
 
 /* =============================
    Teacher: students list + overlay preview (CLEAN)
@@ -1782,6 +1792,7 @@ function applySessionMetaUI(){
    Flows
 ============================= */
 async function teacherStartFlow(){
+  if(!State.user) State.user = await ensureAnon();
   const teacherName = $("tName").value.trim();
   const code = $("tCode").value.trim();
   const title = $("tTitle").value.trim();
