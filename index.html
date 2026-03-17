@@ -259,6 +259,7 @@ canvas.cursor-resize{cursor:nwse-resize}
             <button class="tool active" id="tPen">قلم</button>
             <button class="tool" id="tEraser">ممحاة</button>
             <button class="tool" id="tText">نص</button>
+            <button class="tool" id="tImage" title="إدراج صورة">🖼️</button>
             <button class="tool" id="tPointer" title="مؤشر">🖱️</button>
             <div class="sizeWrap">
                <span class="sizeIcon">↔</span>
@@ -276,7 +277,7 @@ canvas.cursor-resize{cursor:nwse-resize}
           </div>
           <div style="position:relative;">
             <canvas id="tCanvas" width="1400" height="820"></canvas>
-
+            <input type="file" id="imagePicker" accept="image/*" class="hidden">
             <!-- Overlay لمعاينة سبورة الطالب فوق سبورة المعلم -->
             <div id="teacherOverlay"
                  class="hidden"
@@ -1337,6 +1338,7 @@ async function studentJoinFlow(){
    Button bindings (CLEAN)
 ============================= */
 function bindUI(){
+  
   const tSizeEl = $("tSize");
 if(tSizeEl){
   tSize = parseInt(tSizeEl.value,10) || 4;
@@ -1474,6 +1476,53 @@ $("tPen").onclick = () => {
  $("tText").onclick = () => {
   const text = prompt("اكتب النص");
   if(!text) return;
+   const imagePicker = $("imagePicker");
+
+$("tImage").onclick = () => {
+  tTool = "image";
+
+  $("tImage").classList.add("active");
+  $("tPen").classList.remove("active");
+  $("tEraser").classList.remove("active");
+  $("tText").classList.remove("active");
+  $("tPointer").classList.remove("active");
+
+  imagePicker.click();
+};
+
+imagePicker.onchange = () => {
+  const file = imagePicker.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(
+        tCanvas.width / img.width,
+        tCanvas.height / img.height,
+        0.6
+      );
+
+      const w = img.width * scale;
+      const h = img.height * scale;
+
+      tCtx.drawImage(
+        img,
+        (tCanvas.width - w) / 2,
+        (tCanvas.height - h) / 2,
+        w,
+        h
+      );
+
+      queueSaveTeacher();
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+
+  imagePicker.value = "";
+};
 
   // ✅ ادخل وضع المؤشر تلقائيًا + ثبت الخلفية مرة واحدة
   tTool = "pointer";
