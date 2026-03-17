@@ -123,12 +123,12 @@
     .layoutStudent{display:grid;grid-template-columns:1.2fr .8fr;gap:12px}
     .boardWrap{padding:12px}
     .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
-    .tool{background:var(--soft);border:none;border-radius:12px;padding:8px 10px;font-weight:900;cursor:pointer}
+    .tool{background:var(--soft);border:none;border-radius:12px;padding:6px 8px;font-weight:900;font-size:12px;cursor:pointer}
     .tool.active{background:var(--blue);color:#fff}
     .colors{display:flex;gap:6px;align-items:center}
-    .dotBtn{width:22px;height:22px;border-radius:50%;border:2px solid #fff;cursor:pointer;outline:2px solid transparent}
+    .dotBtn{width:18px;height:18px;border-radius:50%;border:2px solid #fff;cursor:pointer;outline:2px solid transparent}
     .dotBtn.active{outline:2px solid var(--blue)}
-    canvas{width:100%;height:520px;background:#fff;border:0;border-radius:14px}
+    canvas{width:100%;height:calc(100vh - 320px);min-height:560px;background:#fff;border:0;border-radius:14px}
     .side{padding:12px}
     .side h3{font-size:14px;font-weight:900;margin-bottom:10px}
     .students{display:flex;flex-direction:column;gap:8px;max-height:560px;overflow:auto}
@@ -147,338 +147,7 @@
 canvas.cursor-pointer{cursor:default}
 canvas.cursor-move{cursor:move}
 canvas.cursor-resize{cursor:nwse-resize}
-    /* ✅ Fix big tools + bigger canvas */
-.tool{padding:6px 8px !important; font-size:12px !important;}
-.dotBtn{width:18px !important; height:18px !important;}
-.sizeWrap{padding:6px 8px !important;}
-canvas{height:calc(100vh - 320px) !important; min-height:560px;}
-  </style>
-</head>
-
-<body>
-  <div id="loading" class="loading hidden"><div class="loadingBox">جاري التحميل...</div></div>
-  <div id="toast" class="toast"></div>
-
-  <div class="app">
-    <header class="topbar glass">
-      <div class="brand">
-        <div class="badge">B</div>
-        <div>
-          <div class="title">بوردك | Boardak</div>
-          <div class="subtitle">Your Smart Board - A calm educational platform</div>
-        </div>
-      </div>
-
-      <div class="right">
-        <div class="pill">
-          <span class="dot"></span>
-          <span id="liveText">جاهز</span>
-        </div>
-        <button id="langBtn" class="btn btn-soft lang">AR/EN</button>
-      </div>
-    </header>
-
-    <!-- HOME -->
-    <section id="home" class="view glass">
-      <div class="hero">
-        <div>
-          <h1>بوردك | Boardak</h1>
-          <p>سوبرتك الذكية - منصة تعليمية هادئة للشرح والمتابعة والتقييم</p>
-
-          <div class="footerLine">
-            <span>اللهم علّمنا ما ينفعنا وانفعنا بما علمتنا</span>
-            <span>—</span>
-            <span>إعداد وتصميم: الأستاذ عبدالله السالم</span>
-            <span>—</span>
-            <span>الزوار: <span id="visitors" class="counter">5000</span></span>
-          </div>
-        </div>
-
-        <div class="cards">
-          <button class="entry" id="goStudent">
-            <div class="iconCircle cGreen">👥</div>
-            <div>
-              <div class="entryTitle">دخول الطالب</div>
-              <div class="entryDesc">ادخل بالكود أو الرابط وابدأ العمل على سبورتك.</div>
-            </div>
-          </button>
-
-          <button class="entry" id="goTeacher">
-            <div class="iconCircle cBlue">🎓</div>
-            <div>
-              <div class="entryTitle">دخول المعلم</div>
-              <div class="entryDesc">أنشئ الغرفة بسرعة وابدأ الشرح مباشرة.</div>
-            </div>
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- TEACHER ENTRY -->
-    <section id="teacherEntry" class="view glass hidden">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div>
-          <h2>دخول المعلم</h2>
-          <div class="subtitle">اسم المعلم مطلوب، والكود وعنوان الدرس اختياريان.</div>
-        </div>
-        <button class="btn btn-soft" id="backFromTeacher">رجوع</button>
-      </div>
-
-      <div class="form glass">
-        <div class="grid">
-          <div>
-            <label>اسم المعلم</label>
-            <input id="tName" placeholder="مثال: عبدالله السالم" />
-          </div>
-          <div>
-            <label>كود الغرفة (اختياري)</label>
-            <input id="tCode" placeholder="يتولد تلقائيًا إن تركته فارغًا" />
-          </div>
-          <div>
-            <label>عنوان الدرس (اختياري)</label>
-            <input id="tTitle" placeholder="مثال: الكسور العشرية" />
-          </div>
-
-          <button class="btn btn-blue" id="teacherStart">ابدأ الجلسة</button>
-          <div id="tMsg" class="msg"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- STUDENT ENTRY -->
-    <section id="studentEntry" class="view glass hidden">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div>
-          <h2>دخول الطالب</h2>
-          <div class="subtitle">اكتب الاسم والكود للدخول إلى الغرفة.</div>
-        </div>
-        <button class="btn btn-soft" id="backFromStudent">رجوع</button>
-      </div>
-
-      <div class="form glass">
-        <div class="grid">
-          <div>
-            <label>اسم الطالب</label>
-            <input id="sName" placeholder="اسم الطالب" />
-          </div>
-          <div>
-            <label>كود الغرفة</label>
-            <input id="sCode" placeholder="أدخل كود الغرفة" />
-          </div>
-
-          <button class="btn btn-green" id="studentJoin">انضم الآن</button>
-          <div id="sMsg" class="msg"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- TEACHER ROOM -->
-    <section id="teacherRoom" class="view hidden">
-      <div class="roomTop glass">
-        <div>
-          <div style="font-weight:900;font-size:18px" id="tRoomTitle">—</div>
-          <div class="roomMeta">
-            <span class="tag">كود الغرفة: <b id="tRoomCode">—</b></span>
-            <span class="tag">المعلم: <b id="tRoomTeacher">—</b></span>
-            <span class="tag">المتصلون: <b id="tOnline">0</b></span>
-          </div>
-          <div id="tBar" class="alertbar hidden"></div>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-          <button class="btn btn-soft btn-sm" id="copyLink">نسخ الرابط</button>
-          <button class="btn btn-soft btn-sm" id="resetStudents">تصفير أعمال الطلبة</button>
-          <button class="btn btn-red btn-sm" id="endRoom">إنهاء الجلسة</button>
-        </div>
-      </div>
-
-      <div class="layoutTeacher">
-        <div class="glass boardWrap">
-       
- <!-- ✅ TIMER COMPACT -->
-<div class="timerBar">
-  <span>⏱️</span>
-
-  <input
-    id="timerMinutesInput"
-    type="number"
-    min="1"
-    placeholder="د"
-  />
-
-  <button id="timerStartBtn">▶</button>
-  <button id="timerResetBtn">⏹</button>
-
-  <span id="timerDisplayT">00:00</span>
-</div>
-</div>
-<div class="toolbar">
-            <div id="boardTabs" class="toolbar"></div>
-            <button class="btn btn-blue btn-sm" id="addBoard" title="+">+</button>
-          </div>
-
-          <div class="toolbar">
-            <button class="tool active" id="tPen">قلم</button>
-            <button class="tool" id="tEraser">ممحاة</button>
-            <button class="tool" id="tText">نص</button>
-            <button class="tool" id="tImage" title="إدراج صورة">🖼️</button>
-            <button class="tool" id="tPointer" title="مؤشر">🖱️</button>
-            <button class=\"btn btn-soft btn-sm\" id=\"clearTeacher\">مسح السبورة</button>
-            <div class="sizeWrap">
-               <span class="sizeIcon">↔</span>
-              <input id="tSize" type="range" min="2" max="18" value="4" />
-              <span id="tSizeVal" class="sizeVal">4</span>
-              </div>
-            <div class="colors">
-              <button class="dotBtn active" data-color="#000000" style="background:#000000"></button>
-              <button class="dotBtn" data-color="#dc2626" style="background:#dc2626"></button>
-              <button class="dotBtn" data-color="#16a34a" style="background:#16a34a"></button>
-            </div>
-            <button class="btn btn-soft btn-sm" id="toggleExplain">الشرح فقط</button>
-            <button class="btn btn-soft btn-sm" id="toggleLock">قفل</button>
-            <button class="btn btn-soft btn-sm" id="toggleFocus">عرض جماعي</button>
-          </div>
-          <div style="position:relative;">
-            <canvas id="tCanvas" width="1400" height="820"></canvas>
-            <input type="file" id="imagePicker" accept="image/*" class="fileGhost">
-            <!-- Overlay لمعاينة سبورة الطالب فوق سبورة المعلم -->
-            <div id="teacherOverlay"
-                 class="hidden"
-                 style="
-                   position:absolute;
-                   inset:0;
-                   background:rgba(15,23,42,0.60);
-                   display:flex;
-                   align-items:center;
-                   justify-content:center;
-                   flex-direction:column;
-                   z-index:20;
-                 ">
-              <div style="
-                  background:#ffffff;
-                  border-radius:18px;
-                  padding:12px;
-                  max-width:95%;
-                  max-height:95%;
-                  display:flex;
-                  flex-direction:column;
-                  gap:8px;
-                  box-shadow:0 20px 40px rgba(0,0,0,0.35);
-                ">
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                  <div id="teacherOverlayTitle" style="font-weight:900;font-size:14px;">عرض سبورة الطالب</div>
-                  <button id="closeOverlay" class="btn btn-soft btn-sm">رجوع لسبورتي</button>
-                </div>
-
-                <div id="teacherOverlayMsg" style="font-size:13px;color:#64748b;text-align:center;"></div>
-
-                <div style="
-                    border-radius:14px;
-                    border:1px solid #e5e7eb;
-                    overflow:hidden;
-                    background:#f9fafb;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                  ">
-                  <img id="teacherOverlayImg"
-                       src=""
-                       alt="student board full"
-                       style="max-width:100%;max-height:80vh;object-fit:contain;" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="small" id="tHint"></div>
-        </div>
-
-        <div class="glass side">
-          <h3>الطلاب داخل الغرفة</h3>
-          <div id="studentsList" class="students"></div>
-
-          <div style="margin-top:12px">
-            <h3>معاينة (المعلم/طالب)</h3>
-            <div id="teacherPreview" class="previewBox"><span>لا يوجد محتوى بعد</span></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- STUDENT ROOM -->
-    <section id="studentRoom" class="view hidden">
-      <div class="roomTop glass">
-        <div>
-          <div style="font-weight:900;font-size:18px" id="sRoomTitle">—</div>
-          <div class="roomMeta">
-            <span class="tag">كود الغرفة: <b id="sRoomCode">—</b></span>
-            <span class="tag">الطالب: <b id="sRoomStudent">—</b></span>
-            <span class="tag">المتصلون: <b id="sOnline">0</b></span>
-          </div>
-          <div id="sBar" class="alertbar hidden"></div>
-        </div>
-
-        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-          <span id="timerDisplayS" class="tag" style="font-weight:900">00:00</span>
-          <span id="timerStateS" class="tag">—</span>
-          <select id="sStatus">
-            <option value="understood">فهمت</option>
-            <option value="help">لم أفهم</option>
-            <option value="done">انتهيت</option>
-          </select>
-          <button class="btn btn-green btn-sm" id="helpBtn">مساعدة</button>
-          <button class="btn btn-soft btn-sm" id="studentExit">خروج</button>
-        </div>
-      </div>
-
-      <div class="layoutStudent">
-        <div class="glass boardWrap">
-          <div class="toolbar">
-            <button class="tool active" id="sPen">قلم</button>
-            <button class="tool" id="sEraser">ممحاة</button>
-            <div class="sizeWrap">
-  <span class="sizeIcon">↔</span>
-  <input id="sSize" type="range" min="2" max="18" value="4" />
-  <span id="sSizeVal" class="sizeVal">4</span>
-</div>
-            <div class="colors">
-              <button class="dotBtn active" data-scolor="#000000" style="background:#000000"></button>
-              <button class="dotBtn" data-scolor="#dc2626" style="background:#dc2626"></button>
-              <button class="dotBtn" data-scolor="#16a34a" style="background:#16a34a"></button>
-            </div>
-            <button class="btn btn-soft btn-sm" id="clearStudent">مسح</button>
-            <button class="btn btn-blue btn-sm hidden" id="downloadCert">تحميل شهادتك</button>
-          </div>
-          <canvas id="sCanvas" width="1400" height="820"></canvas>
-          <div class="small" id="sHint"></div>
-        </div>
-
-        <div class="glass side">
-          <h3>سبورة المعلم / العرض الجماعي</h3>
-          <div id="studentTeacherPreview" class="previewBox"><span>لا يوجد محتوى بعد</span></div>
-
-          <div style="margin-top:12px">
-            <h3>التغذية الراجعة</h3>
-            <div class="small" id="feedbackBox">—</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-  </div>
-
-<script>
-/* =============================
-   CONFIG
-============================= */
-const SUPABASE_URL = "https://juqqhqbiirmgsjewyols.supabase.co";
-const SUPABASE_KEY = "sb_publishable_GZdVXisuLM1qnAUoiN7bng_UhQ9UQrx";
-
-/* =============================
-   Safe Storage (fallback memory)
-============================= */
-const __mem = new Map();
-const safeStorage = {
-  getItem: (k)=>{ try{return localStorage.getItem(k);}catch{return __mem.get(k) ?? null;} },
+    catch{return __mem.get(k) ?? null;} },
   setItem: (k,v)=>{ try{localStorage.setItem(k,v);}catch{__mem.set(k,v);} },
   removeItem:(k)=>{ try{localStorage.removeItem(k);}catch{__mem.delete(k);} }
 };
@@ -851,12 +520,7 @@ function subscribeDb(roomId){
    Presence: online count
 ============================= */
 function subscribePresence(roomId){
-  // ✅ حماية: إذا المستخدم غير جاهز لا تشغّل presence
-  if(!State.user || !State.user.id){
-    console.warn("presence skipped: State.user missing");
-    return;
-  }
-
+  if(!State.user || !State.user.id){ console.warn("presence skipped"); return; }
   if(State.presenceChannel) sb.removeChannel(State.presenceChannel);
 
   const channel = sb.channel(`presence:room:${roomId}`, {
@@ -878,17 +542,13 @@ function subscribePresence(roomId){
     if(status === 'SUBSCRIBED'){
       await channel.track({
         role: State.role,
-        name: State.role === "teacher"
-          ? $("tRoomTeacher").textContent
-          : $("sRoomStudent").textContent
+        name: State.role === "teacher" ? $("tRoomTeacher").textContent : $("sRoomStudent").textContent
       });
     }
   });
 
   State.presenceChannel = channel;
 }
-
- 
 
 /* =============================
    Teacher: students list + overlay preview (CLEAN)
@@ -1792,13 +1452,13 @@ function applySessionMetaUI(){
    Flows
 ============================= */
 async function teacherStartFlow(){
-  if(!State.user) State.user = await ensureAnon();
   const teacherName = $("tName").value.trim();
   const code = $("tCode").value.trim();
   const title = $("tTitle").value.trim();
   if(!teacherName){ showToast("اكتب اسم المعلم"); return; }
 
   loading(true);
+  if(!State.user) State.user = await ensureAnon();
   try{
     const { data, error } = await sb.rpc("create_room_v3", {
       p_code: code || null,
