@@ -778,12 +778,25 @@ async function showFocusedBoard(){
    Canvas drawing
 ============================= */
 let tCanvas, tCtx, tDrawing = false, tTool = "pen", tColor = "#000000", tSize = 4;
+  // ===== Base drawing layer (strokes only) =====
+let baseCanvas, baseCtx;
+
+function ensureBaseLayer(){
+  if(baseCanvas) return;
+  baseCanvas = document.createElement("canvas");
+  baseCanvas.width = tCanvas.width;
+  baseCanvas.height = tCanvas.height;
+  baseCtx = baseCanvas.getContext("2d");
+  baseCtx.lineCap = "round";
+  baseCtx.lineJoin = "round";
+}
 let sCanvas, sCtx, sDrawing = false, sTool = "pen", sColor = "#000000", sSize = 4;
 let saveTimerT = null, saveTimerS = null;
 
 function initCanvas() {
   tCanvas = $("tCanvas");
   tCtx = tCanvas.getContext("2d");
+  ensureBaseLayer();
   sCanvas = $("sCanvas");
   sCtx = sCanvas.getContext("2d");
 
@@ -848,13 +861,20 @@ if(imgHitId){
 
   TextState.activeId = hitId;
 
-  // ✅ لا شيء محدد
-  if (!hitId) {
-    TextState.mode = null;
-    TextState.dragStart = null;
-    _redrawTeacherCanvas();
-    return;
-  }
+ // ✅ لا شيء محدد: ثبّت كل شيء واطفِ الإطار
+if (!hitId) {
+  // ✅ فقط الغِ التحديد (إخفاء الإطار الأزرق) بدون تثبيت
+  TextState.activeId = null;
+  TextState.mode = null;
+  TextState.dragStart = null;
+
+  ImageState.activeId = null;
+  ImageState.mode = null;
+  ImageState.dragStart = null;
+
+  _redrawTeacherCanvas();
+  return;
+}
 
   const it = TextState.items.find(x => x.id === hitId);
 
@@ -877,9 +897,9 @@ if(imgHitId){
 }
   // ✅ غير ذلك: الرسم الطبيعي
   if (tTool === "pointer") return;
-  tDrawing = true;
-  tCtx.beginPath();
-  tCtx.moveTo(p.x, p.y);
+ tDrawing = true;
+baseCtx.beginPath();
+baseCtx.moveTo(p.x, p.y);
 };
 
 tCanvas.onpointermove = (e) => {
@@ -969,19 +989,23 @@ if(im){
   if (tTool === "pointer") return;
   if (!tDrawing) return;
 
-  tCtx.lineWidth = tSize;
+  baseCtx.lineWidth = tSize;
 
-  if (tTool === "eraser") {
-    tCtx.globalCompositeOperation = "destination-out";
-    tCtx.strokeStyle = "#fff";
-  } else {
-    tCtx.globalCompositeOperation = "source-over";
-    tCtx.strokeStyle = tColor;
-  }
+if (tTool === "eraser") {
+  baseCtx.globalCompositeOperation = "destination-out";
+  baseCtx.strokeStyle = "#fff";
+} else {
+  baseCtx.globalCompositeOperation = "source-over";
+  baseCtx.strokeStyle = tColor;
+}
 
-  tCtx.lineTo(p.x, p.y);
-  tCtx.stroke();
-  queueSaveTeacher();
+baseCtx.lineTo(p.x, p.y);
+baseCtx.stroke();
+
+// اعرض كل شيء (خلفية + عناصر)
+_redrawTeacherCanvas();
+
+queueSaveTeacher();
 };
 
 tCanvas.onpointerup = () => {
@@ -1002,9 +1026,10 @@ ImageState.dragStart = null;
   }
 
   // ✅ إنهاء الرسم الطبيعي
-  tDrawing = false;
-  tCtx.beginPath();
-  tCtx.globalCompositeOperation = "source-over";
+ tDrawing = false;
+baseCtx.beginPath();
+baseCtx.globalCompositeOperation = "source-over";
+_redrawTeacherCanvas();
 };
 
   sCanvas.onpointerdown = (e) => {
@@ -1189,6 +1214,10 @@ function _hitTestTextItem(ctx, item, px, py){
   return { inside, onHandle, onDelete };
   }
 function addImageObject(dataUrl){
+  if (ImageState.items.length) commitImagesToCanvas();
+if (TextState.items.length) commitTextsToCanvas();
+queueSaveTeacher();
+  
   ensureTextBacking();
 
   const img = new Image();
@@ -1276,16 +1305,17 @@ function _hitTestImageItem(item, px, py){
 }
 function _redrawTeacherCanvas(){
   if(!tCanvas || !tCtx) return;
+  if(!baseCanvas || !baseCtx) return;
 
-  if(TextState.backing){
-    tCtx.putImageData(TextState.backing, 0, 0);
-  }
+  // 1) ارسم الخلفية (الرسم بالقلم/الممحاة)
+  tCtx.clearRect(0,0,tCanvas.width,tCanvas.height);
+  tCtx.drawImage(baseCanvas, 0, 0);
 
-  // ✅ ارسم الصور أولاً
+  // 2) ارسم الصور فوقها
   const activeImg = ImageState.activeId;
   (ImageState.items || []).forEach(im => _drawImageItem(tCtx, im, im.id === activeImg));
 
-  // ✅ ثم النصوص فوقها
+  // 3) ارسم النصوص فوق الصور
   const activeText = TextState.activeId;
   (TextState.items || []).forEach(tx => _drawTextItem(tCtx, tx, tx.id === activeText));
 }
@@ -1297,23 +1327,25 @@ function loadDataUrlToCanvas(canvas,ctx,src){
   img.src=src;
 }
 function teacherDataUrl(){
-  // ✅ لا تلمس canvas الأصلي ولا تعمل load للصورة
   const out = document.createElement("canvas");
   out.width = tCanvas.width;
   out.height = tCanvas.height;
-
   const octx = out.getContext("2d");
 
-  // 1) انسخ الرسم الحالي كما هو (هذا اللي يمنع اختفاء الخط)
-  octx.drawImage(tCanvas, 0, 0);
+  // 1) الخلفية (الكتابة)
+  if(baseCanvas) octx.drawImage(baseCanvas, 0, 0);
 
- // 2) ارسم الصور فوقه
-const activeImg = ImageState.activeId;
-(ImageState.items || []).forEach(im => _drawImageItem(octx, im, im.id === activeImg));
+  // 2) الصور بدون تحديد
+  const oldImg = ImageState.activeId;
+  ImageState.activeId = null;
+  (ImageState.items || []).forEach(im => _drawImageItem(octx, im, false));
+  ImageState.activeId = oldImg;
 
-// 3) ارسم النصوص فوق الصور
-const activeText = TextState.activeId;
-(TextState.items || []).forEach(tx => _drawTextItem(octx, tx, tx.id === activeText));
+  // 3) النصوص بدون تحديد
+  const oldText = TextState.activeId;
+  TextState.activeId = null;
+  (TextState.items || []).forEach(tx => _drawTextItem(octx, tx, false));
+  TextState.activeId = oldText;
 
   return out.toDataURL("image/png");
 }
@@ -1337,16 +1369,39 @@ async function saveStudentBoard(){
 }
 
 async function refreshCanvas(){
-  if(State.role==="teacher"){
-    clearCanvas(tCanvas,tCtx);
+  if(State.role === "teacher"){
+    // 1) جهز طبقة الخلفية (baseCanvas)
+    ensureBaseLayer();
+
+    // 2) امسح الخلفية
+    baseCtx.clearRect(0, 0, baseCanvas.width, baseCanvas.height);
+
+    // 3) حمّل آخر رسم محفوظ للسبورة (إذا موجود)
     const d = State.currentBoard?.content?.drawing;
-    if(d) loadDataUrlToCanvas(tCanvas,tCtx,d);
-  } else {
-    clearCanvas(sCanvas,sCtx);
-    await ensureStudentBoard();
-    if(State.studentBoard?.board_data) loadDataUrlToCanvas(sCanvas,sCtx,State.studentBoard.board_data);
-    renderStudentTeacherPreview();
+
+    if(d){
+      await new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          baseCtx.clearRect(0, 0, baseCanvas.width, baseCanvas.height);
+          baseCtx.drawImage(img, 0, 0, baseCanvas.width, baseCanvas.height);
+          resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = d;
+      });
+    }
+
+    // 4) اعرض النهائي: الخلفية + الصور + النصوص
+    _redrawTeacherCanvas();
+    return;
   }
+
+  // ===== student (كما هو عندك) =====
+  clearCanvas(sCanvas, sCtx);
+  await ensureStudentBoard();
+  if(State.studentBoard?.board_data) loadDataUrlToCanvas(sCanvas, sCtx, State.studentBoard.board_data);
+  renderStudentTeacherPreview();
 }
 
 /* =============================
@@ -1631,17 +1686,14 @@ if(sSizeEl){
 
 $("tPen").onclick = () => {
 
-  // ✅ لو في صورة قيد التحرير: ثبّتها أولًا
-  if (ImageState.items.length) {
-    commitImagesToCanvas();
-    queueSaveTeacher();
-  }
+  // ✅ فقط الغِ التحديد (لا تثبيت نهائي)
+  ImageState.activeId = null;
+  ImageState.mode = null;
+  ImageState.dragStart = null;
 
-  // ✅ لو في نص قيد التحرير: ثبّته
-  if (TextState.items.length) {
-    commitTextsToCanvas();
-    queueSaveTeacher();
-  }
+  TextState.activeId = null;
+  TextState.mode = null;
+  TextState.dragStart = null;
 
   tTool = "pen";
   $("tPen").classList.add("active");
@@ -1649,6 +1701,8 @@ $("tPen").onclick = () => {
   $("tPointer").classList.remove("active");
   $("tImage").classList.remove("active");
   $("tCanvas").style.cursor = "default";
+
+  _redrawTeacherCanvas();
 };
  $("tEraser").onclick = () => {
   // ✅ لو كنت بالمؤشر وفيه نصوص: ثبّت النصوص أولاً
@@ -1725,6 +1779,9 @@ document.addEventListener("paste", (event) => {
  $("tText").onclick = () => {
   const text = prompt("اكتب النص");
   if(!text) return;
+   if (ImageState.items.length) commitImagesToCanvas();
+if (TextState.items.length) commitTextsToCanvas();
+queueSaveTeacher();
 
 
 
