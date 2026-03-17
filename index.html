@@ -147,6 +147,11 @@
 canvas.cursor-pointer{cursor:default}
 canvas.cursor-move{cursor:move}
 canvas.cursor-resize{cursor:nwse-resize}
+    /* ✅ Fix big tools + bigger canvas */
+.tool{padding:6px 8px !important; font-size:12px !important;}
+.dotBtn{width:18px !important; height:18px !important;}
+.sizeWrap{padding:6px 8px !important;}
+canvas{height:calc(100vh - 320px) !important; min-height:560px;}
   </style>
 </head>
 
@@ -288,29 +293,7 @@ canvas.cursor-resize{cursor:nwse-resize}
 
       <div class="layoutTeacher">
         <div class="glass boardWrap">
-         <div class="toolbar" style="align-items:center;gap:10px">
-  <strong>⏱️ المؤقّت:</strong>
-
-  <input
-    id="timerMinutesInput"
-    type="number"
-    min="1"
-    placeholder="دقائق"
-    style="width:80px"
-  />
-
-  <button id="timerStartBtn" class="btn btn-green btn-sm">
-    ▶ بدء
-  </button>
-
-  <button id="timerResetBtn" class="btn btn-red btn-sm">
-    ⏹ تصفير
-  </button>
-
-  <span id="timerDisplayT" class="tag" style="font-weight:900">
-    00:00
-  </span>
-</div>
+       
  <!-- ✅ TIMER COMPACT -->
 <div class="timerBar">
   <span>⏱️</span>
@@ -483,43 +466,6 @@ canvas.cursor-resize{cursor:nwse-resize}
   </div>
 
 <script>
-  // ===============================
-// SIMPLE TIMER (LOCAL - GUARANTEED)
-// ===============================
-let timerInterval = null;
-let remainingSeconds = 0;
-
-function formatTime(sec){
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
-}
-
-function startTimer(minutes){
-  clearInterval(timerInterval);
-
-  remainingSeconds = minutes * 60;
-  $("timerDisplayT").textContent = formatTime(remainingSeconds);
-
-  timerInterval = setInterval(() => {
-    remainingSeconds--;
-
-    if (remainingSeconds <= 0) {
-      clearInterval(timerInterval);
-      $("timerDisplayT").textContent = "00:00";
-      showToast("⏱️ انتهى الوقت");
-      return;
-    }
-
-    $("timerDisplayT").textContent = formatTime(remainingSeconds);
-  }, 1000);
-}
-
-function resetTimer(){
-  clearInterval(timerInterval);
-  remainingSeconds = 0;
-  $("timerDisplayT").textContent = "00:00";
-}
 /* =============================
    CONFIG
 ============================= */
@@ -1998,19 +1944,7 @@ if(sSizeEl){
 
   $("teacherStart").onclick = teacherStartFlow;
   $("studentJoin").onclick = studentJoinFlow;
-  $("timerStartBtn").onclick = () => {
-  const mins = parseInt($("timerMinutesInput").value, 10);
-  if (!mins || mins <= 0) {
-    showToast("أدخل عدد الدقائق");
-    return;
-  }
-  startTimer(mins);
-};
-
-$("timerResetBtn").onclick = () => {
-  resetTimer();
-};
-
+  
   $("copyLink").onclick = ()=>{
     const link = `${location.origin}${location.pathname}?room=${State.roomCode||""}`;
     navigator.clipboard.writeText(link);
