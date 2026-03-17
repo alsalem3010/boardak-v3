@@ -937,15 +937,15 @@ tCanvas.onpointerdown = (e) => {
       // بعد الرفع للأمام خذها من آخر القائمة
       const im = ImageState.items[ImageState.items.length - 1];
 
-      // ✅ 3) حذف فقط عند X
-      if (imgHit.onDelete) {
-        ImageState.items = ImageState.items.filter(x => x.id !== imgHitId);
-        ImageState.activeId = null;
-        ImageState.mode = null;
-        ImageState.dragStart = null;
-        _redrawTeacherCanvas();
-        return;
-      }
+   // ✅ حذف الصورة فقط عند الضغط على X للصورة النشطة
+if (imgHit.onDelete && imgHitId === ImageState.activeId) {
+  ImageState.items = ImageState.items.filter(x => x.id !== imgHitId);
+  ImageState.activeId = null;
+  ImageState.mode = null;
+  ImageState.dragStart = null;
+  _redrawTeacherCanvas();
+  return;
+}
 
 // ✅ 4) بدء سحب/تحجيم
       ImageState.dragStart = { x: p.x, y: p.y, ox: im.x, oy: im.y, ow: im.w, oh: im.h };
@@ -1002,15 +1002,15 @@ tCanvas.onpointerdown = (e) => {
     // ✅ بعد bring-to-front النص المختار صار آخر عنصر
     const it = TextState.items[TextState.items.length - 1];
 
-    // ✅ حذف
-    if (hit.onDelete) {
-      TextState.items = TextState.items.filter(x => x.id !== hitId);
-      TextState.activeId = null;
-      TextState.mode = null;
-      TextState.dragStart = null;
-      _redrawTeacherCanvas();
-      return;
-    }
+  // ✅ حذف النص فقط عند الضغط على X للعنصر النشط
+if (hit.onDelete && hitId === TextState.activeId) {
+  TextState.items = TextState.items.filter(x => x.id !== hitId);
+  TextState.activeId = null;
+  TextState.mode = null;
+  TextState.dragStart = null;
+  _redrawTeacherCanvas();
+  return;
+}
 
     // ✅ بدء سحب/تحجيم
     TextState.dragStart = { x: p2.x, y: p2.y, ox: it.x, oy: it.y, osize: it.size };
