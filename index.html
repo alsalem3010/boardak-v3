@@ -149,6 +149,365 @@ canvas.cursor-move{cursor:move}
 canvas.cursor-resize{cursor:nwse-resize}
     
 
+
+    /* ===== Equation Modal ===== */
+    .modalOverlay{position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;z-index:9999;}
+    .modalCard{background:#fff;border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,.25);width:min(720px,92vw);padding:14px;display:flex;flex-direction:column;gap:10px;}
+    .modalTop{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+    .modalTitle{font-weight:900;}
+    .eqBtns{display:flex;gap:6px;flex-wrap:wrap;}
+    .eqBtn{border:none;border-radius:10px;padding:6px 10px;font-weight:900;cursor:pointer;background:var(--soft);}
+    .eqBtn:hover{transform:translateY(-1px);}
+    math-field#eqField{width:100%;min-height:54px;border:1px solid #d1d5db;border-radius:12px;padding:10px;font-size:22px;direction:ltr;}
+    .modalActions{display:flex;gap:8px;justify-content:flex-end;}
+
+  </style>
+
+  <!-- MathLive (Equation Editor) -->
+  <link rel="stylesheet" href="https://unpkg.com/mathlive/dist/mathlive.core.css" />
+  <link rel="stylesheet" href="https://unpkg.com/mathlive/dist/mathlive.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/mathlive"></script>
+
+  <!-- MathJax (TeX -> SVG) -->
+  <script>
+    window.MathJax = {
+      tex: { packages: { '[+]': ['ams'] } },
+      svg: { fontCache: 'none' }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+</head>
+
+<body>
+  <div id="loading" class="loading hidden"><div class="loadingBox">جاري التحميل...</div></div>
+  <div id="toast" class="toast"></div>
+
+  <div class="app">
+    <header class="topbar glass">
+      <div class="brand">
+        <div class="badge">B</div>
+        <div>
+          <div class="title">بوردك | Boardak</div>
+          <div class="subtitle">Your Smart Board - A calm educational platform</div>
+        </div>
+      </div>
+
+      <div class="right">
+        <div class="pill">
+          <span class="dot"></span>
+          <span id="liveText">جاهز</span>
+        </div>
+        <button id="langBtn" class="btn btn-soft lang">AR/EN</button>
+      </div>
+    </header>
+
+    <!-- HOME -->
+    <section id="home" class="view glass">
+      <div class="hero">
+        <div>
+          <h1>بوردك | Boardak</h1>
+          <p>سوبرتك الذكية - منصة تعليمية هادئة للشرح والمتابعة والتقييم</p>
+
+          <div class="footerLine">
+            <span>اللهم علّمنا ما ينفعنا وانفعنا بما علمتنا</span>
+            <span>—</span>
+            <span>إعداد وتصميم: الأستاذ عبدالله السالم</span>
+            <span>—</span>
+            <span>الزوار: <span id="visitors" class="counter">5000</span></span>
+          </div>
+        </div>
+
+        <div class="cards">
+          <button class="entry" id="goStudent">
+            <div class="iconCircle cGreen">👥</div>
+            <div>
+              <div class="entryTitle">دخول الطالب</div>
+              <div class="entryDesc">ادخل بالكود أو الرابط وابدأ العمل على سبورتك.</div>
+            </div>
+          </button>
+
+          <button class="entry" id="goTeacher">
+            <div class="iconCircle cBlue">🎓</div>
+            <div>
+              <div class="entryTitle">دخول المعلم</div>
+              <div class="entryDesc">أنشئ الغرفة بسرعة وابدأ الشرح مباشرة.</div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TEACHER ENTRY -->
+    <section id="teacherEntry" class="view glass hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div>
+          <h2>دخول المعلم</h2>
+          <div class="subtitle">اسم المعلم مطلوب، والكود وعنوان الدرس اختياريان.</div>
+        </div>
+        <button class="btn btn-soft" id="backFromTeacher">رجوع</button>
+      </div>
+
+      <div class="form glass">
+        <div class="grid">
+          <div>
+            <label>اسم المعلم</label>
+            <input id="tName" placeholder="مثال: عبدالله السالم" />
+          </div>
+          <div>
+            <label>كود الغرفة (اختياري)</label>
+            <input id="tCode" placeholder="يتولد تلقائيًا إن تركته فارغًا" />
+          </div>
+          <div>
+            <label>عنوان الدرس (اختياري)</label>
+            <input id="tTitle" placeholder="مثال: الكسور العشرية" />
+          </div>
+
+          <button class="btn btn-blue" id="teacherStart">ابدأ الجلسة</button>
+          <div id="tMsg" class="msg"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STUDENT ENTRY -->
+    <section id="studentEntry" class="view glass hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div>
+          <h2>دخول الطالب</h2>
+          <div class="subtitle">اكتب الاسم والكود للدخول إلى الغرفة.</div>
+        </div>
+        <button class="btn btn-soft" id="backFromStudent">رجوع</button>
+      </div>
+
+      <div class="form glass">
+        <div class="grid">
+          <div>
+            <label>اسم الطالب</label>
+            <input id="sName" placeholder="اسم الطالب" />
+          </div>
+          <div>
+            <label>كود الغرفة</label>
+            <input id="sCode" placeholder="أدخل كود الغرفة" />
+          </div>
+
+          <button class="btn btn-green" id="studentJoin">انضم الآن</button>
+          <div id="sMsg" class="msg"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TEACHER ROOM -->
+    <section id="teacherRoom" class="view hidden">
+      <div class="roomTop glass">
+        <div>
+          <div style="font-weight:900;font-size:18px" id="tRoomTitle">—</div>
+          <div class="roomMeta">
+            <span class="tag">كود الغرفة: <b id="tRoomCode">—</b></span>
+            <span class="tag">المعلم: <b id="tRoomTeacher">—</b></span>
+            <span class="tag">المتصلون: <b id="tOnline">0</b></span>
+          </div>
+          <div id="tBar" class="alertbar hidden"></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+          <button class="btn btn-soft btn-sm" id="copyLink">نسخ الرابط</button>
+          <button class="btn btn-soft btn-sm" id="resetStudents">تصفير أعمال الطلبة</button>
+          <button class="btn btn-red btn-sm" id="endRoom">إنهاء الجلسة</button>
+        </div>
+      </div>
+
+      <div class="layoutTeacher">
+        <div class="glass boardWrap">
+       
+ <!-- ✅ TIMER COMPACT -->
+<div class="timerBar">
+  <span>⏱️</span>
+
+  <input
+    id="timerMinutesInput"
+    type="number"
+    min="1"
+    placeholder="د"
+  />
+
+  <button id="timerStartBtn">▶</button>
+  <button id="timerResetBtn">⏹</button>
+
+  <span id="timerDisplayT">00:00</span>
+</div>
+
+<div class="toolbar">
+            <div id="boardTabs" class="toolbar"></div>
+            <button class="btn btn-blue btn-sm" id="addBoard" title="+">+</button>
+          </div>
+
+          <div class="toolbar">
+            <button class="tool active" id="tPen">قلم</button>
+            <button class="tool" id="tEraser">ممحاة</button>
+            <button class="tool" id="tText">نص</button>
+            <button class="tool" id="tEquation">معادلة</button>
+            <button class="tool" id="tImage" title="إدراج صورة">🖼️</button>
+            <button class="tool" id="tPointer" title="مؤشر">🖱️</button>
+            <button class="btn btn-soft btn-sm" id="clearTeacher">مسح السبورة</button>
+            <div class="sizeWrap">
+               <span class="sizeIcon">↔</span>
+              <input id="tSize" type="range" min="2" max="18" value="4" />
+              <span id="tSizeVal" class="sizeVal">4</span>
+              </div>
+            <div class="colors">
+              <button class="dotBtn active" data-color="#000000" style="background:#000000"></button>
+              <button class="dotBtn" data-color="#dc2626" style="background:#dc2626"></button>
+              <button class="dotBtn" data-color="#16a34a" style="background:#16a34a"></button>
+            </div>
+            <button class="btn btn-soft btn-sm" id="toggleExplain">الشرح فقط</button>
+            <button class="btn btn-soft btn-sm" id="toggleLock">قفل</button>
+            <button class="btn btn-soft btn-sm" id="toggleFocus">عرض جماعي</button>
+          </div>
+          <div style="position:relative;">
+            <canvas id="tCanvas" width="1400" height="820"></canvas>
+            <input type="file" id="imagePicker" accept="image/*" class="fileGhost">
+            <!-- Overlay لمعاينة سبورة الطالب فوق سبورة المعلم -->
+            <div id="teacherOverlay"
+                 class="hidden"
+                 style="
+                   position:absolute;
+                   inset:0;
+                   background:rgba(15,23,42,0.60);
+                   display:flex;
+                   align-items:center;
+                   justify-content:center;
+                   flex-direction:column;
+                   z-index:20;
+                 ">
+              <div style="
+                  background:#ffffff;
+                  border-radius:18px;
+                  padding:12px;
+                  max-width:95%;
+                  max-height:95%;
+                  display:flex;
+                  flex-direction:column;
+                  gap:8px;
+                  box-shadow:0 20px 40px rgba(0,0,0,0.35);
+                ">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <div id="teacherOverlayTitle" style="font-weight:900;font-size:14px;">عرض سبورة الطالب</div>
+                  <button id="closeOverlay" class="btn btn-soft btn-sm">رجوع لسبورتي</button>
+                </div>
+
+                <div id="teacherOverlayMsg" style="font-size:13px;color:#64748b;text-align:center;"></div>
+
+                <div style="
+                    border-radius:14px;
+                    border:1px solid #e5e7eb;
+                    overflow:hidden;
+                    background:#f9fafb;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                  ">
+                  <img id="teacherOverlayImg"
+                       src=""
+                       alt="student board full"
+                       style="max-width:100%;max-height:80vh;object-fit:contain;" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="small" id="tHint"></div>
+        </div>
+
+        <div class="glass side">
+          <h3>الطلاب داخل الغرفة</h3>
+          <div id="studentsList" class="students"></div>
+
+          <div style="margin-top:12px">
+            <h3>معاينة (المعلم/طالب)</h3>
+            <div id="teacherPreview" class="previewBox"><span>لا يوجد محتوى بعد</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STUDENT ROOM -->
+    <section id="studentRoom" class="view hidden">
+      <div class="roomTop glass">
+        <div>
+          <div style="font-weight:900;font-size:18px" id="sRoomTitle">—</div>
+          <div class="roomMeta">
+            <span class="tag">كود الغرفة: <b id="sRoomCode">—</b></span>
+            <span class="tag">الطالب: <b id="sRoomStudent">—</b></span>
+            <span class="tag">المتصلون: <b id="sOnline">0</b></span>
+          </div>
+          <div id="sBar" class="alertbar hidden"></div>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+          <span id="timerDisplayS" class="tag" style="font-weight:900">00:00</span>
+          <span id="timerStateS" class="tag">—</span>
+          <select id="sStatus">
+            <option value="understood">فهمت</option>
+            <option value="help">لم أفهم</option>
+            <option value="done">انتهيت</option>
+          </select>
+          <button class="btn btn-green btn-sm" id="helpBtn">مساعدة</button>
+          <button class="btn btn-soft btn-sm" id="studentExit">خروج</button>
+        </div>
+      </div>
+
+      <div class="layoutStudent">
+        <div class="glass boardWrap">
+          <div class="toolbar">
+            <button class="tool active" id="sPen">قلم</button>
+            <button class="tool" id="sEraser">ممحاة</button>
+            <div class="sizeWrap">
+  <span class="sizeIcon">↔</span>
+  <input id="sSize" type="range" min="2" max="18" value="4" />
+  <span id="sSizeVal" class="sizeVal">4</span>
+</div>
+            <div class="colors">
+              <button class="dotBtn active" data-scolor="#000000" style="background:#000000"></button>
+              <button class="dotBtn" data-scolor="#dc2626" style="background:#dc2626"></button>
+              <button class="dotBtn" data-scolor="#16a34a" style="background:#16a34a"></button>
+            </div>
+            <button class="btn btn-soft btn-sm" id="clearStudent">مسح</button>
+            <button class="btn btn-blue btn-sm hidden" id="downloadCert">تحميل شهادتك</button>
+          </div>
+          <canvas id="sCanvas" width="1400" height="820"></canvas>
+          <div class="small" id="sHint"></div>
+        </div>
+
+        <div class="glass side">
+          <h3>سبورة المعلم / العرض الجماعي</h3>
+          <div id="studentTeacherPreview" class="previewBox"><span>لا يوجد محتوى بعد</span></div>
+
+          <div style="margin-top:12px">
+            <h3>التغذية الراجعة</h3>
+            <div class="small" id="feedbackBox">—</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+<script>
+/* =============================
+   CONFIG
+============================= */
+const SUPABASE_URL = "https://juqqhqbiirmgsjewyols.supabase.co";
+const SUPABASE_KEY = "sb_publishable_GZdVXisuLM1qnAUoiN7bng_UhQ9UQrx";
+
+/* =============================
+   Safe Storage (fallback memory)
+============================= */
+const __mem = new Map();
+const safeStorage = {
+  getItem: (k)=>{ try{return localStorage.getItem(k);}catch{return __mem.get(k) ?? null;} },
+  setItem: (k,v)=>{ try{localStorage.setItem(k,v);}catch{__mem.set(k,v);} },
+  removeItem:(k)=>{ try{localStorage.removeItem(k);}catch{__mem.delete(k);} }
+};
+
 /* Supabase client */
 const { createClient } = window.supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
@@ -188,6 +547,18 @@ function escapeHtml(s){
     .replaceAll(">","&gt;")
     .replaceAll('"',"&quot;")
     .replaceAll("'","&#39;");
+}
+
+
+// ===== Equation helpers (MathLive + MathJax) =====
+function latexToSvgDataUrl(latex){
+  if(!window.MathJax || !window.MathJax.tex2svg){
+    throw new Error('MathJax not ready');
+  }
+  const node = window.MathJax.tex2svg(latex, { display: true });
+  const svg = node.querySelector('svg');
+  const svgText = new XMLSerializer().serializeToString(svg);
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgText);
 }
 
 
@@ -266,14 +637,14 @@ async function timerUpdate(action){
   const meta = State.sessionMeta || {};
 
   if(action === 'start'){
-    const mins = parseInt($('timerMinutesInput').value, 10);
+    const mins = parseInt($('timerMinutesInput')?.value || '0', 10);
     if(!mins || mins <= 0){
       showToast("أدخل عدد الدقائق");
       return;
     }
 
     const sec = mins * 60;
-    const timer_action = $('timerAction').value || 'alert';
+    const timer_action = $('timerAction')?.value || 'alert';
 
     const { error } = await sb.from('session_meta')
       .update({
@@ -1799,6 +2170,73 @@ $("tText").onclick = () => {
   _redrawTeacherCanvas();
   queueSaveTeacher();
 };
+  
+
+  // ===== Equation Button (Teacher) =====
+  const eqModal = $("eqModal");
+  const eqField = document.getElementById('eqField');
+  const openEqModal = () => {
+    if(!eqModal || !eqField){ showToast('محرر المعادلات غير جاهز'); return; }
+    eqModal.classList.remove('hidden');
+    eqField.value = '';
+    setTimeout(()=> eqField.focus(), 10);
+  };
+  const closeEqModal = () => {
+    if(!eqModal) return;
+    eqModal.classList.add('hidden');
+  };
+
+  $("tEquation") && ($("tEquation").onclick = () => {
+    if(State.role !== 'teacher'){ return; }
+    openEqModal();
+  });
+
+  $("eqClose") && ($("eqClose").onclick = closeEqModal);
+  eqModal && (eqModal.onclick = (e) => { if(e.target === eqModal) closeEqModal(); });
+
+  
+  // Insert templates or commands (MathLive)
+  document.querySelectorAll('[data-eq], [data-cmd]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if(!eqField) return;
+      try{
+        const cmd = btn.getAttribute('data-cmd');
+        const tpl = btn.getAttribute('data-eq');
+        if(cmd && eqField.executeCommand){
+          eqField.executeCommand(cmd);
+        } else if(tpl){
+          eqField.insert(tpl);
+        }
+        eqField.focus();
+      }catch(e){ console.warn(e); }
+    });
+  });
+
+        eqField.focus();
+      }catch(e){ console.warn(e); }
+    });
+  });
+
+  $("eqClear") && ($("eqClear").onclick = () => {
+    if(eqField) eqField.value = '';
+    eqField && eqField.focus();
+  });
+
+  $("eqInsert") && ($("eqInsert").onclick = () => {
+    if(!eqField) return;
+    const latex = (eqField.value || '').trim();
+    if(!latex){ showToast('اكتب معادلة أولاً'); return; }
+    try{
+      const url = latexToSvgDataUrl(latex);
+      addImageObject(url);
+      closeEqModal();
+      showToast('تم إدراج المعادلة');
+    }catch(err){
+      console.warn(err);
+      showToast('تعذر إدراج المعادلة (انتظر تحميل MathJax)');
+    }
+  });
+
   document.querySelectorAll("[data-color]").forEach(btn=>{
     btn.onclick=()=>{
       document.querySelectorAll("[data-color]").forEach(x=>x.classList.remove("active"));
@@ -1877,17 +2315,11 @@ $("tText").onclick = () => {
 
   
 
-  /* Timer bindings */
-  const tc = $('timerControlsT');
-  if(tc){
-    // اخفِ التحكم عند الطالب
-    if(State.role !== 'teacher') tc.classList.add('hidden');
+    /* Timer bindings */
+  if($('timerStartBtn')) $('timerStartBtn').onclick = () => timerUpdate('start');
+  if($('timerResetBtn')) $('timerResetBtn').onclick = () => timerUpdate('reset');
 
-    $('timerStartBtn') && ($('timerStartBtn').onclick = () => timerUpdate('start'));
-    $('timerPauseBtn') && ($('timerPauseBtn').onclick = () => timerUpdate('pause'));
-    $('timerResetBtn') && ($('timerResetBtn').onclick = () => timerUpdate('reset'));
-  }
-$("studentExit").onclick = ()=> location.href = location.pathname;
+  $("studentExit").onclick = ()=> location.href = location.pathname;
 }
 
 /* =============================
@@ -1917,7 +2349,43 @@ async function boot(){
   }
 }
 
-window.addEventListener("load", boot);
+window.addEventListener("load", () => { try{ boot(); } catch(e){ console.error(e); document.getElementById('home')?.classList.remove('hidden'); } });
 </script>
+
+
+  <!-- Equation Modal -->
+  <div id="eqModal" class="modalOverlay hidden">
+    <div class="modalCard">
+      <div class="modalTop">
+        <div class="modalTitle">✍️ كتابة معادلة</div>
+        <button id="eqClose" class="btn btn-soft btn-sm" type="button">إغلاق</button>
+      </div>
+
+      <div class="eqBtns">
+        <button class="eqBtn" type="button" data-eq="\frac{\placeholder{}}{\placeholder{}}">كسر</button>
+        <button class="eqBtn" type="button" data-eq="^{\placeholder{}}">أس</button>
+        <button class="eqBtn" type="button" data-eq="_{\placeholder{}}">أسفل</button>
+        <button class="eqBtn" type="button" data-eq="\sqrt{\placeholder{}}">جذر</button>
+        <button class="eqBtn" type="button" data-eq="\\pm">±</button>
+        <button class="eqBtn" type="button" data-eq="+">+</button>
+        <button class="eqBtn" type="button" data-eq="-">−</button>
+        <button class="eqBtn" type="button" data-eq="\\times">×</button>
+        <button class="eqBtn" type="button" data-eq="\\div">÷</button>
+        <button class="eqBtn" type="button" data-eq="=">=</button>
+        <button class="eqBtn" type="button" data-eq="(">(</button>
+        <button class="eqBtn" type="button" data-eq=")">)</button>
+      </div>
+
+      <math-field id="eqField" virtual-keyboard-mode="onfocus" smart-fence></math-field>
+
+      <div class="modalActions">
+        <button id="eqInsert" class="btn btn-blue btn-sm" type="button">إدراج على السبورة</button>
+        <button id="eqClear" class="btn btn-soft btn-sm" type="button">مسح الحقل</button>
+      </div>
+
+      <div class="small" style="margin-top:-4px">يمكنك كتابة المعادلة مباشرة أو استخدام الأزرار (كسر/أس/جذر...).</div>
+    </div>
+  </div>
+
 </body>
 </html>
