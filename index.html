@@ -553,52 +553,73 @@ function startTimerTicker(){
 }
 
 async function timerUpdate(action){
-  // action: start | pause | reset
   const meta = State.sessionMeta || {};
 
-  if(action==='start'){
-    const mins = parseInt($('timerMinutesInput')?.value||'0',10);
-    if(!mins || mins<=0){ showToast('أدخل عدد الدقائق'); return; }
-    const sec = mins*60;
-    const timer_action = $('timerAction')?.value || 'alert';
+  if(action === 'start'){
+    const mins = parseInt($('timerMinutesInput').value, 10);
+    if(!mins || mins <= 0){
+      showToast("أدخل عدد الدقائق");
+      return;
+    }
 
-    // تحديث مباشر لـ session_meta (اعتمادًا على أعمدتك الحالية)
-    const { error } = await sb.from('session_meta').update({
-      timer_enabled: true,
-      timer_seconds: sec,
-      timer_started_at: new Date().toISOString(),
-      timer_action: timer_action,
-      updated_at: new Date().toISOString()
-    }).eq('room_id', State.room.id);
+    const sec = mins * 60;
+    const timer_action = $('timerAction').value || 'alert';
 
-    if(error){ console.warn(error); showToast('تعذر تشغيل المؤقت'); return; }
+    const { error } = await sb.from('session_meta')
+      .update({
+        timer_enabled: true,
+        timer_seconds: sec,
+        timer_started_at: new Date().toISOString(),
+        timer_action: timer_action,
+        updated_at: new Date().toISOString()
+      })
+      .eq('room_id', State.room.id);
+
+    if(error){
+      console.error(error);
+      showToast("فشل تشغيل المؤقت");
+      return;
+    }
+
+    // ✅ هذا السطر هو الفرق
+    State.sessionMeta.timer_enabled = true;
+    State.sessionMeta.timer_seconds = sec;
+    State.sessionMeta.timer_started_at = new Date().toISOString();
+
+    renderTimerUI();
+    startTimerTicker();
     return;
   }
 
-  if(action==='pause'){
-    // احسب المتبقي واحفظه ثم أوقف
+  if(action === 'pause'){
     const remaining = _computeRemaining(meta);
-    const { error } = await sb.from('session_meta').update({
+
+    await sb.from('session_meta').update({
       timer_enabled: false,
       timer_seconds: remaining,
-      timer_started_at: meta.timer_started_at,
       updated_at: new Date().toISOString()
     }).eq('room_id', State.room.id);
 
-    if(error){ console.warn(error); showToast('تعذر إيقاف المؤقت'); }
+    State.sessionMeta.timer_enabled = false;
+    State.sessionMeta.timer_seconds = remaining;
+
+    renderTimerUI();
     return;
   }
 
-  if(action==='reset'){
-    const { error } = await sb.from('session_meta').update({
+  if(action === 'reset'){
+    await sb.from('session_meta').update({
       timer_enabled: false,
       timer_seconds: 0,
       timer_started_at: null,
-      timer_action: 'reset',
       updated_at: new Date().toISOString()
     }).eq('room_id', State.room.id);
 
-    if(error){ console.warn(error); showToast('تعذر تصفير المؤقت'); }
+    State.sessionMeta.timer_enabled = false;
+    State.sessionMeta.timer_seconds = 0;
+    State.sessionMeta.timer_started_at = null;
+
+    renderTimerUI();
     return;
   }
 }
