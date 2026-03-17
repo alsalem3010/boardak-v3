@@ -33,6 +33,8 @@
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:"Cairo",system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
     .hidden{display:none!important}
+    .fileGhost{position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none}
+    .fileGhost{position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none}
     .app{max-width:1500px;margin:0 auto;padding:20px}
     .glass{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow)}
     .topbar{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;margin-bottom:16px}
@@ -277,7 +279,7 @@ canvas.cursor-resize{cursor:nwse-resize}
           </div>
           <div style="position:relative;">
             <canvas id="tCanvas" width="1400" height="820"></canvas>
-            <input type="file" id="imagePicker" accept="image/*" class="hidden">
+            <input type="file" id="imagePicker" accept="image/*" class="fileGhost">
             <!-- Overlay لمعاينة سبورة الطالب فوق سبورة المعلم -->
             <div id="teacherOverlay"
                  class="hidden"
@@ -1473,12 +1475,15 @@ $("tPen").onclick = () => {
   ensureTextBacking();
   _redrawTeacherCanvas();
 };
- $("tText").onclick = () => {
-  const text = prompt("اكتب النص");
-  if(!text) return;
-   const imagePicker = $("imagePicker");
+  // ===== Image Picker (Teacher) =====
+const imagePicker = $("imagePicker");
+const tImageBtn = $("tImage");
+if(tImageBtn) tImageBtn.onclick = () => {
+  if(!imagePicker){
+    showToast("imagePicker غير موجود");
+    return;
+  }
 
-$("tImage").onclick = () => {
   tTool = "image";
 
   $("tImage").classList.add("active");
@@ -1489,40 +1494,95 @@ $("tImage").onclick = () => {
 
   imagePicker.click();
 };
-
-imagePicker.onchange = () => {
-  const file = imagePicker.files[0];
+  imagePicker.onchange = () => {
+  const file = imagePicker.files && imagePicker.files[0];
   if (!file) return;
 
   const reader = new FileReader();
   reader.onload = () => {
-    const img = new Image();
-    img.onload = () => {
-      const scale = Math.min(
-        tCanvas.width / img.width,
-        tCanvas.height / img.height,
-        0.6
-      );
+    // إذا عندك addImageObject استخدمه (صورة مثل النص)
+    if (typeof addImageObject === "function") {
+      addImageObject(reader.result);
+    } else {
+      // إدراج مباشر على السبورة (بدون خصائص النص)
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(
+          tCanvas.width / img.width,
+          tCanvas.height / img.height,
+          0.6
+        );
+        const w = img.width * scale;
+        const h = img.height * scale;
 
-      const w = img.width * scale;
-      const h = img.height * scale;
-
-      tCtx.drawImage(
-        img,
-        (tCanvas.width - w) / 2,
-        (tCanvas.height - h) / 2,
-        w,
-        h
-      );
-
-      queueSaveTeacher();
-    };
-    img.src = reader.result;
+        tCtx.drawImage(
+          img,
+          (tCanvas.width - w) / 2,
+          (tCanvas.height - h) / 2,
+          w,
+          h
+        );
+        queueSaveTeacher();
+      };
+      img.src = reader.result;
+    }
   };
-  reader.readAsDataURL(file);
 
+  reader.readAsDataURL(file);
   imagePicker.value = "";
 };
+  // ===== Paste Image (Ctrl+V) =====
+// ===== Paste Image (Ctrl+V) =====
+document.addEventListener("paste", (event) => {
+  if(State.role !== "teacher") return;
+  if($("teacherRoom")?.classList.contains("hidden")) return;
+
+  const items = event.clipboardData?.items || [];
+  for (const it of items) {
+    if (it.type && it.type.startsWith("image/")) {
+      const file = it.getAsFile();
+      if (!file) continue;
+
+      event.preventDefault();
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof addImageObject === "function") {
+          addImageObject(reader.result);
+        } else {
+          const img = new Image();
+          img.onload = () => {
+            const scale = Math.min(
+              tCanvas.width / img.width,
+              tCanvas.height / img.height,
+              0.6
+            );
+            const w = img.width * scale;
+            const h = img.height * scale;
+
+            tCtx.drawImage(
+              img,
+              (tCanvas.width - w) / 2,
+              (tCanvas.height - h) / 2,
+              w,
+              h
+            );
+            queueSaveTeacher();
+          };
+          img.src = reader.result;
+        }
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+  }
+});
+
+ $("tText").onclick = () => {
+  const text = prompt("اكتب النص");
+  if(!text) return;
+
+
+
 
   // ✅ ادخل وضع المؤشر تلقائيًا + ثبت الخلفية مرة واحدة
   tTool = "pointer";
