@@ -947,7 +947,7 @@ tCanvas.onpointerdown = (e) => {
         return;
       }
 
-      // ✅ 4) بدء سحب/تحجيم
+// ✅ 4) بدء سحب/تحجيم
       ImageState.dragStart = { x: p.x, y: p.y, ox: im.x, oy: im.y, ow: im.w, oh: im.h };
       ImageState.mode = imgHit.onHandle ? "resize" : "move";
 
@@ -1027,78 +1027,7 @@ tCanvas.onpointerdown = (e) => {
   tDrawing = true;
   inkCtx.beginPath();
   inkCtx.moveTo(p.x, p.y);
-};
-  // ✅ 4) بدء سحب/تحجيم
-  ImageState.dragStart = { x:p.x, y:p.y, ox:im.x, oy:im.y, ow:im.w, oh:im.h };
-  ImageState.mode = imgHit.onHandle ? "resize" : "move";
-
-  _redrawTeacherCanvas();
-  return;
-}
-
-  const p2 = p; // نفس النقطة
-  let hitId = null;
-  let hit = null;
-
-  for (let i = TextState.items.length - 1; i >= 0; i--) {
-    const it2 = TextState.items[i];
-    const h2 = _hitTestTextItem(tCtx, it2, p2.x, p2.y);
-    if (h2.inside || h2.onHandle || h2.onDelete) {
-      hitId = it2.id;
-      hit = h2;
-      break;
-    }
-  }
-
-TextState.activeId = hitId;
-
-// ✅ bring-to-front للنص المحدد (حل مشكلة التداخل)
-if (hitId) {
-  const idxT = TextState.items.findIndex(x => x.id === hitId);
-  if (idxT >= 0) {
-    const pickedT = TextState.items.splice(idxT, 1)[0];
-    TextState.items.push(pickedT);
-  }
-}
-
-// ✅ لا شيء محدد: فقط الغِ التحديد (بدون تثبيت/commit)
-if (!hitId) {
-  TextState.activeId = null;
-  TextState.mode = null;
-  TextState.dragStart = null;
-
-  ImageState.activeId = null;
-  ImageState.mode = null;
-  ImageState.dragStart = null;
-
-  _redrawTeacherCanvas();
-  return;
-}
-  const it = TextState.items.find(x => x.id === hitId);
-
-  // ✅ حذف
-  if (hit.onDelete) {
-    TextState.items = TextState.items.filter(x => x.id !== hitId);
-    TextState.activeId = null;
-    TextState.mode = null;
-    TextState.dragStart = null;
-    _redrawTeacherCanvas();
-    return;
-  }
-
-  // ✅ بدء سحب/تحجيم
-  TextState.dragStart = { x: p2.x, y: p2.y, ox: it.x, oy: it.y, osize: it.size };
-  TextState.mode = hit.onHandle ? "resize" : "move";
-
-  _redrawTeacherCanvas();
-  return;
-}
-  // ✅ غير ذلك: الرسم الطبيعي
-  if (tTool === "pointer") return;
-tDrawing = true;
-inkCtx.beginPath();
-inkCtx.moveTo(p.x, p.y);
-};
+}; // ✅ نهاية onpointerdown — ممنوع أي كود بعدها غير onpointermove
 
 tCanvas.onpointermove = (e) => {
   const p = pos(tCanvas, e);
