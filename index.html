@@ -255,6 +255,7 @@
             <button class="tool active" id="tPen">قلم</button>
             <button class="tool" id="tEraser">ممحاة</button>
             <button class="tool" id="tText">نص</button>
+            <button class="tool" id="tPointer" title="مؤشر">🖱️</button>
             <div class="sizeWrap">
                <span class="sizeIcon">↔</span>
               <input id="tSize" type="range" min="2" max="18" value="4" />
@@ -770,29 +771,32 @@ function initCanvas() {
   });
 
   tCanvas.onpointerdown = (e) => {
-    tDrawing = true;
-    const p = pos(tCanvas, e);
-    tCtx.beginPath();
-    tCtx.moveTo(p.x, p.y);
-  };
+  if (tTool === "pointer") return;
+  tDrawing = true;
+  const p = pos(tCanvas, e);
+  tCtx.beginPath();
+  tCtx.moveTo(p.x, p.y);
+};
 
-  tCanvas.onpointermove = (e) => {
-    if (!tDrawing) return;
-    const p = pos(tCanvas, e);
+ tCanvas.onpointermove = (e) => {
+  if (tTool === "pointer") return;
+  if (!tDrawing) return;
+  const p = pos(tCanvas, e);
 
-tCtx.lineWidth = tSize;
-    if (tTool === "eraser") {
-      tCtx.globalCompositeOperation = "destination-out";
-      tCtx.strokeStyle = "#fff";
-    } else {
-      tCtx.globalCompositeOperation = "source-over";
-      tCtx.strokeStyle = tColor;
-    }
+  tCtx.lineWidth = tSize;
 
-    tCtx.lineTo(p.x, p.y);
-    tCtx.stroke();
-    queueSaveTeacher();
-  };
+  if (tTool === "eraser") {
+    tCtx.globalCompositeOperation = "destination-out";
+    tCtx.strokeStyle = "#fff";
+  } else {
+    tCtx.globalCompositeOperation = "source-over";
+    tCtx.strokeStyle = tColor;
+  }
+
+  tCtx.lineTo(p.x, p.y);
+  tCtx.stroke();
+  queueSaveTeacher();
+};
 
   tCanvas.onpointerup = () => {
     tDrawing = false;
@@ -1183,8 +1187,27 @@ if(sSizeEl){
     if(error){ console.warn(error); showToast("ربما وصلت حد 10 سبورات"); }
   };
 
-  $("tPen").onclick = ()=>{ tTool="pen"; $("tPen").classList.add("active"); $("tEraser").classList.remove("active"); };
-  $("tEraser").onclick = ()=>{ tTool="eraser"; $("tEraser").classList.add("active"); $("tPen").classList.remove("active"); };
+$("tPen").onclick = () => {
+  tTool="pen";
+  $("tPen").classList.add("active");
+  $("tEraser").classList.remove("active");
+  $("tPointer").classList.remove("active");
+  $("tCanvas").style.cursor = "default";
+};
+  $("tEraser").onclick = () => {
+  tTool="eraser";
+  $("tEraser").classList.add("active");
+  $("tPen").classList.remove("active");
+  $("tPointer").classList.remove("active");
+  $("tCanvas").style.cursor = "default";
+};
+  $("tPointer").onclick = () => {
+  tTool = "pointer";
+  $("tPointer").classList.add("active");
+  $("tPen").classList.remove("active");
+  $("tEraser").classList.remove("active");
+  $("tCanvas").style.cursor = "crosshair";
+};
   $("tText").onclick = ()=>{
     const text = prompt("اكتب النص");
     if(!text) return;
