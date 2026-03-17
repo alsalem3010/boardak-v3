@@ -1048,28 +1048,17 @@ tCanvas.onpointerup = () => {
     tCanvas.classList.remove("cursor-move","cursor-resize");
     tCanvas.classList.add("cursor-pointer");
     ImageState.mode = null;
-ImageState.dragStart = null;
-
-    // (اختياري داخل نفس السلوك الحالي) ثبّت التغييرات بالرسم
-    // ندمج النصوص على اللوحة بعد كل تعديل:
-    // (بدون تغيير على DB—فقط يحفظ ضمن اللوحة)
+    ImageState.dragStart = null;
     queueSaveTeacher();
     return;
   }
 
- // ✅ إنهاء الرسم الطبيعي
-tDrawing = false;
-inkCtx.beginPath();
-inkCtx.globalCompositeOperation = "source-over";
-_redrawTeacherCanvas();
-
-  sCanvas.onpointerdown = (e) => {
-    if (!studentCanEdit()) return;
-    sDrawing = true;
-    const p = pos(sCanvas, e);
-    sCtx.beginPath();
-    sCtx.moveTo(p.x, p.y);
-  };
+  // ✅ إنهاء الرسم الطبيعي
+  tDrawing = false;
+  inkCtx.beginPath();
+  inkCtx.globalCompositeOperation = "source-over";
+  _redrawTeacherCanvas();
+};
 
   sCanvas.onpointermove = (e) => {
     if (!studentCanEdit()) return;
