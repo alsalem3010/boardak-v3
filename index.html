@@ -988,28 +988,34 @@ function pos(canvas, e){
 function _drawTextItem(ctx, item, selected){
   const { w, h } = _measureTextBox(ctx, item);
 
-  // draw text
+  // ✅ RTL: اجعل نقطة x هي "يمين النص"
   ctx.save();
   ctx.font = `${item.size}px Cairo`;
   ctx.fillStyle = item.color || "#000";
   ctx.textBaseline = "top";
   ctx.direction = "rtl";
+  ctx.textAlign = "right";
   ctx.fillText(item.text || "", item.x, item.y);
   ctx.restore();
 
   if(!selected) return;
 
-  // bounding box
+  // ✅ صندوق الحدود يحسب من اليمين لليسار
+  const left = item.x - w - 6;
+  const top  = item.y - 6;
+  const bw   = w + 12;
+  const bh   = h + 12;
+
   ctx.save();
   ctx.strokeStyle = "#2563eb";
   ctx.lineWidth = 1;
   ctx.setLineDash([6,4]);
-  ctx.strokeRect(item.x - 6, item.y - 6, w + 12, h + 12);
+  ctx.strokeRect(left, top, bw, bh);
   ctx.setLineDash([]);
 
-  // resize handle (bottom-right)
-  const hx = item.x - 6 + (w + 12) - 10;
-  const hy = item.y - 6 + (h + 12) - 10;
+  // handle bottom-right (يمين/أسفل للصندوق)
+  const hx = left + bw - 10;
+  const hy = top  + bh - 10;
   ctx.fillStyle = "#2563eb";
   ctx.fillRect(hx, hy, 10, 10);
   ctx.restore();
@@ -1017,12 +1023,14 @@ function _drawTextItem(ctx, item, selected){
 
 function _hitTestTextItem(ctx, item, px, py){
   const { w, h } = _measureTextBox(ctx, item);
-  const left = item.x - 6;
+
+  // ✅ RTL box
+  const left = item.x - w - 6;
   const top  = item.y - 6;
-  const right = left + (w + 12);
+  const right = item.x + 6;
   const bottom = top + (h + 12);
 
-  // handle (bottom-right 10x10)
+  // handle bottom-right
   const hx = right - 10;
   const hy = bottom - 10;
   const onHandle = (px >= hx && px <= hx+10 && py >= hy && py <= hy+10);
@@ -1052,18 +1060,21 @@ function loadDataUrlToCanvas(canvas,ctx,src){
   img.src=src;
 }
 function teacherDataUrl(){
-  // ارسم النصوص فوق اللوحة قبل التصدير
-  _redrawTeacherCanvas();
-  return tCanvas.toDataURL("image/png");
-}
-function studentDataUrl(){ return sCanvas.toDataURL("image/png"); }
+  // ✅ لا تلمس canvas الأصلي ولا تعمل load للصورة
+  const out = document.createElement("canvas");
+  out.width = tCanvas.width;
+  out.height = tCanvas.height;
 
-function studentCanEdit(){
-  const m = State.sessionMeta || {};
-  if(m.explanation_mode) return false;
-  if(m.board_locked) return false;
-  if(m.focused_student_board_id) return false;
-  return true;
+  const octx = out.getContext("2d");
+
+  // 1) انسخ الرسم الحالي كما هو (هذا اللي يمنع اختفاء الخط)
+  octx.drawImage(tCanvas, 0, 0);
+
+  // 2) ارسم عناصر النص فوقه (بدون مسح)
+  const active = TextState.activeId;
+  (TextState.items || []).forEach(it => _drawTextItem(octx, it, it.id === active));
+
+  return out.toDataURL("image/png");
 }
 
 async function saveTeacherBoard(){
