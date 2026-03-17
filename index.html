@@ -480,7 +480,33 @@ const TextState = {
   mode: null,       // null | "move" | "resize"
   dragStart: null,  // {x,y, ox,oy, ow,oh}
 };
-const State = {
+const State = {// ✅ Per-board objects memory (prevents objects leaking between boards)
+const BoardObjects = new Map();
+// key: boardId
+// value: { texts:[], images:[] }
+
+function loadObjectsForBoard(boardId){
+  const pack = BoardObjects.get(boardId) || { texts:[], images:[] };
+
+  TextState.items = pack.texts;
+  ImageState.items = pack.images;
+
+  // صفّر فقط التحديد/السحب (بدون مسح العناصر)
+  TextState.activeId = null;
+  TextState.mode = null;
+  TextState.dragStart = null;
+
+  ImageState.activeId = null;
+  ImageState.mode = null;
+  ImageState.dragStart = null;
+}
+
+function saveObjectsForBoard(boardId){
+  BoardObjects.set(boardId, {
+    texts: TextState.items,
+    images: ImageState.items
+  });
+}
   role:null,
   user:null,
   room:null,
@@ -533,10 +559,22 @@ async function loadSessionMeta(){
 }
 
 async function loadBoards(){
-  const { data, error } = await sb.from("boards").select("*").eq("room_id", State.room.id).order("sort_order",{ascending:true});
+  const { data, error } = await sb
+    .from("boards")
+    .select("*")
+    .eq("room_id", State.room.id)
+    .order("sort_order", { ascending: true });
+
   if(error) throw error;
+
   State.boards = data || [];
-  State.currentBoard = State.boards.find(b=>b.visible_to_students) || State.boards[0] || null;
+  State.currentBoard = State.boards.find(b => b.visible_to_students) || State.boards[0] || null;
+
+  // ✅ حمّل عناصر هذه السبورة فقط (حتى لا تتسرب عناصر من سبورة أخرى)
+  if(State.currentBoard?.id){
+    loadObjectsForBoard(State.currentBoard.id);
+  }
+
   renderBoardTabs();
 }
 
@@ -725,19 +763,39 @@ async function renderStudentsBoards(){
 function renderBoardTabs(){
   const wrap = $("boardTabs");
   wrap.innerHTML = "";
-  (State.boards||[]).forEach(b=>{
+
+  (State.boards || []).forEach(b => {
     const btn = document.createElement("button");
-    btn.className = "tool" + (State.currentBoard && State.currentBoard.id===b.id ? " active":"");
+    btn.className = "tool" + (State.currentBoard && State.currentBoard.id === b.id ? " active" : "");
     btn.textContent = b.title || "Board";
-    btn.onclick = async ()=>{
-      if(State.role==="teacher"){
-        const { error } = await sb.rpc("set_visible_board_v3", { p_room_id: State.room.id, p_board_id: b.id });
-        if(error) console.warn(error);
+
+    btn.onclick = async () => {
+      // ✅ احفظ عناصر السبورة الحالية قبل التبديل
+      if (State.currentBoard?.id) {
+        saveObjectsForBoard(State.currentBoard.id);
       }
+
+      // تحديث السبورة المرئية للطلاب (للمعلم فقط)
+      if (State.role === "teacher") {
+        const { error } = await sb.rpc("set_visible_board_v3", {
+          p_room_id: State.room.id,
+          p_board_id: b.id
+        });
+        if (error) console.warn(error);
+      }
+
+      // ✅ بدّل السبورة
       State.currentBoard = b;
+
+      // ✅ حمّل عناصر السبورة الجديدة فقط
+      if (State.currentBoard?.id) {
+        loadObjectsForBoard(State.currentBoard.id);
+      }
+
       renderBoardTabs();
       await refreshCanvas();
     };
+
     wrap.appendChild(btn);
   });
 }
@@ -1087,6 +1145,11 @@ tCanvas.onpointerup = () => {
 }
 
 function queueSaveTeacher() {
+  // ✅ احفظ عناصر السبورة الحالية داخل BoardObjects قبل أي حفظ
+  if (State.currentBoard?.id) {
+    saveObjectsForBoard(State.currentBoard.id);
+  }
+
   clearTimeout(saveTimerT);
   saveTimerT = setTimeout(saveTeacherBoard, 450);
 }
@@ -1233,9 +1296,8 @@ function _hitTestTextItem(ctx, item, px, py){
   return { inside, onHandle, onDelete };
   }
 function addImageObject(dataUrl){
-  // ❌ ممنوع commit هنا (حتى لا تختفي العناصر السابقة)
-
   const img = new Image();
+
   img.onload = () => {
     const maxScale = 0.6;
     const scale = Math.min(
@@ -1252,14 +1314,14 @@ function addImageObject(dataUrl){
       x: (tCanvas.width - w) / 2,
       y: (tCanvas.height - h) / 2,
       w, h,
-      img
+      img,
+      src: dataUrl // ✅ مهم
     };
 
-    // ✅ فقط أضف — لا تثبيت ولا مسح
     ImageState.items.push(item);
     ImageState.activeId = item.id;
 
-    // ادخل المؤشر مباشرة للتحريك (نفس سلوكك الحالي)
+    // ادخل المؤشر مباشرة للتحريك (نفس سلوكك)
     tTool = "pointer";
     $("tPointer")?.classList.add("active");
     $("tPen")?.classList.remove("active");
@@ -1273,7 +1335,6 @@ function addImageObject(dataUrl){
 
   img.src = dataUrl;
 }
-
 function _drawImageItem(ctx, item, selected){
   if(!item.img) return;
   ctx.drawImage(item.img, item.x, item.y, item.w, item.h);
