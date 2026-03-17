@@ -516,6 +516,7 @@ function renderTimerUI(){
     if(d) d.textContent = mmss;
     if(st) st.textContent = meta.timer_enabled ? 'يعمل' : (meta.timer_started_at ? 'موقوف' : 'غير مفعل');
   }
+
   if(State.role==='student'){
     const d = $('timerDisplayS');
     const st = $('timerStateS');
@@ -523,15 +524,38 @@ function renderTimerUI(){
     if(st) st.textContent = meta.timer_enabled ? 'يعمل' : (meta.timer_started_at ? 'موقوف' : 'غير مفعل');
   }
 
-  
+  // ✅ عند انتهاء المؤقت: نفّذ الإجراء مرة واحدة (تنبيه/قفل) ثم أوقف المؤقت
+  if(State.role==='teacher'){
+    if(remaining === 0 && meta.timer_enabled){
+      // أوقف المؤقت مع حفظ الحالة
+      sb.from('session_meta')
+        .update({
+          timer_enabled: false,
+          timer_seconds: 0,
+          timer_action: meta.timer_action || 'done',
+          updated_at: new Date().toISOString()
+        })
+        .eq('room_id', State.room.id)
+        .then(()=>{})
+        .catch(()=>{});
+
+      // قفل السبورة فقط إذا تم اختيار lock
+      if(meta.timer_action === 'lock'){
+        sb.rpc('set_board_locked_v3', { p_room_id: State.room.id, p_locked: true }).catch(()=>{});
+      }
+    }
+  }
+}
+
 function startTimerTicker(){
   if(__timerTick) clearInterval(__timerTick);
   __timerTick = setInterval(renderTimerUI, 1000);
 }
 
 async function timerUpdate(action){
-// action: start | pause | reset 
+  // action: start | pause | reset
   const meta = State.sessionMeta || {};
+
   if(action==='start'){
     const mins = parseInt($('timerMinutesInput')?.value||'0',10);
     if(!mins || mins<=0){ showToast('أدخل عدد الدقائق'); return; }
@@ -950,6 +974,16 @@ async function showFocusedBoard(){
   wrap.innerHTML = data?.board_data ? `<img src="${data.board_data}" alt="focus">` : "<span>لا يوجد محتوى بعد</span>";
 }
 
+
+
+function studentCanEdit(){
+  const m = State.sessionMeta || {};
+  if(m.explanation_mode) return false;
+  if(m.board_locked) return false;
+  if(m.focused_student_board_id) return false;
+  return true;
+}
+
 /* =============================
    Canvas drawing
 ============================= */
@@ -1244,7 +1278,7 @@ tCanvas.onpointerup = () => {
     sCtx.moveTo(p.x, p.y);
   };
 
- sCanvas.onpointermove = (e) => {
+  sCanvas.onpointermove = (e) => {
     if (!studentCanEdit()) return;
     if (!sDrawing) return;
     const p = pos(sCanvas, e);
@@ -1568,6 +1602,11 @@ function teacherDataUrl(){
   if(inkCanvas) octx.drawImage(inkCanvas, 0, 0);
 
   return out.toDataURL("image/png");
+}
+
+function studentDataUrl(){
+  if(!sCanvas) return "";
+  return sCanvas.toDataURL("image/png");
 }
 
 async function saveTeacherBoard(){
