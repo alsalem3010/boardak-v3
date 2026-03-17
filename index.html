@@ -17,6 +17,43 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <style>
+    /* ===== Compact Timer ===== */
+.timerBar{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 10px;
+  background:#eef2ff;
+  border-radius:12px;
+  font-weight:900;
+  font-size:12px;
+}
+
+.timerBar input{
+  width:44px;
+  padding:4px 6px;
+  font-size:12px;
+  border-radius:8px;
+}
+
+.timerBar button{
+  padding:4px 6px;
+  font-size:12px;
+  border-radius:8px;
+  border:none;
+  cursor:pointer;
+  background:#2563eb;
+  color:#fff;
+}
+
+.timerBar button:last-of-type{
+  background:#dc2626;
+}
+
+#timerDisplayT{
+  min-width:42px;
+  text-align:center;
+}
     :root{
       --bg:#f2f6ff;
       --card:#ffffff;
@@ -274,16 +311,22 @@ canvas.cursor-resize{cursor:nwse-resize}
     00:00
   </span>
 </div>
-  <div id="timerControlsT" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-    <input id="timerMinutesInput" type="number" min="1" placeholder="دقائق" style="width:90px" />
-    <button id="timerStartBtn" class="btn btn-green btn-sm">▶ تشغيل</button>
-    <button id="timerPauseBtn" class="btn btn-soft btn-sm">⏸ إيقاف</button>
-    <button id="timerResetBtn" class="btn btn-red btn-sm">⏹ تصفير</button>
-    <select id="timerAction" style="padding:8px 10px;border-radius:12px;border:1px solid #d1d5db;font-family:Cairo">
-      <option value="alert">تنبيه فقط</option>
-      <option value="lock">قفل السبورة</option>
-    </select>
-  </div>
+ <!-- ✅ TIMER COMPACT -->
+<div class="timerBar">
+  <span>⏱️</span>
+
+  <input
+    id="timerMinutesInput"
+    type="number"
+    min="1"
+    placeholder="د"
+  />
+
+  <button id="timerStartBtn">▶</button>
+  <button id="timerResetBtn">⏹</button>
+
+  <span id="timerDisplayT">00:00</span>
+</div>
 </div>
 <div class="toolbar">
             <div id="boardTabs" class="toolbar"></div>
