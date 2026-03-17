@@ -34,7 +34,6 @@
     body{font-family:"Cairo",system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
     .hidden{display:none!important}
     .fileGhost{position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none}
-    .fileGhost{position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none}
     .app{max-width:1500px;margin:0 auto;padding:20px}
     .glass{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow)}
     .topbar{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;margin-bottom:16px}
@@ -475,6 +474,12 @@ const TextState = {
   // ✅ Snapshot ثابت للخلفية أثناء وضع المؤشر (بدون نصوص)
   backing: null,         // ImageData
 };
+  const ImageState = {
+  items: [],        // {id, x, y, w, h, img}
+  activeId: null,
+  mode: null,       // null | "move" | "resize"
+  dragStart: null,  // {x,y, ox,oy, ow,oh}
+};
 const State = {
   role:null,
   user:null,
@@ -793,6 +798,39 @@ function initCanvas() {
   // ✅ إذا المؤشر: تعامل مع عناصر النص
 if (tTool === "pointer") {
   ensureTextBacking();
+  // ===== (A) افحص الصور أولاً =====
+let imgHitId = null;
+let imgHit = null;
+
+for(let i = ImageState.items.length - 1; i >= 0; i--){
+  const im = ImageState.items[i];
+  const h = _hitTestImageItem(im, p.x, p.y);
+  if(h.inside || h.onHandle || h.onDelete){
+    imgHitId = im.id;
+    imgHit = h;
+    break;
+  }
+}
+
+if(imgHitId){
+  ImageState.activeId = imgHitId;
+  TextState.activeId = null;
+
+  const im = ImageState.items.find(x => x.id === imgHitId);
+
+  if(imgHit.onDelete){
+    ImageState.items = ImageState.items.filter(x => x.id !== imgHitId);
+    ImageState.activeId = null;
+    _redrawTeacherCanvas();
+    return;
+  }
+
+  ImageState.dragStart = { x:p.x, y:p.y, ox:im.x, oy:im.y, ow:im.w, oh:im.h };
+  ImageState.mode = imgHit.onHandle ? "resize" : "move";
+
+  _redrawTeacherCanvas();
+  return;
+}
 
   const p2 = p; // نفس النقطة
   let hitId = null;
@@ -847,7 +885,41 @@ if (tTool === "pointer") {
 tCanvas.onpointermove = (e) => {
   const p = pos(tCanvas, e);
 
-  // ✅ إذا المؤشر: تحريك/تكبير عنصر النص
+ // ✅ إذا المؤشر: تحريك/تكبير عنصر النص
+ // ===== تحريك/تكبير صورة إن كانت محددة =====
+const imgId = ImageState.activeId;
+const im = imgId ? ImageState.items.find(x => x.id === imgId) : null;
+
+if(im){
+  if(ImageState.mode === "move" && ImageState.dragStart){
+    im.x = ImageState.dragStart.ox + (p.x - ImageState.dragStart.x);
+    im.y = ImageState.dragStart.oy + (p.y - ImageState.dragStart.y);
+    _redrawTeacherCanvas();
+    return;
+  }
+
+  if(ImageState.mode === "resize" && ImageState.dragStart){
+    const dx = (p.x - ImageState.dragStart.x);
+    const dy = (p.y - ImageState.dragStart.y);
+    im.w = Math.max(30, ImageState.dragStart.ow + dx);
+    im.h = Math.max(30, ImageState.dragStart.oh + dy);
+    _redrawTeacherCanvas();
+    return;
+  }
+
+  const h = _hitTestImageItem(im, p.x, p.y);
+  if (h.onHandle) {
+    tCanvas.classList.add("cursor-resize");
+    tCanvas.classList.remove("cursor-move");
+  } else if (h.inside) {
+    tCanvas.classList.add("cursor-move");
+    tCanvas.classList.remove("cursor-resize");
+  } else {
+    tCanvas.classList.remove("cursor-move","cursor-resize");
+    tCanvas.classList.add("cursor-pointer");
+  }
+  return;
+}
   if (tTool === "pointer") {
     const id = TextState.activeId;
     const it = id ? TextState.items.find(x => x.id === id) : null;
@@ -919,6 +991,8 @@ tCanvas.onpointerup = () => {
     TextState.dragStart = null;
     tCanvas.classList.remove("cursor-move","cursor-resize");
     tCanvas.classList.add("cursor-pointer");
+    ImageState.mode = null;
+ImageState.dragStart = null;
 
     // (اختياري داخل نفس السلوك الحالي) ثبّت التغييرات بالرسم
     // ندمج النصوص على اللوحة بعد كل تعديل:
@@ -1090,19 +1164,107 @@ function _hitTestTextItem(ctx, item, px, py){
   const inside = (px >= left && px <= right && py >= top && py <= bottom);
 
   return { inside, onHandle, onDelete };
+  }
+function addImageObject(dataUrl){
+  ensureTextBacking();
+
+  const img = new Image();
+  img.onload = () => {
+    const maxScale = 0.6;
+    const scale = Math.min(
+      tCanvas.width / img.width,
+      tCanvas.height / img.height,
+      maxScale
+    );
+
+    const w = img.width * scale;
+    const h = img.height * scale;
+
+    const item = {
+      id: crypto.randomUUID(),
+      x: (tCanvas.width - w) / 2,
+      y: (tCanvas.height - h) / 2,
+      w, h,
+      img
+    };
+
+    ImageState.items.push(item);
+    ImageState.activeId = item.id;
+
+    // ادخل المؤشر مباشرة للتحريك
+    tTool = "pointer";
+    $("tPointer")?.classList.add("active");
+    $("tPen")?.classList.remove("active");
+    $("tEraser")?.classList.remove("active");
+    $("tText")?.classList.remove("active");
+    $("tImage")?.classList.remove("active");
+
+    _redrawTeacherCanvas();
+    queueSaveTeacher();
+  };
+  img.src = dataUrl;
 }
 
+function _drawImageItem(ctx, item, selected){
+  if(!item.img) return;
+  ctx.drawImage(item.img, item.x, item.y, item.w, item.h);
+
+  if(!selected) return;
+
+  ctx.save();
+  // إطار
+  ctx.strokeStyle = "#2563eb";
+  ctx.lineWidth = 1;
+  ctx.setLineDash([6,4]);
+  ctx.strokeRect(item.x - 6, item.y - 6, item.w + 12, item.h + 12);
+  ctx.setLineDash([]);
+
+  // زر حذف X (أعلى يسار)
+  ctx.fillStyle = "#dc2626";
+  ctx.fillRect(item.x - 6, item.y - 6, 16, 16);
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 12px Cairo";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("×", item.x - 6 + 8, item.y - 6 + 8);
+
+  // مقبض resize (أسفل يمين)
+  ctx.fillStyle = "#2563eb";
+  ctx.fillRect(item.x + item.w + 6 - 10, item.y + item.h + 6 - 10, 10, 10);
+
+  ctx.restore();
+}
+
+function _hitTestImageItem(item, px, py){
+  const left = item.x - 6;
+  const top = item.y - 6;
+  const right = item.x + item.w + 6;
+  const bottom = item.y + item.h + 6;
+
+  const onDelete = (px >= left && px <= left+16 && py >= top && py <= top+16);
+
+  const hx = right - 10;
+  const hy = bottom - 10;
+  const onHandle = (px >= hx && px <= hx+10 && py >= hy && py <= hy+10);
+
+  const inside = (px >= left && px <= right && py >= top && py <= bottom);
+
+  return { inside, onHandle, onDelete };
+}
 function _redrawTeacherCanvas(){
   if(!tCanvas || !tCtx) return;
 
-  // ✅ ارجع للخلفية الثابتة أولاً
   if(TextState.backing){
     tCtx.putImageData(TextState.backing, 0, 0);
   }
 
-  // ✅ ثم ارسم النصوص مرة واحدة فقط
-  const active = TextState.activeId;
-  (TextState.items || []).forEach(it => _drawTextItem(tCtx, it, it.id === active));
+  // ✅ ارسم الصور أولاً
+  const activeImg = ImageState.activeId;
+  (ImageState.items || []).forEach(im => _drawImageItem(tCtx, im, im.id === activeImg));
+
+  // ✅ ثم النصوص فوقها
+  const activeText = TextState.activeId;
+  (TextState.items || []).forEach(tx => _drawTextItem(tCtx, tx, tx.id === activeText));
 }
 function clearCanvas(canvas,ctx){ ctx.clearRect(0,0,canvas.width,canvas.height); }
 function loadDataUrlToCanvas(canvas,ctx,src){
@@ -1122,9 +1284,13 @@ function teacherDataUrl(){
   // 1) انسخ الرسم الحالي كما هو (هذا اللي يمنع اختفاء الخط)
   octx.drawImage(tCanvas, 0, 0);
 
-  // 2) ارسم عناصر النص فوقه (بدون مسح)
-  const active = TextState.activeId;
-  (TextState.items || []).forEach(it => _drawTextItem(octx, it, it.id === active));
+ // 2) ارسم الصور فوقه
+const activeImg = ImageState.activeId;
+(ImageState.items || []).forEach(im => _drawImageItem(octx, im, im.id === activeImg));
+
+// 3) ارسم النصوص فوق الصور
+const activeText = TextState.activeId;
+(TextState.items || []).forEach(tx => _drawTextItem(octx, tx, tx.id === activeText));
 
   return out.toDataURL("image/png");
 }
@@ -1493,45 +1659,18 @@ if(tImageBtn) tImageBtn.onclick = () => {
   $("tPointer").classList.remove("active");
 
   imagePicker.click();
+  $("tImage").classList.remove("active");
 };
   imagePicker.onchange = () => {
   const file = imagePicker.files && imagePicker.files[0];
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = () => {
-    // إذا عندك addImageObject استخدمه (صورة مثل النص)
-    if (typeof addImageObject === "function") {
-      addImageObject(reader.result);
-    } else {
-      // إدراج مباشر على السبورة (بدون خصائص النص)
-      const img = new Image();
-      img.onload = () => {
-        const scale = Math.min(
-          tCanvas.width / img.width,
-          tCanvas.height / img.height,
-          0.6
-        );
-        const w = img.width * scale;
-        const h = img.height * scale;
-
-        tCtx.drawImage(
-          img,
-          (tCanvas.width - w) / 2,
-          (tCanvas.height - h) / 2,
-          w,
-          h
-        );
-        queueSaveTeacher();
-      };
-      img.src = reader.result;
-    }
-  };
+ reader.onload = () => addImageObject(reader.result);
 
   reader.readAsDataURL(file);
   imagePicker.value = "";
 };
-  // ===== Paste Image (Ctrl+V) =====
 // ===== Paste Image (Ctrl+V) =====
 document.addEventListener("paste", (event) => {
   if(State.role !== "teacher") return;
@@ -1545,32 +1684,7 @@ document.addEventListener("paste", (event) => {
 
       event.preventDefault();
       const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof addImageObject === "function") {
-          addImageObject(reader.result);
-        } else {
-          const img = new Image();
-          img.onload = () => {
-            const scale = Math.min(
-              tCanvas.width / img.width,
-              tCanvas.height / img.height,
-              0.6
-            );
-            const w = img.width * scale;
-            const h = img.height * scale;
-
-            tCtx.drawImage(
-              img,
-              (tCanvas.width - w) / 2,
-              (tCanvas.height - h) / 2,
-              w,
-              h
-            );
-            queueSaveTeacher();
-          };
-          img.src = reader.result;
-        }
-      };
+      reader.onload = () => addImageObject(reader.result);
       reader.readAsDataURL(file);
       return;
     }
