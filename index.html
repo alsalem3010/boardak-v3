@@ -841,7 +841,7 @@ function initCanvas() {
 
   // ✅ إذا المؤشر: تعامل مع عناصر النص
 if (tTool === "pointer") {
-  ensureTextBacking();
+  
   // ===== (A) افحص الصور أولاً =====
 let imgHitId = null;
 let imgHit = null;
@@ -1233,11 +1233,7 @@ function _hitTestTextItem(ctx, item, px, py){
   return { inside, onHandle, onDelete };
   }
 function addImageObject(dataUrl){
-  if (ImageState.items.length) commitImagesToCanvas();
-if (TextState.items.length) commitTextsToCanvas();
-queueSaveTeacher();
-  
-  ensureTextBacking();
+  // ❌ ممنوع commit هنا (حتى لا تختفي العناصر السابقة)
 
   const img = new Image();
   img.onload = () => {
@@ -1259,10 +1255,11 @@ queueSaveTeacher();
       img
     };
 
+    // ✅ فقط أضف — لا تثبيت ولا مسح
     ImageState.items.push(item);
     ImageState.activeId = item.id;
 
-    // ادخل المؤشر مباشرة للتحريك
+    // ادخل المؤشر مباشرة للتحريك (نفس سلوكك الحالي)
     tTool = "pointer";
     $("tPointer")?.classList.add("active");
     $("tPen")?.classList.remove("active");
@@ -1273,6 +1270,7 @@ queueSaveTeacher();
     _redrawTeacherCanvas();
     queueSaveTeacher();
   };
+
   img.src = dataUrl;
 }
 
@@ -1731,17 +1729,23 @@ $("tPen").onclick = () => {
   _redrawTeacherCanvas();
 };
  $("tEraser").onclick = () => {
-  // ✅ لو كنت بالمؤشر وفيه نصوص: ثبّت النصوص أولاً
-  if(tTool === "pointer" && TextState.items.length){
-    commitTextsToCanvas();
-    queueSaveTeacher();
-  }
+  // ❌ ممنوع commit هنا
 
-  tTool="eraser";
+  ImageState.activeId = null;
+  ImageState.mode = null;
+  ImageState.dragStart = null;
+
+  TextState.activeId = null;
+  TextState.mode = null;
+  TextState.dragStart = null;
+
+  tTool = "eraser";
   $("tEraser").classList.add("active");
   $("tPen").classList.remove("active");
   $("tPointer").classList.remove("active");
   $("tCanvas").style.cursor = "default";
+
+  _redrawTeacherCanvas();
 };
   $("tPointer").onclick = () => {
   tTool = "pointer";
@@ -1802,37 +1806,34 @@ document.addEventListener("paste", (event) => {
   }
 });
 
- $("tText").onclick = () => {
+$("tText").onclick = () => {
   const text = prompt("اكتب النص");
   if(!text) return;
-   if (ImageState.items.length) commitImagesToCanvas();
-if (TextState.items.length) commitTextsToCanvas();
-queueSaveTeacher();
 
+  // ❌ ممنوع commit هنا
 
-
-
-  // ✅ ادخل وضع المؤشر تلقائيًا + ثبت الخلفية مرة واحدة
+  // ادخل وضع المؤشر تلقائيًا (نفس سلوكك الحالي)
   tTool = "pointer";
   $("tPointer")?.classList.add("active");
   $("tPen")?.classList.remove("active");
   $("tEraser")?.classList.remove("active");
-
-  ensureTextBacking();
+  $("tImage")?.classList.remove("active");
 
   const item = {
     id: crypto.randomUUID(),
-    x: 120,      // نقطة يمين النص (RTL)
+    x: 120,   // نقطة يمين النص (RTL)
     y: 120,
     text,
     size: 32,
     color: tColor || "#000"
   };
 
+  // ✅ فقط أضف — لا تثبيت ولا مسح
   TextState.items.push(item);
   TextState.activeId = item.id;
 
   _redrawTeacherCanvas();
+  queueSaveTeacher();
 };
   document.querySelectorAll("[data-color]").forEach(btn=>{
     btn.onclick=()=>{
