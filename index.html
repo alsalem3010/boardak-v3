@@ -105,6 +105,10 @@
 .sizeIcon{font-weight:900;font-size:14px;opacity:.8;user-select:none}
 .sizeWrap input[type="range"]{width:120px}
 .sizeVal{min-width:18px;text-align:center;font-weight:900;font-size:12px;color:var(--muted)} 
+    /* Cursor modes */
+canvas.cursor-pointer{cursor:default}
+canvas.cursor-move{cursor:move}
+canvas.cursor-resize{cursor:nwse-resize}
   </style>
 </head>
 
@@ -458,6 +462,14 @@ function escapeHtml(s){
 /* =============================
    State
 ============================= */
+  // Text objects (teacher only)
+const TextState = {
+  items: [],          // {id,x,y,text,size,color,align,font}
+  activeId: null,
+  mode: null,         // null | "move" | "resize"
+  handle: null,       // "br" only (bottom-right)
+  dragStart: null,    // {x,y, ox,oy, osize}
+};
 const State = {
   role:null,
   user:null,
@@ -770,18 +782,107 @@ function initCanvas() {
     ctx.lineJoin = "round";
   });
 
-  tCanvas.onpointerdown = (e) => {
+ tCanvas.onpointerdown = (e) => {
+  const p = pos(tCanvas, e);
+
+  // ✅ إذا المؤشر: تعامل مع عناصر النص
+  if (tTool === "pointer") {
+    // افحص من الأعلى للأسفل (آخر عنصر فوق)
+    let hitId = null;
+    let hitHandle = false;
+
+    for (let i = TextState.items.length - 1; i >= 0; i--) {
+      const it = TextState.items[i];
+      const hit = _hitTestTextItem(tCtx, it, p.x, p.y);
+      if (hit.onHandle || hit.inside) {
+        hitId = it.id;
+        hitHandle = hit.onHandle;
+        break;
+      }
+    }
+
+    TextState.activeId = hitId;
+
+    if (!hitId) {
+      TextState.mode = null;
+      _redrawTeacherCanvas();
+      return;
+    }
+
+    const it = TextState.items.find(x => x.id === hitId);
+
+    TextState.dragStart = { x: p.x, y: p.y, ox: it.x, oy: it.y, osize: it.size };
+
+    if (hitHandle) {
+      TextState.mode = "resize";
+      tCanvas.classList.add("cursor-resize");
+      tCanvas.classList.remove("cursor-move");
+    } else {
+      TextState.mode = "move";
+      tCanvas.classList.add("cursor-move");
+      tCanvas.classList.remove("cursor-resize");
+    }
+
+    _redrawTeacherCanvas();
+    return;
+  }
+
+  // ✅ غير ذلك: الرسم الطبيعي
   if (tTool === "pointer") return;
   tDrawing = true;
-  const p = pos(tCanvas, e);
   tCtx.beginPath();
   tCtx.moveTo(p.x, p.y);
 };
 
- tCanvas.onpointermove = (e) => {
+tCanvas.onpointermove = (e) => {
+  const p = pos(tCanvas, e);
+
+  // ✅ إذا المؤشر: تحريك/تكبير عنصر النص
+  if (tTool === "pointer") {
+    const id = TextState.activeId;
+    const it = id ? TextState.items.find(x => x.id === id) : null;
+
+    if (!it) {
+      tCanvas.classList.remove("cursor-move","cursor-resize");
+      tCanvas.classList.add("cursor-pointer");
+      return;
+    }
+
+    // أثناء السحب
+    if (TextState.mode === "move" && TextState.dragStart) {
+      it.x = TextState.dragStart.ox + (p.x - TextState.dragStart.x);
+      it.y = TextState.dragStart.oy + (p.y - TextState.dragStart.y);
+      _redrawTeacherCanvas();
+      return;
+    }
+
+    // أثناء التكبير/التصغير (عن طريق مقابض)
+    if (TextState.mode === "resize" && TextState.dragStart) {
+      const dy = (p.y - TextState.dragStart.y);
+      const next = Math.max(10, Math.min(120, TextState.dragStart.osize + Math.round(dy / 4)));
+      it.size = next;
+      _redrawTeacherCanvas();
+      return;
+    }
+
+    // hover cursor (بدون سحب)
+    const hit = _hitTestTextItem(tCtx, it, p.x, p.y);
+    if (hit.onHandle) {
+      tCanvas.classList.add("cursor-resize");
+      tCanvas.classList.remove("cursor-move");
+    } else if (hit.inside) {
+      tCanvas.classList.add("cursor-move");
+      tCanvas.classList.remove("cursor-resize");
+    } else {
+      tCanvas.classList.remove("cursor-move","cursor-resize");
+      tCanvas.classList.add("cursor-pointer");
+    }
+    return;
+  }
+
+  // ✅ الرسم الطبيعي
   if (tTool === "pointer") return;
   if (!tDrawing) return;
-  const p = pos(tCanvas, e);
 
   tCtx.lineWidth = tSize;
 
@@ -798,11 +899,26 @@ function initCanvas() {
   queueSaveTeacher();
 };
 
-  tCanvas.onpointerup = () => {
-    tDrawing = false;
-    tCtx.beginPath();
-    tCtx.globalCompositeOperation = "source-over";
-  };
+tCanvas.onpointerup = () => {
+  // ✅ إنهاء المؤشر
+  if (tTool === "pointer") {
+    TextState.mode = null;
+    TextState.dragStart = null;
+    tCanvas.classList.remove("cursor-move","cursor-resize");
+    tCanvas.classList.add("cursor-pointer");
+
+    // (اختياري داخل نفس السلوك الحالي) ثبّت التغييرات بالرسم
+    // ندمج النصوص على اللوحة بعد كل تعديل:
+    // (بدون تغيير على DB—فقط يحفظ ضمن اللوحة)
+    queueSaveTeacher();
+    return;
+  }
+
+  // ✅ إنهاء الرسم الطبيعي
+  tDrawing = false;
+  tCtx.beginPath();
+  tCtx.globalCompositeOperation = "source-over";
+};
 
   sCanvas.onpointerdown = (e) => {
     if (!studentCanEdit()) return;
@@ -859,6 +975,75 @@ function pos(canvas, e){
 
   return { x: ox * scaleX, y: oy * scaleY };
 }
+ function _measureTextBox(ctx, item){
+  ctx.save();
+  ctx.font = `${item.size}px Cairo`;
+  const metrics = ctx.measureText(item.text || "");
+  const w = Math.max(20, metrics.width);
+  const h = Math.max(20, item.size * 1.4);
+  ctx.restore();
+  return { w, h };
+}
+
+function _drawTextItem(ctx, item, selected){
+  const { w, h } = _measureTextBox(ctx, item);
+
+  // draw text
+  ctx.save();
+  ctx.font = `${item.size}px Cairo`;
+  ctx.fillStyle = item.color || "#000";
+  ctx.textBaseline = "top";
+  ctx.direction = "rtl";
+  ctx.fillText(item.text || "", item.x, item.y);
+  ctx.restore();
+
+  if(!selected) return;
+
+  // bounding box
+  ctx.save();
+  ctx.strokeStyle = "#2563eb";
+  ctx.lineWidth = 1;
+  ctx.setLineDash([6,4]);
+  ctx.strokeRect(item.x - 6, item.y - 6, w + 12, h + 12);
+  ctx.setLineDash([]);
+
+  // resize handle (bottom-right)
+  const hx = item.x - 6 + (w + 12) - 10;
+  const hy = item.y - 6 + (h + 12) - 10;
+  ctx.fillStyle = "#2563eb";
+  ctx.fillRect(hx, hy, 10, 10);
+  ctx.restore();
+}
+
+function _hitTestTextItem(ctx, item, px, py){
+  const { w, h } = _measureTextBox(ctx, item);
+  const left = item.x - 6;
+  const top  = item.y - 6;
+  const right = left + (w + 12);
+  const bottom = top + (h + 12);
+
+  // handle (bottom-right 10x10)
+  const hx = right - 10;
+  const hy = bottom - 10;
+  const onHandle = (px >= hx && px <= hx+10 && py >= hy && py <= hy+10);
+
+  const inside = (px >= left && px <= right && py >= top && py <= bottom);
+
+  return { inside, onHandle, w, h };
+}
+
+function _redrawTeacherCanvas(){
+  if(!tCanvas || !tCtx) return;
+
+  // امسح ثم ارسم محتوى السبورة الأساسي
+  clearCanvas(tCanvas, tCtx);
+  const d = State.currentBoard?.content?.drawing;
+  if(d) loadDataUrlToCanvas(tCanvas, tCtx, d);
+
+  // ثم ارسم عناصر النص فوقه
+  const active = TextState.activeId;
+  (TextState.items || []).forEach(it => _drawTextItem(tCtx, it, it.id === active));
+} 
 function clearCanvas(canvas,ctx){ ctx.clearRect(0,0,canvas.width,canvas.height); }
 function loadDataUrlToCanvas(canvas,ctx,src){
   if(!src) return;
@@ -866,7 +1051,11 @@ function loadDataUrlToCanvas(canvas,ctx,src){
   img.onload=()=>{ clearCanvas(canvas,ctx); ctx.drawImage(img,0,0,canvas.width,canvas.height); };
   img.src=src;
 }
-function teacherDataUrl(){ return tCanvas.toDataURL("image/png"); }
+function teacherDataUrl(){
+  // ارسم النصوص فوق اللوحة قبل التصدير
+  _redrawTeacherCanvas();
+  return tCanvas.toDataURL("image/png");
+}
 function studentDataUrl(){ return sCanvas.toDataURL("image/png"); }
 
 function studentCanEdit(){
@@ -1208,16 +1397,25 @@ $("tPen").onclick = () => {
   $("tEraser").classList.remove("active");
   $("tCanvas").style.cursor = "crosshair";
 };
-  $("tText").onclick = ()=>{
-    const text = prompt("اكتب النص");
-    if(!text) return;
-    tCtx.save();
-    tCtx.fillStyle=tColor;
-    tCtx.font="32px Cairo";
-    tCtx.fillText(text,120,120);
-    tCtx.restore();
-    queueSaveTeacher();
+ $("tText").onclick = () => {
+  const text = prompt("اكتب النص");
+  if(!text) return;
+
+  const item = {
+    id: crypto.randomUUID(),
+    x: 120,
+    y: 120,
+    text: text,
+    size: 32,
+    color: tColor || "#000",
+    font: "Cairo"
   };
+
+  TextState.items.push(item);
+  TextState.activeId = item.id;
+
+  _redrawTeacherCanvas();
+};
   document.querySelectorAll("[data-color]").forEach(btn=>{
     btn.onclick=()=>{
       document.querySelectorAll("[data-color]").forEach(x=>x.classList.remove("active"));
