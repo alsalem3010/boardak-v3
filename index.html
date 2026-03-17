@@ -497,7 +497,34 @@ const State = {
   onlineCount:0,
   selectedStudentBoardId:null,
 };
+// ✅ Per-board objects memory (prevents objects leaking between boards)
+const BoardObjects = new Map();
+// key: boardId
+// value: { texts:[], images:[] }
 
+function loadObjectsForBoard(boardId){
+  const pack = BoardObjects.get(boardId) || { texts:[], images:[] };
+
+  // اربط عناصر هذه السبورة فقط
+  TextState.items = pack.texts;
+  ImageState.items = pack.images;
+
+  // صفّر فقط التحديد/السحب (بدون مسح العناصر)
+  TextState.activeId = null;
+  TextState.mode = null;
+  TextState.dragStart = null;
+
+  ImageState.activeId = null;
+  ImageState.mode = null;
+  ImageState.dragStart = null;
+}
+
+function saveObjectsForBoard(boardId){
+  BoardObjects.set(boardId, {
+    texts: TextState.items,
+    images: ImageState.items
+  });
+}
 function updateOnlineUI(){
   if(State.role==="teacher") $("tOnline").textContent = String(State.onlineCount||0);
   if(State.role==="student") $("sOnline").textContent = String(State.onlineCount||0);
@@ -533,10 +560,28 @@ async function loadSessionMeta(){
 }
 
 async function loadBoards(){
-  const { data, error } = await sb.from("boards").select("*").eq("room_id", State.room.id).order("sort_order",{ascending:true});
+  const { data, error } = await sb
+    .from("boards")
+    .select("*")
+    .eq("room_id", State.room.id)
+    .order("sort_order", { ascending: true });
+
   if(error) throw error;
+
   State.boards = data || [];
-  State.currentBoard = State.boards.find(b=>b.visible_to_students) || State.boards[0] || null;
+  State.currentBoard = State.boards.find(b => b.visible_to_students) || State.boards[0] || null;
+
+  // ✅ مهم: حمّل عناصر السبورة الحالية فورًا (حتى ما تبقى عناصر سبورة سابقة بالذاكرة)
+  if(State.currentBoard?.id){
+    loadObjectsForBoard(State.currentBoard.id);
+  } else {
+    // لو ما في سبورات، صفّر العرض فقط
+    TextState.items = [];
+    ImageState.items = [];
+    TextState.activeId = null;
+    ImageState.activeId = null;
+  }
+
   renderBoardTabs();
 }
 
@@ -729,15 +774,33 @@ function renderBoardTabs(){
     const btn = document.createElement("button");
     btn.className = "tool" + (State.currentBoard && State.currentBoard.id===b.id ? " active":"");
     btn.textContent = b.title || "Board";
-    btn.onclick = async ()=>{
-      if(State.role==="teacher"){
-        const { error } = await sb.rpc("set_visible_board_v3", { p_room_id: State.room.id, p_board_id: b.id });
-        if(error) console.warn(error);
-      }
-      State.currentBoard = b;
-      renderBoardTabs();
-      await refreshCanvas();
-    };
+   btn.onclick = async () => {
+
+  // ✅ 1) احفظ عناصر السبورة الحالية قبل التبديل
+  if(State.currentBoard?.id){
+    saveObjectsForBoard(State.currentBoard.id);
+  }
+
+  // ✅ 2) حدّث السبورة المرئية للطلاب (للمعلم فقط)
+  if(State.role==="teacher"){
+    const { error } = await sb.rpc("set_visible_board_v3", {
+      p_room_id: State.room.id,
+      p_board_id: b.id
+    });
+    if(error) console.warn(error);
+  }
+
+  // ✅ 3) بدّل السبورة الحالية
+  State.currentBoard = b;
+
+  // ✅ 4) حمّل عناصر هذه السبورة فقط (بدون تسريب)
+  if(State.currentBoard?.id){
+    loadObjectsForBoard(State.currentBoard.id);
+  }
+
+  renderBoardTabs();
+  await refreshCanvas();
+};
     wrap.appendChild(btn);
   });
 }
@@ -836,39 +899,136 @@ function initCanvas() {
     ctx.lineJoin = "round";
   });
 
- tCanvas.onpointerdown = (e) => {
+tCanvas.onpointerdown = (e) => {
   const p = pos(tCanvas, e);
 
   // ✅ إذا المؤشر: تعامل مع عناصر النص
-if (tTool === "pointer") {
-  
-  // ===== (A) افحص الصور أولاً =====
-let imgHitId = null;
-let imgHit = null;
+  if (tTool === "pointer") {
 
-for(let i = ImageState.items.length - 1; i >= 0; i--){
-  const im = ImageState.items[i];
-  const h = _hitTestImageItem(im, p.x, p.y);
-  if(h.inside || h.onHandle || h.onDelete){
-    imgHitId = im.id;
-    imgHit = h;
-    break;
-  }
-}
+    // ===== (A) افحص الصور أولاً =====
+    // ===== START IMAGE HIT TEST =====
+    let imgHitId = null;
+    let imgHit = null;
 
-if(imgHitId){
-  ImageState.activeId = imgHitId;
-  TextState.activeId = null;
+    for (let i = ImageState.items.length - 1; i >= 0; i--) {
+      const im = ImageState.items[i];
+      const h = _hitTestImageItem(im, p.x, p.y);
+      if (h.inside || h.onHandle || h.onDelete) {
+        imgHitId = im.id;
+        imgHit = h;
+        break;
+      }
+    }
+    // ===== END IMAGE HIT TEST =====
 
-  const im = ImageState.items.find(x => x.id === imgHitId);
+    // ===== START IMAGE ACTION =====
+    if (imgHitId) {
+      // ✅ 1) فعّل الصورة وحدها
+      ImageState.activeId = imgHitId;
+      TextState.activeId = null;
 
-  if(imgHit.onDelete){
-    ImageState.items = ImageState.items.filter(x => x.id !== imgHitId);
-    ImageState.activeId = null;
+      // ✅ 2) bring-to-front للصورة المحددة (حل التداخل)
+      const idx = ImageState.items.findIndex(x => x.id === imgHitId);
+      if (idx >= 0) {
+        const picked = ImageState.items.splice(idx, 1)[0];
+        ImageState.items.push(picked);
+      }
+
+      // بعد الرفع للأمام خذها من آخر القائمة
+      const im = ImageState.items[ImageState.items.length - 1];
+
+      // ✅ 3) حذف فقط عند X
+      if (imgHit.onDelete) {
+        ImageState.items = ImageState.items.filter(x => x.id !== imgHitId);
+        ImageState.activeId = null;
+        ImageState.mode = null;
+        ImageState.dragStart = null;
+        _redrawTeacherCanvas();
+        return;
+      }
+
+      // ✅ 4) بدء سحب/تحجيم
+      ImageState.dragStart = { x: p.x, y: p.y, ox: im.x, oy: im.y, ow: im.w, oh: im.h };
+      ImageState.mode = imgHit.onHandle ? "resize" : "move";
+
+      _redrawTeacherCanvas();
+      return;
+    }
+    // ===== END IMAGE ACTION =====
+
+    // ===== (B) افحص النصوص =====
+    // ===== START TEXT HIT TEST =====
+    const p2 = p; // نفس النقطة
+    let hitId = null;
+    let hit = null;
+
+    for (let i = TextState.items.length - 1; i >= 0; i--) {
+      const it2 = TextState.items[i];
+      const h2 = _hitTestTextItem(tCtx, it2, p2.x, p2.y);
+      if (h2.inside || h2.onHandle || h2.onDelete) {
+        hitId = it2.id;
+        hit = h2;
+        break;
+      }
+    }
+    // ===== END TEXT HIT TEST =====
+
+    // ===== START TEXT ACTION =====
+    TextState.activeId = hitId;
+
+    // ✅ bring-to-front للنص المحدد (حل مشكلة التداخل)
+    if (hitId) {
+      const idxT = TextState.items.findIndex(x => x.id === hitId);
+      if (idxT >= 0) {
+        const pickedT = TextState.items.splice(idxT, 1)[0];
+        TextState.items.push(pickedT);
+      }
+    }
+
+    // ✅ لا شيء محدد: فقط الغِ التحديد (إخفاء الإطار الأزرق) بدون تثبيت
+    if (!hitId) {
+      TextState.activeId = null;
+      TextState.mode = null;
+      TextState.dragStart = null;
+
+      ImageState.activeId = null;
+      ImageState.mode = null;
+      ImageState.dragStart = null;
+
+      _redrawTeacherCanvas();
+      return;
+    }
+
+    // ✅ بعد bring-to-front النص المختار صار آخر عنصر
+    const it = TextState.items[TextState.items.length - 1];
+
+    // ✅ حذف
+    if (hit.onDelete) {
+      TextState.items = TextState.items.filter(x => x.id !== hitId);
+      TextState.activeId = null;
+      TextState.mode = null;
+      TextState.dragStart = null;
+      _redrawTeacherCanvas();
+      return;
+    }
+
+    // ✅ بدء سحب/تحجيم
+    TextState.dragStart = { x: p2.x, y: p2.y, ox: it.x, oy: it.y, osize: it.size };
+    TextState.mode = hit.onHandle ? "resize" : "move";
+
     _redrawTeacherCanvas();
     return;
+    // ===== END TEXT ACTION =====
   }
 
+  // ✅ غير ذلك: الرسم الطبيعي
+  if (tTool === "pointer") return;
+
+  tDrawing = true;
+  inkCtx.beginPath();
+  inkCtx.moveTo(p.x, p.y);
+};
+  // ✅ 4) بدء سحب/تحجيم
   ImageState.dragStart = { x:p.x, y:p.y, ox:im.x, oy:im.y, ow:im.w, oh:im.h };
   ImageState.mode = imgHit.onHandle ? "resize" : "move";
 
@@ -890,11 +1050,19 @@ if(imgHitId){
     }
   }
 
-  TextState.activeId = hitId;
+TextState.activeId = hitId;
 
- // ✅ لا شيء محدد: ثبّت كل شيء واطفِ الإطار
+// ✅ bring-to-front للنص المحدد (حل مشكلة التداخل)
+if (hitId) {
+  const idxT = TextState.items.findIndex(x => x.id === hitId);
+  if (idxT >= 0) {
+    const pickedT = TextState.items.splice(idxT, 1)[0];
+    TextState.items.push(pickedT);
+  }
+}
+
+// ✅ لا شيء محدد: فقط الغِ التحديد (بدون تثبيت/commit)
 if (!hitId) {
-  // ✅ فقط الغِ التحديد (إخفاء الإطار الأزرق) بدون تثبيت
   TextState.activeId = null;
   TextState.mode = null;
   TextState.dragStart = null;
@@ -1233,9 +1401,8 @@ function _hitTestTextItem(ctx, item, px, py){
   return { inside, onHandle, onDelete };
   }
 function addImageObject(dataUrl){
-  // ❌ ممنوع commit هنا (حتى لا تختفي العناصر السابقة)
-
   const img = new Image();
+
   img.onload = () => {
     const maxScale = 0.6;
     const scale = Math.min(
@@ -1252,14 +1419,15 @@ function addImageObject(dataUrl){
       x: (tCanvas.width - w) / 2,
       y: (tCanvas.height - h) / 2,
       w, h,
-      img
+      img,
+      src: dataUrl, // ✅ مهم جدًا
     };
 
     // ✅ فقط أضف — لا تثبيت ولا مسح
     ImageState.items.push(item);
     ImageState.activeId = item.id;
 
-    // ادخل المؤشر مباشرة للتحريك (نفس سلوكك الحالي)
+    // ادخل المؤشر مباشرة للتحريك
     tTool = "pointer";
     $("tPointer")?.classList.add("active");
     $("tPen")?.classList.remove("active");
