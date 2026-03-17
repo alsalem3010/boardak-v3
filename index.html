@@ -464,11 +464,13 @@ function escapeHtml(s){
 ============================= */
   // Text objects (teacher only)
 const TextState = {
-  items: [],          // {id,x,y,text,size,color,align,font}
+  items: [],             // عناصر النص
   activeId: null,
-  mode: null,         // null | "move" | "resize"
-  handle: null,       // "br" only (bottom-right)
-  dragStart: null,    // {x,y, ox,oy, osize}
+  mode: null,            // null | "move" | "resize"
+  dragStart: null,
+
+  // ✅ Snapshot ثابت للخلفية أثناء وضع المؤشر (بدون نصوص)
+  backing: null,         // ImageData
 };
 const State = {
   role:null,
@@ -786,47 +788,52 @@ function initCanvas() {
   const p = pos(tCanvas, e);
 
   // ✅ إذا المؤشر: تعامل مع عناصر النص
-  if (tTool === "pointer") {
-    // افحص من الأعلى للأسفل (آخر عنصر فوق)
-    let hitId = null;
-    let hitHandle = false;
+if (tTool === "pointer") {
+  ensureTextBacking();
 
-    for (let i = TextState.items.length - 1; i >= 0; i--) {
-      const it = TextState.items[i];
-      const hit = _hitTestTextItem(tCtx, it, p.x, p.y);
-      if (hit.onHandle || hit.inside) {
-        hitId = it.id;
-        hitHandle = hit.onHandle;
-        break;
-      }
+  const p2 = p; // نفس النقطة
+  let hitId = null;
+  let hit = null;
+
+  for (let i = TextState.items.length - 1; i >= 0; i--) {
+    const it2 = TextState.items[i];
+    const h2 = _hitTestTextItem(tCtx, it2, p2.x, p2.y);
+    if (h2.inside || h2.onHandle || h2.onDelete) {
+      hitId = it2.id;
+      hit = h2;
+      break;
     }
+  }
 
-    TextState.activeId = hitId;
+  TextState.activeId = hitId;
 
-    if (!hitId) {
-      TextState.mode = null;
-      _redrawTeacherCanvas();
-      return;
-    }
-
-    const it = TextState.items.find(x => x.id === hitId);
-
-    TextState.dragStart = { x: p.x, y: p.y, ox: it.x, oy: it.y, osize: it.size };
-
-    if (hitHandle) {
-      TextState.mode = "resize";
-      tCanvas.classList.add("cursor-resize");
-      tCanvas.classList.remove("cursor-move");
-    } else {
-      TextState.mode = "move";
-      tCanvas.classList.add("cursor-move");
-      tCanvas.classList.remove("cursor-resize");
-    }
-
+  // ✅ لا شيء محدد
+  if (!hitId) {
+    TextState.mode = null;
+    TextState.dragStart = null;
     _redrawTeacherCanvas();
     return;
   }
 
+  const it = TextState.items.find(x => x.id === hitId);
+
+  // ✅ حذف
+  if (hit.onDelete) {
+    TextState.items = TextState.items.filter(x => x.id !== hitId);
+    TextState.activeId = null;
+    TextState.mode = null;
+    TextState.dragStart = null;
+    _redrawTeacherCanvas();
+    return;
+  }
+
+  // ✅ بدء سحب/تحجيم
+  TextState.dragStart = { x: p2.x, y: p2.y, ox: it.x, oy: it.y, osize: it.size };
+  TextState.mode = hit.onHandle ? "resize" : "move";
+
+  _redrawTeacherCanvas();
+  return;
+}
   // ✅ غير ذلك: الرسم الطبيعي
   if (tTool === "pointer") return;
   tDrawing = true;
@@ -867,16 +874,19 @@ tCanvas.onpointermove = (e) => {
 
     // hover cursor (بدون سحب)
     const hit = _hitTestTextItem(tCtx, it, p.x, p.y);
-    if (hit.onHandle) {
-      tCanvas.classList.add("cursor-resize");
-      tCanvas.classList.remove("cursor-move");
-    } else if (hit.inside) {
-      tCanvas.classList.add("cursor-move");
-      tCanvas.classList.remove("cursor-resize");
-    } else {
-      tCanvas.classList.remove("cursor-move","cursor-resize");
-      tCanvas.classList.add("cursor-pointer");
-    }
+   if (hit.onDelete) {
+  tCanvas.classList.remove("cursor-move","cursor-resize");
+  tCanvas.classList.add("cursor-pointer");
+} else if (hit.onHandle) {
+  tCanvas.classList.add("cursor-resize");
+  tCanvas.classList.remove("cursor-move");
+} else if (hit.inside) {
+  tCanvas.classList.add("cursor-move");
+  tCanvas.classList.remove("cursor-resize");
+} else {
+  tCanvas.classList.remove("cursor-move","cursor-resize");
+  tCanvas.classList.add("cursor-pointer");
+}
     return;
   }
 
@@ -975,6 +985,36 @@ function pos(canvas, e){
 
   return { x: ox * scaleX, y: oy * scaleY };
 }
+ function ensureTextBacking(){
+  if(!tCanvas || !tCtx) return;
+  if(!TextState.backing){
+    // Snapshot للخلفية الحالية (بدون إطار تحديد)
+    TextState.backing = tCtx.getImageData(0,0,tCanvas.width,tCanvas.height);
+  }
+}
+
+function commitTextsToCanvas(){
+  if(!tCanvas || !tCtx) return;
+  if(!TextState.backing) return;
+
+  // ارجع الخلفية
+  tCtx.putImageData(TextState.backing, 0, 0);
+
+  // ارسم كل النصوص (بدون تحديد)
+  const oldActive = TextState.activeId;
+  TextState.activeId = null;
+  (TextState.items || []).forEach(it => _drawTextItem(tCtx, it, false));
+  TextState.activeId = oldActive;
+
+  // ثبت الخلفية الجديدة (بعد دمج النصوص)
+  TextState.backing = tCtx.getImageData(0,0,tCanvas.width,tCanvas.height);
+
+  // صفّر النصوص (بعد التثبيت)
+  TextState.items = [];
+  TextState.activeId = null;
+  TextState.mode = null;
+  TextState.dragStart = null;
+} 
  function _measureTextBox(ctx, item){
   ctx.save();
   ctx.font = `${item.size}px Cairo`;
@@ -988,7 +1028,6 @@ function pos(canvas, e){
 function _drawTextItem(ctx, item, selected){
   const { w, h } = _measureTextBox(ctx, item);
 
-  // ✅ RTL: اجعل نقطة x هي "يمين النص"
   ctx.save();
   ctx.font = `${item.size}px Cairo`;
   ctx.fillStyle = item.color || "#000";
@@ -1000,7 +1039,6 @@ function _drawTextItem(ctx, item, selected){
 
   if(!selected) return;
 
-  // ✅ صندوق الحدود يحسب من اليمين لليسار
   const left = item.x - w - 6;
   const top  = item.y - 6;
   const bw   = w + 12;
@@ -1013,45 +1051,56 @@ function _drawTextItem(ctx, item, selected){
   ctx.strokeRect(left, top, bw, bh);
   ctx.setLineDash([]);
 
-  // handle bottom-right (يمين/أسفل للصندوق)
+  // ✅ زر حذف X (أعلى يسار)
+  ctx.fillStyle = "#dc2626";
+  ctx.fillRect(left, top, 16, 16);
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 12px Cairo";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("×", left + 8, top + 8);
+
+  // ✅ مقبض تكبير/تصغير (أسفل يمين)
   const hx = left + bw - 10;
   const hy = top  + bh - 10;
   ctx.fillStyle = "#2563eb";
   ctx.fillRect(hx, hy, 10, 10);
+
   ctx.restore();
 }
-
 function _hitTestTextItem(ctx, item, px, py){
   const { w, h } = _measureTextBox(ctx, item);
 
-  // ✅ RTL box
   const left = item.x - w - 6;
   const top  = item.y - 6;
   const right = item.x + 6;
   const bottom = top + (h + 12);
 
-  // handle bottom-right
+  // ✅ زر X (16x16 أعلى يسار)
+  const onDelete = (px >= left && px <= left+16 && py >= top && py <= top+16);
+
+  // ✅ handle أسفل يمين (10x10)
   const hx = right - 10;
   const hy = bottom - 10;
   const onHandle = (px >= hx && px <= hx+10 && py >= hy && py <= hy+10);
 
   const inside = (px >= left && px <= right && py >= top && py <= bottom);
 
-  return { inside, onHandle, w, h };
+  return { inside, onHandle, onDelete };
 }
 
 function _redrawTeacherCanvas(){
   if(!tCanvas || !tCtx) return;
 
-  // امسح ثم ارسم محتوى السبورة الأساسي
-  clearCanvas(tCanvas, tCtx);
-  const d = State.currentBoard?.content?.drawing;
-  if(d) loadDataUrlToCanvas(tCanvas, tCtx, d);
+  // ✅ ارجع للخلفية الثابتة أولاً
+  if(TextState.backing){
+    tCtx.putImageData(TextState.backing, 0, 0);
+  }
 
-  // ثم ارسم عناصر النص فوقه
+  // ✅ ثم ارسم النصوص مرة واحدة فقط
   const active = TextState.activeId;
   (TextState.items || []).forEach(it => _drawTextItem(tCtx, it, it.id === active));
-} 
+}
 function clearCanvas(canvas,ctx){ ctx.clearRect(0,0,canvas.width,canvas.height); }
 function loadDataUrlToCanvas(canvas,ctx,src){
   if(!src) return;
@@ -1388,13 +1437,25 @@ if(sSizeEl){
   };
 
 $("tPen").onclick = () => {
+  // ✅ لو كنت بالمؤشر وفيه نصوص: ثبّت النصوص أولاً
+  if(tTool === "pointer" && TextState.items.length){
+    commitTextsToCanvas();
+    queueSaveTeacher();
+  }
+
   tTool="pen";
   $("tPen").classList.add("active");
   $("tEraser").classList.remove("active");
   $("tPointer").classList.remove("active");
   $("tCanvas").style.cursor = "default";
 };
-  $("tEraser").onclick = () => {
+ $("tEraser").onclick = () => {
+  // ✅ لو كنت بالمؤشر وفيه نصوص: ثبّت النصوص أولاً
+  if(tTool === "pointer" && TextState.items.length){
+    commitTextsToCanvas();
+    queueSaveTeacher();
+  }
+
   tTool="eraser";
   $("tEraser").classList.add("active");
   $("tPen").classList.remove("active");
@@ -1406,20 +1467,29 @@ $("tPen").onclick = () => {
   $("tPointer").classList.add("active");
   $("tPen").classList.remove("active");
   $("tEraser").classList.remove("active");
-  $("tCanvas").style.cursor = "crosshair";
+
+  ensureTextBacking();
+  _redrawTeacherCanvas();
 };
  $("tText").onclick = () => {
   const text = prompt("اكتب النص");
   if(!text) return;
 
+  // ✅ ادخل وضع المؤشر تلقائيًا + ثبت الخلفية مرة واحدة
+  tTool = "pointer";
+  $("tPointer")?.classList.add("active");
+  $("tPen")?.classList.remove("active");
+  $("tEraser")?.classList.remove("active");
+
+  ensureTextBacking();
+
   const item = {
     id: crypto.randomUUID(),
-    x: 120,
+    x: 120,      // نقطة يمين النص (RTL)
     y: 120,
-    text: text,
+    text,
     size: 32,
-    color: tColor || "#000",
-    font: "Cairo"
+    color: tColor || "#000"
   };
 
   TextState.items.push(item);
