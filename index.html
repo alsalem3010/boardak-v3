@@ -147,10 +147,7 @@
 canvas.cursor-pointer{cursor:default}
 canvas.cursor-move{cursor:move}
 canvas.cursor-resize{cursor:nwse-resize}
-    catch{return __mem.get(k) ?? null;} },
-  setItem: (k,v)=>{ try{localStorage.setItem(k,v);}catch{__mem.set(k,v);} },
-  removeItem:(k)=>{ try{localStorage.removeItem(k);}catch{__mem.delete(k);} }
-};
+    
 
 /* Supabase client */
 const { createClient } = window.supabase;
