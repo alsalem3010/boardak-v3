@@ -608,9 +608,10 @@ function escapeHtml(s){
     .replaceAll("&","&amp;")
     .replaceAll("<","&lt;")
     .replaceAll(">","&gt;")
-    .replaceAll("\"","&quot;")
+    .replaceAll('"',"&quot;")
     .replaceAll("'","&#39;");
 }
+
 
 
 
@@ -848,7 +849,7 @@ async function ensureAnon(){
   const { data: sess } = await sb.auth.getSession();
   if(!sess.session){
     const { error } = await sb.auth.signInAnonymously();
-    if(error) throw error;
+    if(error){ console.error(error); try{ alert('AUTH ERROR: ' + (error.message||JSON.stringify(error))); }catch(_){}; throw error; }
   }
   const { data: u, error: uErr } = await sb.auth.getUser();
   if(uErr) throw uErr;
