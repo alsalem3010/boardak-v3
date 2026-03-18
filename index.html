@@ -2748,19 +2748,31 @@ const UI_TEXT = {
   document.documentElement.lang = lang;
   document.documentElement.dir  = (lang === 'en') ? 'ltr' : 'rtl';
 
-  // الصفحة الرئيسية
-  document.querySelector('#home h1')?.textContent = t.homeTitle;
-  document.querySelector('#home p')?.textContent  = t.homeDesc;
+  // HOME
+  const h1 = document.querySelector('#home h1');
+  if(h1) h1.textContent = t.homeTitle;
 
-  document.querySelector('#goStudent .entryTitle')?.textContent = t.studentTitle;
-  document.querySelector('#goStudent .entryDesc')?.textContent  = t.studentDesc;
+  const p = document.querySelector('#home p');
+  if(p) p.textContent = t.homeDesc;
 
-  document.querySelector('#goTeacher .entryTitle')?.textContent = t.teacherTitle;
-  document.querySelector('#goTeacher .entryDesc')?.textContent  = t.teacherDesc;
+  const sTitle = document.querySelector('#goStudent .entryTitle');
+  if(sTitle) sTitle.textContent = t.studentTitle;
+
+  const sDesc = document.querySelector('#goStudent .entryDesc');
+  if(sDesc) sDesc.textContent = t.studentDesc;
+
+  const tTitle = document.querySelector('#goTeacher .entryTitle');
+  if(tTitle) tTitle.textContent = t.teacherTitle;
+
+  const tDesc = document.querySelector('#goTeacher .entryDesc');
+  if(tDesc) tDesc.textContent = t.teacherDesc;
 
   // أزرار الرجوع
-  document.getElementById('backFromTeacher')?.textContent = t.back;
-  document.getElementById('backFromStudent')?.textContent = t.back;
+  const b1 = document.getElementById('backFromTeacher');
+  if(b1) b1.textContent = t.back;
+
+  const b2 = document.getElementById('backFromStudent');
+  if(b2) b2.textContent = t.back;
 }
 // ---- Evaluation cache (session + localStorage) ----
 function _evalKey(roomId, studentUserId, boardId){
