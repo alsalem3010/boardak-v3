@@ -1574,7 +1574,7 @@ function commitTextsToCanvas(){
 }
  function _measureTextBox(ctx, item){
   ctx.save();
-  ctx.font = `${item.size}px Cairo`;
+  ctx.font = `${item.size}px Cairo`;                  
   const metrics = ctx.measureText(item.text || "");
   const w = Math.max(20, metrics.width);
   const h = Math.max(20, item.size * 1.4);
@@ -1908,7 +1908,7 @@ console.log("BEFORE ASYNC");
 /* =============================
    Flows
 ============================= */
-async async function teacherStartFlow(){
+async function teacherStartFlow(){
   const teacherName = $("tName").value.trim();
   const code = $("tCode").value.trim();
   const title = $("tTitle").value.trim();
@@ -1957,7 +1957,7 @@ async async function teacherStartFlow(){
   }finally{ loading(false); }
 }
 
-async async function studentJoinFlow(){
+async function studentJoinFlow(){
   if(!State.user) State.user = await ensureAnon();
 
   const studentName = $("sName").value.trim();
@@ -2068,7 +2068,12 @@ if(sSizeEl){
     };
   }
 
-  $('langBtn').onclick = () => { const next = (_getAppLang() === 'ar') ? 'en' : 'ar'; _setAppLang(next); try{ applyAppLang(next); }catch(e){} showToast(next === 'ar' ? 'تم اختيار العربية' : 'English selected'); };");
+$('langBtn').onclick = () => {
+  const next = (_getAppLang() === 'ar') ? 'en' : 'ar';
+  _setAppLang(next);
+  try{ applyAppLang(next); }catch(e){}
+  showToast(next === 'ar' ? 'تم اختيار العربية' : 'English selected');
+};
   $("goTeacher").onclick = ()=> showView("teacherEntry");
   $("goStudent").onclick = ()=> showView("studentEntry");
   $("backFromTeacher").onclick = ()=> showView("home");
@@ -2827,7 +2832,7 @@ function getTeacherEvalPayload(){
   return { score, level, badge, note };
 }
 
-async async function saveTeacherEvalNow(){
+async function saveTeacherEvalNow(){
   if(State.role !== 'teacher') return;
   const sid = State.__selectedStudentUserId;
   const sbid = State.__selectedStudentBoardId;
@@ -3051,7 +3056,7 @@ function ensureTLangSelect(){
 
 // ---- Removed duplicate overrides (bindUI/teacherStartFlow/studentJoinFlow) to prevent runtime errors ----
 
-Ensure teacher pane exists after entering teacher view
+// Ensure teacher pane exists after entering teacher view
 window.addEventListener('load', ()=>{
   // if teacher enters later, ensure pane when view becomes visible
   const obs = new MutationObserver(()=>{
