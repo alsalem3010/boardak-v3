@@ -216,7 +216,123 @@ body{background: radial-gradient(1200px 600px at 10% 0%, #e0ecff 0%, rgba(224,23
 .evalRow.tight{width:auto;}
 
 .kbdHint{font-size:11px;color:var(--muted)}
+/* ===============================
+   Students Gallery (Grid View)
+================================ */
 
+/* شريط الأدوات */
+.studentsHeader{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+  margin:10px 0 8px;
+}
+
+.studentsHeader .seg{
+  display:flex;
+  gap:6px;
+}
+
+.studentsHeader input{
+  flex:1;
+  min-width:160px;
+}
+
+/* شبكة الطلبة */
+.studentsGrid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(170px, 1fr));
+  gap:10px;
+  max-height:560px;
+  overflow:auto;
+  padding-bottom:4px;
+}
+
+/* بطاقة الطالب */
+.studentTile{
+  background:#ffffff;
+  border:1px solid #eef2f7;
+  border-radius:14px;
+  padding:10px;
+  cursor:pointer;
+  transition:0.15s ease;
+}
+
+.studentTile:hover{
+  transform:translateY(-2px);
+  background:#f8fafc;
+}
+
+/* عند اختيار الطالب */
+.studentTile.active{
+  outline:2px solid var(--blue);
+}
+
+/* اسم الطالب */
+.studentTile .studentName{
+  font-weight:900;
+  font-size:14px;
+}
+
+/* شارات الحالة */
+.badgeRow{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  margin-top:6px;
+}
+
+.badgeMini{
+  font-size:11px;
+  font-weight:900;
+  padding:4px 8px;
+  border-radius:999px;
+  background:var(--soft);
+  color:#1e293b;
+}
+
+.badgeMini.help{
+  background:#fff7ed;
+  border:1px solid #fed7aa;
+  color:#7c2d12;
+}
+
+.badgeMini.done{
+  background:#eafff1;
+  border:1px solid #bbf7d0;
+  color:#166534;
+}
+
+.badgeMini.none{
+  background:#f1f5f9;
+  border:1px solid #e2e8f0;
+  color:#475569;
+}
+
+/* معاينة مصغرة */
+.studentThumb{
+  height:110px;
+  margin-top:8px;
+  border-radius:12px;
+  border:1px dashed #cbd5e1;
+  background:#f8fafc;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+
+.studentThumb img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+/* القائمة التقليدية (احتياطيًا) */
+.students.hidden{
+  display:none;
+}
 </style>
 
   <!-- MathLive (Equation Editor) -->
@@ -483,15 +599,39 @@ body{background: radial-gradient(1200px 600px at 10% 0%, #e0ecff 0%, rgba(224,23
           <div class="small" id="tHint"></div>
         </div>
 
-        <div class="glass side">
-          <h3>الطلاب داخل الغرفة</h3>
-          <div id="studentsList" class="students"></div>
+        <h3>الطلاب داخل الغرفة</h3>
 
-          <div style="margin-top:12px">
-            <h3>معاينة (المعلم/طالب)</h3>
-            <div id="teacherPreview" class="previewBox"><span>لا يوجد محتوى بعد</span></div>
-          </div>
-        </div>
+<!-- أدوات التحكم -->
+<div class="studentsHeader">
+  <div class="seg">
+    <button class="tool" id="studentsViewList" type="button">
+      قائمة
+    </button>
+
+    <button class="tool active" id="studentsViewGrid" type="button">
+      شبكة
+    </button>
+  </div>
+
+  <input
+    id="studentSearch"
+    type="text"
+    placeholder="بحث عن طالب..."
+  />
+
+  <select id="studentFilter">
+    <option value="all">الكل</option>
+    <option value="help">🆘 طلب مساعدة</option>
+    <option value="done">✅ منجز</option>
+    <option value="noWork">⏳ بدون عمل</option>
+  </select>
+</div>
+
+<!-- العرض الشبكي -->
+<div id="studentsGrid" class="studentsGrid"></div>
+
+<!-- العرض بالقائمة (مخفي مؤقتًا) -->
+<div id="studentsList" class="students hidden"></div>
       </div>
     </section>
 
@@ -1007,89 +1147,202 @@ function subscribePresence(roomId){
    Teacher: students list + overlay preview (CLEAN)
 ============================= */
 async function renderStudentsBoards(){
+
+  // 0) اضمن وجود عناصر الواجهة (طلاب/شبكة/بحث/فلتر)
+  const gridWrap = document.getElementById('studentsGrid');
+  const listWrap = document.getElementById('studentsList');
+  if(!gridWrap || !listWrap) return;
+
+  // 1) Bind أزرار الشبكة/القائمة + البحث + الفلترة مرة واحدة
+  if(!window.__galleryBound){
+    window.__galleryBound = true;
+
+    const listBtn = document.getElementById('studentsViewList');
+    const gridBtn = document.getElementById('studentsViewGrid');
+    const q = document.getElementById('studentSearch');
+    const f = document.getElementById('studentFilter');
+
+    const setMode = (mode)=>{
+      window.__studentsMode = mode;
+      listBtn?.classList.toggle('active', mode==='list');
+      gridBtn?.classList.toggle('active', mode==='grid');
+      listWrap.classList.toggle('hidden', mode!=='list');
+      gridWrap.classList.toggle('hidden', mode!=='grid');
+    };
+
+    listBtn && (listBtn.onclick = ()=>setMode('list'));
+    gridBtn && (gridBtn.onclick = ()=>setMode('grid'));
+
+    const reb = ()=>{
+      clearTimeout(window.__rebT);
+      window.__rebT = setTimeout(()=>renderStudentsBoards().catch(console.warn), 120);
+    };
+    q && (q.oninput = reb);
+    f && (f.onchange = reb);
+
+    setMode(window.__studentsMode || 'grid');
+  }
+
+  // 2) جلب الطلبة
   const { data: members, error: mErr } = await sb.from("room_members")
     .select("user_id, display_name, joined_at")
     .eq("room_id", State.room.id)
     .eq("role","student")
     .order("joined_at",{ascending:true});
-  if(mErr) { console.warn(mErr); return; }
 
+  if(mErr){ console.warn(mErr); return; }
+
+  // 3) جلب أعمال الطلبة (كلها) — عشان ما يختفي طالب لأنه كان على سبورة ثانية
   const { data: sbs, error: sbErr } = await sb.from("student_boards")
     .select("id, student_user_id, board_id, board_data, status, help_requested, certificate_granted, updated_at")
     .eq("room_id", State.room.id);
-  if(sbErr) { console.warn(sbErr); return; }
 
-  const map = new Map();
+  if(sbErr){ console.warn(sbErr); return; }
+
+  // Cache للتقارير عندك
+  State.__membersCache = members || [];
+  State.__studentBoardsCache = sbs || [];
+
+  // 4) خريطة: آخر عمل لكل طالب حسب updated_at
+  const latest = new Map();
   (sbs||[]).forEach(row=>{
-    if(State.currentBoard?.id && row.board_id && row.board_id !== State.currentBoard.id) return;
-    const prev = map.get(row.student_user_id);
-    if(!prev) return map.set(row.student_user_id, row);
-    const prevT = prev.updated_at ? new Date(prev.updated_at).getTime() : 0;
-    const curT  = row.updated_at  ? new Date(row.updated_at).getTime()  : 0;
-    if(curT >= prevT) map.set(row.student_user_id, row);
+    const prev = latest.get(row.student_user_id);
+    const prevT = prev?.updated_at ? new Date(prev.updated_at).getTime() : 0;
+    const curT  = row.updated_at ? new Date(row.updated_at).getTime() : 0;
+    if(!prev || curT >= prevT) latest.set(row.student_user_id, row);
   });
 
-  const wrap = $("studentsList");
-  wrap.innerHTML = "";
+  // 5) تطبيق البحث والفلترة
+  const qv = (document.getElementById('studentSearch')?.value || '').trim().toLowerCase();
+  const fv = (document.getElementById('studentFilter')?.value || 'all');
+
+  const boardTitleById = (bid)=>{
+    const b = (State.boards||[]).find(x=>x.id===bid);
+    return b?.title || '';
+  };
+
+  const passFilter = (mem, row)=>{
+    if(qv){
+      const name = (mem.display_name||'').toLowerCase();
+      if(!name.includes(qv)) return false;
+    }
+    if(fv==='help') return !!row?.help_requested;
+    if(fv==='done') return row?.status==='done';
+    if(fv==='noWork') return !(row && row.board_data);
+    return true;
+  };
+
+  // 6) تنظيف الواجهات
+  gridWrap.innerHTML = '';
+  listWrap.innerHTML = '';
 
   if(!members?.length){
-    wrap.innerHTML = `<div class="studentCard">لا يوجد طلاب بعد</div>`;
+    gridWrap.innerHTML = '<div class="studentCard">لا يوجد طلاب بعد</div>';
+    listWrap.innerHTML = '<div class="studentCard">لا يوجد طلاب بعد</div>';
     return;
   }
 
-  members.forEach(mem=>{
-    const sbRow = map.get(mem.user_id);
-    const help = sbRow?.help_requested ? "🆘" : "";
-    const status = sbRow?.status || "—";
+  // 7) اختيار طالب = تحديث لوحة التقييم/المعاينة (إن كانت موجودة)
+  const selectStudent = (mem, row)=>{
+    State.__selectedStudentUserId = mem.user_id;
+    State.__selectedStudentName = mem.display_name;
+    State.__selectedStudentBoardId = row?.id || null;
 
-    const card = document.createElement("div");
-    card.className = "studentCard";
-    card.innerHTML = `
-      <div class="studentRow">
-        <div style="font-weight:900">${escapeHtml(mem.display_name)} ${help}</div>
-        <button class="btn btn-soft btn-sm">عرض</button>
+    // عنوان السبورة التي عليها آخر عمل (لو غير الحالية)
+    const bt = row?.board_id ? boardTitleById(row.board_id) : '';
+    const onOtherBoard = (State.currentBoard?.id && row?.board_id && row.board_id !== State.currentBoard.id);
+
+    const meta = [];
+    meta.push('الحالة: ' + (row?.status || '—'));
+    if(row?.help_requested) meta.push('🆘');
+    if(row?.certificate_granted) meta.push('🎓');
+    if(onOtherBoard && bt) meta.push('على: ' + bt);
+
+    // لو عندك Student Pane موجود
+    const nameEl = document.getElementById('selectedStudentName');
+    const metaEl = document.getElementById('selectedStudentMeta');
+    const prevEl = document.getElementById('selectedStudentPreview');
+
+    if(nameEl) nameEl.textContent = mem.display_name;
+    if(metaEl) metaEl.textContent = meta.join(' | ');
+
+    if(prevEl){
+    prevEl.innerHTML = row?.board_data
+  ? `<img src="${row.board_data}" alt="student work" decoding="async" fetchpriority="high" />`
+  : '<span>لا يوجد محتوى بعد</span>';
+
+    // إبراز البطاقة المختارة
+    document.querySelectorAll('.studentTile').forEach(x=>x.classList.remove('active'));
+    document.querySelector(`[data-stu="${mem.user_id}"]`)?.classList.add('active');
+
+    // ربط التقييم (لو دوالك موجودة)
+    try{
+      const cached = (typeof _loadEval === 'function')
+        ? _loadEval(State.room.id, mem.user_id, State.currentBoard?.id)
+        : null;
+      if(typeof applyTeacherEvalToControls === 'function') applyTeacherEvalToControls(cached);
+      if(typeof bindTeacherEvalControls === 'function') bindTeacherEvalControls();
+    }catch(e){}
+  };
+
+  // 8) بناء البطاقات
+  members.forEach(mem=>{
+    const row = latest.get(mem.user_id) || null;
+    if(!passFilter(mem,row)) return;
+
+    const help = !!row?.help_requested;
+    const status = row?.status || '—';
+    const hasImg = !!row?.board_data;
+
+    const bt = row?.board_id ? boardTitleById(row.board_id) : '';
+    const onOtherBoard = (State.currentBoard?.id && row?.board_id && row.board_id !== State.currentBoard.id);
+
+    // GRID
+    const tile = document.createElement('div');
+    tile.className = 'studentTile';
+    tile.setAttribute('data-stu', mem.user_id);
+
+    tile.innerHTML = `
+      <div class="studentName">${escapeHtml(mem.display_name)}</div>
+      <div class="badgeRow">
+        ${help ? '<span class="badgeMini help">🆘</span>' : ''}
+        ${status==='done' ? '<span class="badgeMini done">منجز</span>' : ''}
+        ${(!hasImg) ? '<span class="badgeMini none">بدون عمل</span>' : ''}
+        ${row?.certificate_granted ? '<span class="badgeMini">🎓</span>' : ''}
+        ${onOtherBoard && bt ? `<span class="badgeMini">${escapeHtml(bt)}</span>` : ''}
       </div>
-      <div class="small">الحالة: ${escapeHtml(status)} | شهادة: ${sbRow?.certificate_granted ? "✅" : "—"}</div>
+      <div class="studentThumb">
+       ${hasImg ? `<img src="${row.board_data}" loading="lazy" decoding="async" fetchpriority="low" alt="student work" />` : '<span class="small">لا يوجد</span>'}
+      </div>
     `;
 
-    card.querySelector("button").onclick = () => {
-      const overlay = $("teacherOverlay");
-      const imgEl = $("teacherOverlayImg");
-      const msgEl = $("teacherOverlayMsg");
-      const titleEl = $("teacherOverlayTitle");
+    tile.onclick = ()=>selectStudent(mem,row);
+    gridWrap.appendChild(tile);
 
-      if(!overlay || !imgEl || !msgEl || !titleEl){
-        console.error("Overlay elements missing");
-        showToast("خطأ في واجهة العرض");
-        return;
-      }
-
-      State.selectedStudentBoardId = sbRow?.id || null;
-
-      titleEl.textContent = `عرض سبورة: ${mem.display_name}`;
-      msgEl.textContent = "";
-      imgEl.src = "";
-
-      if(!sbRow?.id){
-        msgEl.textContent = "لا توجد سبورة لهذا الطالب بعد";
-      }else if(!sbRow.board_data){
-        msgEl.textContent = "السبورة فارغة حاليًا";
-      }else{
-        imgEl.src = sbRow.board_data;
-      }
-
-      overlay.classList.remove("hidden");
-
-      const prev = $("teacherPreview");
-      if(prev){
-        prev.innerHTML = sbRow?.board_data
-          ? `<img src="${sbRow.board_data}" alt="student preview">`
-          : `<span>لا يوجد محتوى بعد</span>`;
-      }
-    };
-
-    wrap.appendChild(card);
+    // LIST (اختياري)
+    const card = document.createElement('div');
+    card.className = 'studentCard';
+    card.innerHTML = `
+      <div class="studentRow">
+        <div style="font-weight:900">${escapeHtml(mem.display_name)} ${help?'🆘':''}</div>
+        <button class="btn btn-soft btn-sm" type="button">عرض</button>
+      </div>
+      <div class="small">
+        الحالة: ${escapeHtml(status)} | ${hasImg?'🖼️ يوجد عمل':'— لا يوجد عمل'}
+        ${onOtherBoard && bt ? `| على: ${escapeHtml(bt)}` : ''}
+        | شهادة: ${row?.certificate_granted?'✅':'—'}
+      </div>
+    `;
+    card.onclick = ()=>selectStudent(mem,row);
+    card.querySelector('button').onclick = (e)=>{ e.stopPropagation(); selectStudent(mem,row); };
+    listWrap.appendChild(card);
   });
+
+  // 9) اختيار أول طالب تلقائيًا (مرة واحدة)
+  if(!State.__selectedStudentUserId){
+    const first = members.find(m=>passFilter(m, latest.get(m.user_id)||null));
+    if(first) selectStudent(first, latest.get(first.user_id)||null);
+  }
 }
 
 /* =============================
@@ -2019,11 +2272,20 @@ if(sSizeEl){
     };
   }
 
-  $("langBtn").onclick = ()=> showToast("i18n لاحقًا (جاهز)");
+$("langBtn").onclick = () => {
+  const next = (_getAppLang() === 'ar') ? 'en' : 'ar';
+  _setAppLang(next);
+  applyAppLang(next);
+  showToast(next === 'ar' ? 'تم اختيار العربية' : 'English selected');
+};
   $("goTeacher").onclick = ()=> showView("teacherEntry");
   $("goStudent").onclick = ()=> showView("studentEntry");
   $("backFromTeacher").onclick = ()=> showView("home");
   $("backFromStudent").onclick = ()=> showView("home");
+
+ // ✅ طبّق اللغة مباشرة بعد ما يتجهز UI
+  try{ applyAppLang(_getAppLang()); }catch(e){}
+}
 
   $("teacherStart").onclick = teacherStartFlow;
   $("studentJoin").onclick = studentJoinFlow;
@@ -2456,7 +2718,50 @@ function _getAppLang(){
 function _setAppLang(v){
   safeStorage.setItem('boardak_lang', (v==='en') ? 'en' : 'ar');
 }
+// ===============================
+// UI Texts (AR / EN)
+// ===============================
+const UI_TEXT = {
+  ar: {
+    homeTitle: 'بوردك | Boardak',
+    homeDesc: 'سوبرتك الذكية - منصة تعليمية هادئة للشرح والمتابعة والتقييم',
+    studentTitle: 'دخول الطالب',
+    studentDesc: 'ادخل بالكود أو الرابط وابدأ العمل على سبورتك.',
+    teacherTitle: 'دخول المعلم',
+    teacherDesc: 'أنشئ الغرفة بسرعة وابدأ الشرح مباشرة.',
+    back: 'رجوع'
+  },
+  en: {
+    homeTitle: 'Boardak',
+    homeDesc: 'Your Smart Board – A calm platform for teaching, tracking and evaluation',
+    studentTitle: 'Student',
+    studentDesc: 'Join with a code or link and start working.',
+    teacherTitle: 'Teacher',
+    teacherDesc: 'Create a room and start teaching instantly.',
+    back: 'Back'
+  }
+};
+  function applyAppLang(lang){
+  const t = UI_TEXT[lang] || UI_TEXT.ar;
 
+  // اتجاه الصفحة
+  document.documentElement.lang = lang;
+  document.documentElement.dir  = (lang === 'en') ? 'ltr' : 'rtl';
+
+  // الصفحة الرئيسية
+  document.querySelector('#home h1')?.textContent = t.homeTitle;
+  document.querySelector('#home p')?.textContent  = t.homeDesc;
+
+  document.querySelector('#goStudent .entryTitle')?.textContent = t.studentTitle;
+  document.querySelector('#goStudent .entryDesc')?.textContent  = t.studentDesc;
+
+  document.querySelector('#goTeacher .entryTitle')?.textContent = t.teacherTitle;
+  document.querySelector('#goTeacher .entryDesc')?.textContent  = t.teacherDesc;
+
+  // أزرار الرجوع
+  document.getElementById('backFromTeacher')?.textContent = t.back;
+  document.getElementById('backFromStudent')?.textContent = t.back;
+}
 // ---- Evaluation cache (session + localStorage) ----
 function _evalKey(roomId, studentUserId, boardId){
   return `boardak_eval:${roomId}:${boardId}:${studentUserId}`;
@@ -3046,12 +3351,13 @@ try{
       const current = (typeof _getAppLang === 'function') ? _getAppLang() : 'ar';
       if(tLang) tLang.value = current;
       if(langBtn && typeof _setAppLang === 'function'){
-        langBtn.onclick = () => {
-          const next = (_getAppLang()==='ar') ? 'en' : 'ar';
-          _setAppLang(next);
-          if(tLang) tLang.value = next;
-          showToast(next==='ar' ? 'تم اختيار العربية' : 'English selected');
-        };
+       langBtn.onclick = () => {
+  const next = (_getAppLang()==='ar') ? 'en' : 'ar';
+  _setAppLang(next);
+  try{ applyAppLang(next); }catch(e){}
+  if(tLang) tLang.value = next;
+  showToast(next==='ar' ? 'تم اختيار العربية' : 'English selected');
+};
       }
       if(State && State.role==='student'){
         try{ ensureEvalChannel && ensureEvalChannel(); }catch(e){}
