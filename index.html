@@ -1018,6 +1018,9 @@ async function renderStudentsBoards(){
     .select("id, student_user_id, board_id, board_data, status, help_requested, certificate_granted, updated_at")
     .eq("room_id", State.room.id);
   if(sbErr) { console.warn(sbErr); return; }
+  // ✅ حفظ cache للتقارير
+State.__studentBoardsCache = sbs || [];
+State.__membersCache = members || [];
 
   const map = new Map();
   (sbs||[]).forEach(row=>{
@@ -1053,6 +1056,24 @@ async function renderStudentsBoards(){
     `;
 
     card.querySelector("button").onclick = () => {
+      // ✅ ربط اختيار الطالب
+State.__selectedStudentUserId = mem.user_id;
+State.__selectedStudentBoardId = sbRow?.id || null;
+State.__selectedStudentName = mem.display_name;
+
+// ✅ تحديث عنوان اللوحة
+const nameEl = document.getElementById('selectedStudentName');
+const metaEl = document.getElementById('selectedStudentMeta');
+if(nameEl) nameEl.textContent = mem.display_name;
+if(metaEl) metaEl.textContent = sbRow?.status || '—';
+
+// ✅ عرض عمل الطالب في اللوحة الجانبية
+const prev = document.getElementById('selectedStudentPreview');
+if(prev){
+  prev.innerHTML = sbRow?.board_data
+    ? `<img src="${sbRow.board_data}" />`
+    : `<span>لا يوجد رسم بعد</span>`;
+}
       // ✅ احفظ الطالب المختار (مفقود سابقًا)
 State.__selectedStudentUserId = mem.user_id;
 State.__selectedStudentBoardId = sbRow?.id || null;
@@ -2009,7 +2030,15 @@ async function studentJoinFlow(){
       p_student_name: studentName
     });
     if(error) throw error;
+const joinedRoomId = (Array.isArray(data) ? data[0] : data).room_id;
 
+await sb.from('room_members').insert({
+  room_id: joinedRoomId,
+  user_id: State.user.id,
+  role: 'student',
+  display_name: studentName,
+  joined_at: new Date().toISOString()
+});
     joinedOk = true;
     await sb.from('room_members').insert({
   room_id: (Array.isArray(data) ? data[0] : data).room_id,
