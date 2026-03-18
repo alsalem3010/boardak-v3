@@ -5,6 +5,25 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Boardak | بوردك</title>
 
+<script>
+// Minimal navigation (safe for GitHub Pages)
+window.addEventListener('DOMContentLoaded', () => {
+  const show = (id) => {
+    ['home','teacherEntry','studentEntry','teacherRoom','studentRoom'].forEach(v=>{
+      const el=document.getElementById(v);
+      if(el) el.classList.add('hidden');
+    });
+    const el=document.getElementById(id);
+    if(el) el.classList.remove('hidden');
+  };
+  document.getElementById('goTeacher')?.addEventListener('click', ()=>show('teacherEntry'));
+  document.getElementById('goStudent')?.addEventListener('click', ()=>show('studentEntry'));
+  document.getElementById('backFromTeacher')?.addEventListener('click', ()=>show('home'));
+  document.getElementById('backFromStudent')?.addEventListener('click', ()=>show('home'));
+});
+</script>
+
+
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3140,6 +3159,17 @@ window.addEventListener('load', ()=>{
 
 
 // v3.1 publish guard
+
+// Boardak boot check
+window.addEventListener('load', ()=>{
+  setTimeout(()=>{
+    // if click handlers didn't bind, user will still have navigation via minimal script
+    if(typeof window.sb === 'undefined' && typeof window.supabase === 'undefined'){
+      console.warn('Supabase library not loaded');
+    }
+  }, 500);
+});
+
 window.__boardak_boot_ok = false;
 try{ window.addEventListener('error', (e)=>{ console.error('Boardak runtime error:', e?.message||e); }); }catch(_){}
 window.addEventListener("load", () => { try{ boot(); } catch(e){ console.error(e); document.getElementById('home')?.classList.remove('hidden'); } });
