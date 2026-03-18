@@ -3042,15 +3042,7 @@ function ensureTLangSelect(){
 // ---- Override teacherStartFlow to pass selected language to room creation ----
 
 
-// ---- Hook studentJoinFlow to subscribe eval channel ----
-    }
-  }catch(e){ console.warn(e); }
-}
 
-
-// ===============================
-// SAFE Enhancements Wiring (no function re-declare / avoids recursion)
-// ===============================
 try{
   const __bindUI0 = bindUI;
   bindUI = function(){
