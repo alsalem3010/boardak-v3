@@ -230,7 +230,6 @@ body{background: radial-gradient(1200px 600px at 10% 0%, #e0ecff 0%, rgba(224,23
       tex: { packages: { '[+]': ['ams'] } },
       svg: { fontCache: 'none' }
     };
-    document.getElementById("teacherStart").onclick = teacherStartFlow;
   </script>
   <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 
@@ -3116,10 +3115,10 @@ window.addEventListener("load", () => { try{ boot(); } catch(e){ console.error(e
       return;
     }
 
-    if(!window.sb){
-      alert("Supabase غير محمّل");
-      return;
-    }
+    if(!sb){
+  alert("Supabase غير محمّل");
+  return;
+}
 
     if(!State.user){
       State.user = await ensureAnon();
