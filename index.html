@@ -1053,6 +1053,24 @@ async function renderStudentsBoards(){
     `;
 
     card.querySelector("button").onclick = () => {
+      // ✅ احفظ الطالب المختار (مفقود سابقًا)
+State.__selectedStudentUserId = mem.user_id;
+State.__selectedStudentBoardId = sbRow?.id || null;
+State.__selectedStudentName = mem.display_name;
+
+// ✅ حدّث عنوان لوحة الطالب الجانبية
+const nameEl = document.getElementById('selectedStudentName');
+const metaEl = document.getElementById('selectedStudentMeta');
+if(nameEl) nameEl.textContent = mem.display_name;
+if(metaEl) metaEl.textContent = sbRow?.status || '—';
+
+// ✅ اعرض عمل الطالب في اللوحة الجانبية
+const prevBox = document.getElementById('selectedStudentPreview');
+if(prevBox){
+  prevBox.innerHTML = sbRow?.board_data
+    ? `${sbRow.board_data}`
+    : `<span>لا يوجد رسم بعد</span>`;
+}
       const overlay = $("teacherOverlay");
       const imgEl = $("teacherOverlayImg");
       const msgEl = $("teacherOverlayMsg");
