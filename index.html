@@ -3138,6 +3138,10 @@ window.addEventListener('load', ()=>{
   obs.observe(document.body, {subtree:true, attributes:true, attributeFilter:['class']});
 });
 
+
+// v3.1 publish guard
+window.__boardak_boot_ok = false;
+try{ window.addEventListener('error', (e)=>{ console.error('Boardak runtime error:', e?.message||e); }); }catch(_){}
 window.addEventListener("load", () => { try{ boot(); } catch(e){ console.error(e); document.getElementById('home')?.classList.remove('hidden'); } });
 </script>
 
