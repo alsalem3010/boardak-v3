@@ -7,6 +7,8 @@
 
 <script>
 // Minimal navigation (safe for GitHub Pages)
+window.boardakMainBound = false;
+
 window.addEventListener('DOMContentLoaded', () => {
   const show = (id) => {
     ['home','teacherEntry','studentEntry','teacherRoom','studentRoom'].forEach(v=>{
@@ -606,9 +608,11 @@ function escapeHtml(s){
     .replaceAll("&","&amp;")
     .replaceAll("<","&lt;")
     .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
+    .replaceAll("\"","&quot;")
     .replaceAll("'","&#39;");
 }
+
+
 
 
 // ===== Equation helpers (MathLive + MathJax) =====
@@ -1925,6 +1929,7 @@ async function teacherStartFlow(){
     console.error(e);
     $("tMsg").textContent = e?.message || JSON.stringify(e);
     showToast("تعذر إنشاء الغرفة");
+  try{ alert('تعذر إنشاء الغرفة\n' + (e?.message || e)); }catch(_){}
   }finally{ loading(false); }
 }
 
@@ -1997,6 +2002,7 @@ async function studentJoinFlow(){
       showToast("مشكلة تسجيل الدخول");
     else
       showToast("تعذّر الدخول");
+  try{ alert('تعذّر الدخول\n' + (msg || e?.message || e)); }catch(_){}
 
   } finally {
     loading(false);
@@ -2006,6 +2012,7 @@ async function studentJoinFlow(){
    Button bindings (CLEAN)
 ============================= */
 function bindUI(){
+  window.boardakMainBound = true;
   
   const tSizeEl = $("tSize");
 if(tSizeEl){
