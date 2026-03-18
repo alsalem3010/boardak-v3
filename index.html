@@ -230,6 +230,7 @@ body{background: radial-gradient(1200px 600px at 10% 0%, #e0ecff 0%, rgba(224,23
       tex: { packages: { '[+]': ['ams'] } },
       svg: { fontCache: 'none' }
     };
+    document.getElementById("teacherStart").onclick = teacherStartFlow;
   </script>
   <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 
@@ -1902,60 +1903,6 @@ function applySessionMetaUI(){
 /* =============================
    Flows
 ============================= */
-async function teacherStartFlow(){
-  const teacherName = $("tName").value.trim();
-  const code = $("tCode").value.trim();
-  const title = $("tTitle").value.trim();
-  if(!teacherName){ showToast("اكتب اسم المعلم"); return; }
-
-  loading(true);
-  if(!State.user) State.user = await ensureAnon();
-  try{
-    const { data, error } = await sb.rpc("create_room_v3", {
-      p_code: code || null,
-      p_teacher_name: teacherName,
-      p_title: title || null,
-      p_lang: "ar"
-    });
-    if(error) throw error;
-
-    State.role="teacher";
-    State.room=data;
-    State.roomCode=data.code;
-
-    $("tRoomTitle").textContent = data.title || "درس";
-    $("tRoomCode").textContent = data.code;
-    $("tRoomTeacher").textContent = teacherName;
-
-    initCanvas();
-
-    // Show teacher room immediately (do not block on async init)
-    showView('teacherRoom');
-    document.getElementById('liveText') && (document.getElementById('liveText').textContent = 'مباشر');
-
-    // Async init with timeouts
-    await withTimeout(loadSessionMeta(), 4000, 'loadSessionMeta');
-    await withTimeout(loadBoards(), 4000, 'loadBoards');
-    await withTimeout(refreshCanvas(), 3000, 'refreshCanvas');
-    renderTeacherPreview();
-    subscribeDb(data.id);
-    subscribePresence(data.id);
-    try{ ensureEvalChannel && ensureEvalChannel(); }catch(e){}
-    await withTimeout(renderStudentsBoards(), 4000, 'renderStudentsBoards');
-
-    const url=new URL(location.href);
-    url.searchParams.set("room", data.code);
-    history.replaceState({}, "", url.toString());
-
-    showView("teacherRoom");
-    $("liveText").textContent = "مباشر";
-  }catch(e){
-    console.error(e);
-    $("tMsg").textContent = e?.message || JSON.stringify(e);
-    showToast("تعذر إنشاء الغرفة");
-  try{ alert('تعذر إنشاء الغرفة\n' + (e?.message || e)); }catch(_){}
-  }finally{ loading(false); }
-}
 
 async function studentJoinFlow(){
   if(!State.user) State.user = await ensureAnon();
@@ -3111,64 +3058,7 @@ function bindUI(){
 }
 
 // ---- Override teacherStartFlow to pass selected language to room creation ----
-async function teacherStartFlow(){
-  const teacherName = document.getElementById('tName').value.trim();
-  const code = document.getElementById('tCode').value.trim();
-  const title = document.getElementById('tTitle').value.trim();
-  const lang = document.getElementById('tLang')?.value || _getAppLang();
-  _setAppLang(lang);
 
-  if(!teacherName){ showToast('اكتب اسم المعلم'); return; }
-  loading(true);
-  if(!State.user) State.user = await ensureAnon();
-  try{
-    const { data, error } = await sb.rpc('create_room_v3', {
-      p_code: code || null,
-      p_teacher_name: teacherName,
-      p_title: title || null,
-      p_lang: lang
-    });
-    if(error) throw error;
-
-    State.role='teacher';
-    State.room=data;
-    State.roomCode=data.code;
-    document.getElementById('tRoomTitle').textContent = data.title || 'درس';
-    document.getElementById('tRoomCode').textContent = data.code;
-    document.getElementById('tRoomTeacher').textContent = teacherName;
-
-    initCanvas();
-
-    // Show teacher room immediately (do not block on async init)
-    showView('teacherRoom');
-    document.getElementById('liveText') && (document.getElementById('liveText').textContent = 'مباشر');
-
-    // Async init with timeouts
-    await withTimeout(loadSessionMeta(), 4000, 'loadSessionMeta');
-    await withTimeout(loadBoards(), 4000, 'loadBoards');
-    await withTimeout(refreshCanvas(), 3000, 'refreshCanvas');
-    renderTeacherPreview();
-    subscribeDb(data.id);
-    subscribePresence(data.id);
-    try{ ensureEvalChannel && ensureEvalChannel(); }catch(e){}
-    await withTimeout(renderStudentsBoards(), 4000, 'renderStudentsBoards');
-
-    const url=new URL(location.href);
-    url.searchParams.set('room', data.code);
-    history.replaceState({}, '', url.toString());
-    showView('teacherRoom');
-    document.getElementById('liveText').textContent = 'مباشر';
-
-    // Build pane and bind controls
-    ensureTeacherStudentPane();
-    bindTeacherEvalControls();
-
-  }catch(e){
-    console.error(e);
-    document.getElementById('tMsg').textContent = e?.message || JSON.stringify(e);
-    showToast('تعذر إنشاء الغرفة');
-  }finally{ loading(false); }
-}
 
 // ---- Hook studentJoinFlow to subscribe eval channel ----
 const __origStudentJoinFlow = typeof studentJoinFlow === 'function' ? studentJoinFlow : null;
@@ -3218,6 +3108,57 @@ window.addEventListener('load', ()=>{
 window.__boardak_boot_ok = false;
 try{ window.addEventListener('error', (e)=>{ console.error('Boardak runtime error:', e?.message||e); }); }catch(_){}
 window.addEventListener("load", () => { try{ boot(); } catch(e){ console.error(e); document.getElementById('home')?.classList.remove('hidden'); } });
+ async function teacherStartFlow(){
+  try{
+    const teacherName = document.getElementById('tName').value.trim();
+    if(!teacherName){
+      alert("اكتب اسم المعلم");
+      return;
+    }
+
+    if(!window.sb){
+      alert("Supabase غير محمّل");
+      return;
+    }
+
+    if(!State.user){
+      State.user = await ensureAnon();
+    }
+
+    const { data, error } = await sb.rpc("create_room_v3", {
+      p_code: document.getElementById('tCode').value.trim() || null,
+      p_teacher_name: teacherName,
+      p_title: document.getElementById('tTitle').value.trim() || null,
+      p_lang: document.getElementById('tLang')?.value || 'ar'
+    });
+
+    if(error) throw error;
+
+    State.role = "teacher";
+    State.room = data;
+    State.roomCode = data.code;
+
+    document.getElementById('tRoomTitle').textContent = data.title || "درس";
+    document.getElementById('tRoomCode').textContent = data.code;
+    document.getElementById('tRoomTeacher').textContent = teacherName;
+
+    initCanvas();
+    showView("teacherRoom");
+
+    await loadSessionMeta();
+    await loadBoards();
+    await refreshCanvas();
+
+    subscribeDb(data.id);
+    subscribePresence(data.id);
+
+    document.getElementById('liveText').textContent = "مباشر";
+
+  }catch(e){
+    console.error(e);
+    alert("فشل بدء الجلسة: " + (e.message || e));
+  }
+} 
 </script>
 
 
