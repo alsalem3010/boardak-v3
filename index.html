@@ -1814,18 +1814,21 @@ async function refreshCanvas(){
 
     const d = State.currentBoard?.content?.drawing;
 
-    if(d){
-      await new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-          bgCtx.clearRect(0,0,bgCanvas.width,bgCanvas.height);
-          bgCtx.drawImage(img, 0, 0, bgCanvas.width, bgCanvas.height);
-          resolve();
-        };
-        img.onerror = () => resolve();
-        img.src = d;
-      });
-    }
+    if(!d){
+  _redrawTeacherCanvas();
+  return;
+}
+
+await new Promise((resolve) => {
+  const img = new Image();
+  img.onload = () => { 
+    bgCtx.clearRect(0,0,bgCanvas.width,bgCanvas.height);
+    bgCtx.drawImage(img, 0, 0, bgCanvas.width, bgCanvas.height);
+    resolve(); 
+  };
+  img.onerror = () => resolve();
+  img.src = d;
+});
 
     _redrawTeacherCanvas();
     return;
