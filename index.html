@@ -869,12 +869,21 @@ function renderBoardTabs(){
 }
 
 function renderTeacherPreview(){
-  if(State.role!=="teacher") return;
-  const wrap = $("teacherPreview");
-  const b = State.boards.find(x=>x.visible_to_students);
-  if(!b){ wrap.innerHTML = "<span>لا يوجد محتوى بعد</span>"; return; }
+  if(State.role !== "teacher") return;
+
+  const wrap = document.getElementById("teacherPreview");
+  if(!wrap) return; // ✅ هذا هو الحل
+
+  const b = State.boards?.find(x => x.visible_to_students);
+  if(!b){
+    wrap.innerHTML = "<span>لا يوجد محتوى بعد</span>";
+    return;
+  }
+
   const preview = b.content?.preview || b.content?.drawing || "";
-  wrap.innerHTML = preview ? `<img src="${preview}" alt="preview">` : `<span>لا يوجد محتوى بعد</span>`;
+  wrap.innerHTML = preview
+    ? `<img src="${preview}" alt="preview">`
+    : "<span>لا يوجد محتوى بعد</span>";
 }
 
 function renderStudentTeacherPreview(){
