@@ -1107,6 +1107,15 @@ if(prevBox){
     };
 
     wrap.appendChild(card);
+    // ✅ تفعيل لوحة اختيار الطالب تلقائيًا لأول طالب
+if (!State.__selectedStudentUserId) {
+  State.__selectedStudentUserId = mem.user_id;
+  State.__selectedStudentBoardId = sbRow?.id || null;
+  State.__selectedStudentName = mem.display_name;
+
+  const nameEl = document.getElementById('selectedStudentName');
+  if (nameEl) nameEl.textContent = mem.display_name;
+}
   });
 }
 
@@ -1966,6 +1975,12 @@ async function teacherStartFlow(){
     history.replaceState({}, "", url.toString());
 
     showView("teacherRoom");
+    // ✅ إجبار تحديث قائمة الطلبة (حل قاطع)
+setInterval(() => {
+  if (State.role === 'teacher') {
+    renderStudentsBoards().catch(console.warn);
+  }
+}, 2000);
     await renderStudentsBoards();
 ensureTeacherStudentPane();
 bindTeacherEvalControls();
@@ -1996,6 +2011,12 @@ async function studentJoinFlow(){
     if(error) throw error;
 
     joinedOk = true;
+    await sb.from('room_members').insert({
+  room_id: (Array.isArray(data) ? data[0] : data).room_id,
+  user_id: State.user.id,
+  role: 'student',
+  display_name: studentName
+});
     // ✅ تأكيد تسجيل الطالب في room_members (حتى يظهر للمعلم في القائمة)
 await sb.from('room_members').upsert({
   room_id: (Array.isArray(data) ? data[0] : data).room_id,
