@@ -1112,7 +1112,7 @@ function renderBoardTabs(){
       }
 
       renderBoardTabs();
-      await refreshCanvas();
+      await withTimeout(refreshCanvas(), 3000, 'refreshCanvas');
     };
 
     wrap.appendChild(btn);
@@ -1819,16 +1819,16 @@ async function refreshCanvas(){
   return;
 }
 
-await new Promise((resolve) => {
-  const img = new Image();
-  img.onload = () => { 
-    bgCtx.clearRect(0,0,bgCanvas.width,bgCanvas.height);
-    bgCtx.drawImage(img, 0, 0, bgCanvas.width, bgCanvas.height);
-    resolve(); 
-  };
-  img.onerror = () => resolve();
-  img.src = d;
-});
+await withTimeout(new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        bgCtx.clearRect(0,0,bgCanvas.width,bgCanvas.height);
+        bgCtx.drawImage(img, 0, 0, bgCanvas.width, bgCanvas.height);
+        resolve(true);
+      };
+      img.onerror = () => resolve(false);
+      img.src = d;
+    }), 2000, 'refreshCanvas:image');
 
     _redrawTeacherCanvas();
     return;
@@ -1922,14 +1922,20 @@ async function teacherStartFlow(){
     $("tRoomTeacher").textContent = teacherName;
 
     initCanvas();
-    await loadSessionMeta();
-    await loadBoards();
-    await refreshCanvas();
-    renderTeacherPreview();
 
+    // Show teacher room immediately (do not block on async init)
+    showView('teacherRoom');
+    document.getElementById('liveText') && (document.getElementById('liveText').textContent = 'مباشر');
+
+    // Async init with timeouts
+    await withTimeout(loadSessionMeta(), 4000, 'loadSessionMeta');
+    await withTimeout(loadBoards(), 4000, 'loadBoards');
+    await withTimeout(refreshCanvas(), 3000, 'refreshCanvas');
+    renderTeacherPreview();
     subscribeDb(data.id);
     subscribePresence(data.id);
-    await renderStudentsBoards();
+    try{ ensureEvalChannel && ensureEvalChannel(); }catch(e){}
+    await withTimeout(renderStudentsBoards(), 4000, 'renderStudentsBoards');
 
     const url=new URL(location.href);
     url.searchParams.set("room", data.code);
@@ -3126,14 +3132,20 @@ async function teacherStartFlow(){
     document.getElementById('tRoomTeacher').textContent = teacherName;
 
     initCanvas();
-    await loadSessionMeta();
-    await loadBoards();
-    await refreshCanvas();
+
+    // Show teacher room immediately (do not block on async init)
+    showView('teacherRoom');
+    document.getElementById('liveText') && (document.getElementById('liveText').textContent = 'مباشر');
+
+    // Async init with timeouts
+    await withTimeout(loadSessionMeta(), 4000, 'loadSessionMeta');
+    await withTimeout(loadBoards(), 4000, 'loadBoards');
+    await withTimeout(refreshCanvas(), 3000, 'refreshCanvas');
     renderTeacherPreview();
     subscribeDb(data.id);
     subscribePresence(data.id);
-    ensureEvalChannel();
-    await renderStudentsBoards();
+    try{ ensureEvalChannel && ensureEvalChannel(); }catch(e){}
+    await withTimeout(renderStudentsBoards(), 4000, 'renderStudentsBoards');
 
     const url=new URL(location.href);
     url.searchParams.set('room', data.code);
