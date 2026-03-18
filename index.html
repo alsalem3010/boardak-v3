@@ -104,6 +104,7 @@ window.addEventListener('DOMContentLoaded', () => {
     .dot{width:8px;height:8px;border-radius:50%;background:#22c55e}
     .btn{border:none;border-radius:12px;padding:10px 14px;font-weight:800;cursor:pointer;transition:.15s}
     .btn:hover{transform:translateY(-1px)}
+button[disabled]{opacity:.6;cursor:not-allowed;filter:grayscale(.2);}
     .btn-soft{background:var(--soft)}
     .btn-blue{background:var(--blue);color:#fff}
     .btn-green{background:var(--green);color:#fff}
@@ -571,11 +572,17 @@ const safeStorage = {
   removeItem:(k)=>{ try{localStorage.removeItem(k);}catch{__mem.delete(k);} }
 };
 
-/* Supabase client */
-const { createClient } = window.supabase;
-const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: { persistSession:true, autoRefreshToken:true, storage: safeStorage }
-});
+/* Supabase client (guarded for GitHub Pages/CDN blockers) */
+const createClient = window.supabase?.createClient;
+let sb = null;
+if(!createClient){
+  console.warn('Supabase library not loaded');
+}
+else{
+  sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: { persistSession:true, autoRefreshToken:true, storage: safeStorage }
+  });
+}
 
 const { jsPDF } = window.jspdf || {};
 
@@ -846,6 +853,7 @@ function updateOnlineUI(){
    Auth
 ============================= */
 async function ensureAnon(){
+  if(!sb) throw new Error('SUPABASE_NOT_LOADED');
   const { data: sess } = await sb.auth.getSession();
   if(!sess.session){
     const { error } = await sb.auth.signInAnonymously();
@@ -2439,6 +2447,14 @@ document.querySelectorAll("[data-color]").forEach(btn=>{
 async function boot(){
   bumpVisitors();
   bindUI();
+  // GitHub Pages safe mode: if Supabase didn't load, keep UI visible and show a clear message
+  if(!sb){
+    try{ $('liveText').textContent = 'غير متصل'; }catch(e){}
+    showToast('⚠️ تعذر تحميل Supabase (قد يكون محجوبًا أو فشل تحميل CDN). جرّب تعطيل AdBlock أو تحديث الصفحة.');
+    // Disable actions that require backend
+    try{ document.getElementById('teacherStart')?.setAttribute('disabled','disabled'); }catch(e){}
+    try{ document.getElementById('studentJoin')?.setAttribute('disabled','disabled'); }catch(e){}
+  }
 
   loading(true);
   try{
