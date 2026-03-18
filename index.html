@@ -627,21 +627,14 @@ function bumpVisitors(){
   $("visitors").textContent = String(v);
 }
 
-/* ✅ تصحيح escapeHtml (بدون مضاعفة ترميز) */
 function escapeHtml(s){
   return String(s ?? "")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#39;");
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
-
-
-
-
-
-// ===== Equation helpers (MathLive + MathJax) =====
 function latexToSvgDataUrl(latex){
   if(!window.MathJax || !window.MathJax.tex2svg){
     throw new Error('MathJax not ready');
@@ -1911,7 +1904,7 @@ function applySessionMetaUI(){
   }
   renderTimerUI();
 }
-
+console.log("BEFORE ASYNC");
 /* =============================
    Flows
 ============================= */
