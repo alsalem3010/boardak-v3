@@ -615,15 +615,11 @@ function escapeHtml(s){
     .replaceAll("&","&amp;")
     .replaceAll("<","&lt;")
     .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
+    .replaceAll('\"',"&quot;")
     .replaceAll("'","&#39;");
 }
 
-
-
-
-
-// ===== Equation helpers (MathLive + MathJax) =====
+// ===== Equation helpers (MathLive + MathJax) ===== (MathLive + MathJax) =====
 function latexToSvgDataUrl(latex){
   if(!window.MathJax || !window.MathJax.tex2svg){
     throw new Error('MathJax not ready');
@@ -1983,7 +1979,7 @@ async function studentJoinFlow(){
     await loadSessionMeta();
     await loadBoards();
     await ensureStudentBoard();
-    await refreshCanvas();
+    await withTimeout(refreshCanvas(), 3000, 'refreshCanvas');
     renderStudentTeacherPreview();
 
     subscribeDb(State.room.id);
