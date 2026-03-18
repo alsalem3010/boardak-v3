@@ -161,7 +161,41 @@ canvas.cursor-resize{cursor:nwse-resize}
     math-field#eqField{width:100%;min-height:54px;border:1px solid #d1d5db;border-radius:12px;padding:10px;font-size:22px;direction:ltr;}
     .modalActions{display:flex;gap:8px;justify-content:flex-end;}
 
-  </style>
+  
+.evalBox{display:flex;flex-direction:column;gap:6px}
+.stepper{display:flex;align-items:center;gap:6px}
+.stepper button{width:32px;height:32px;border-radius:8px;border:none;background:#2563eb;color:#fff;font-weight:900}
+.stepper input{width:64px;text-align:center;font-weight:900}
+
+
+/* ===== Copilot Enhancements: Aesthetics + Student Evaluation Pane ===== */
+body{background: radial-gradient(1200px 600px at 10% 0%, #e0ecff 0%, rgba(224,236,255,0) 60%),
+             radial-gradient(900px 500px at 90% 10%, #e9fff1 0%, rgba(233,255,241,0) 55%),
+             var(--bg);}
+.topbar.glass{backdrop-filter:saturate(1.2) blur(8px);}
+.entry{position:relative;overflow:hidden;}
+.entry::after{content:'';position:absolute;inset:-40% -60%;background:linear-gradient(90deg,transparent,rgba(37,99,235,.12),transparent);
+              transform:rotate(18deg);opacity:.0;transition:.25s;}
+.entry:hover::after{opacity:1;}
+
+.studentPane{display:flex;flex-direction:column;gap:10px;margin-top:10px;}
+.studentPaneTitle{font-weight:900;font-size:13px;display:flex;align-items:center;gap:8px;}
+.studentPaneTitle .pillMini{background:var(--soft);padding:4px 10px;border-radius:999px;font-size:12px;color:var(--muted)}
+.studentWorkPreview{height:320px;border:1px dashed #cbd5e1;border-radius:14px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff;}
+.studentWorkPreview img{max-width:100%;max-height:100%;}
+.evalBar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#f8fafc;border:1px solid #eef2f7;border-radius:14px;padding:10px;}
+.evalBar .iconBtn{border:none;border-radius:12px;padding:8px 10px;background:var(--soft);cursor:pointer;font-weight:900;display:flex;gap:6px;align-items:center;}
+.evalBar .iconBtn:hover{transform:translateY(-1px)}
+.evalBar .chip{background:#eef2ff;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:900;color:#1e293b;}
+.evalBar input[type=number]{width:76px;text-align:center;font-weight:900;}
+.evalBar select{padding:8px 10px;border-radius:12px;border:1px solid #d1d5db;font-weight:900;}
+.evalBar textarea{width:100%;min-height:58px;border-radius:12px;border:1px solid #d1d5db;padding:10px;font-family:"Cairo";}
+.evalRow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;width:100%;}
+.evalRow.tight{width:auto;}
+
+.kbdHint{font-size:11px;color:var(--muted)}
+
+</style>
 
   <!-- MathLive (Equation Editor) -->
   <link rel="stylesheet" href="https://unpkg.com/mathlive/dist/mathlive.core.css" />
@@ -261,7 +295,15 @@ canvas.cursor-resize{cursor:nwse-resize}
           <div>
             <label>عنوان الدرس (اختياري)</label>
             <input id="tTitle" placeholder="مثال: الكسور العشرية" />
-          </div>
+</div>
+<div>
+<label>لغة الشهادات / Language</label>
+<select id="tLang">
+  <option value="ar" selected>العربية</option>
+  <option value="en">English</option>
+</select>
+</div>
+
 
           <button class="btn btn-blue" id="teacherStart">ابدأ الجلسة</button>
           <div id="tMsg" class="msg"></div>
@@ -2172,14 +2214,16 @@ $("tText").onclick = () => {
 };
   
 
+  
   // ===== Equation Button (Teacher) =====
   const eqModal = $("eqModal");
   const eqField = document.getElementById('eqField');
+
   const openEqModal = () => {
     if(!eqModal || !eqField){ showToast('محرر المعادلات غير جاهز'); return; }
     eqModal.classList.remove('hidden');
     eqField.value = '';
-    setTimeout(()=> eqField.focus(), 10);
+    setTimeout(() => eqField.focus(), 30);
   };
   const closeEqModal = () => {
     if(!eqModal) return;
@@ -2187,34 +2231,69 @@ $("tText").onclick = () => {
   };
 
   $("tEquation") && ($("tEquation").onclick = () => {
-    if(State.role !== 'teacher'){ return; }
+    if(State.role !== 'teacher') return;
     openEqModal();
   });
 
   $("eqClose") && ($("eqClose").onclick = closeEqModal);
   eqModal && (eqModal.onclick = (e) => { if(e.target === eqModal) closeEqModal(); });
 
-  
-  // Insert templates or commands (MathLive)
-  document.querySelectorAll('[data-eq], [data-cmd]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if(!eqField) return;
-      try{
-        const cmd = btn.getAttribute('data-cmd');
-        const tpl = btn.getAttribute('data-eq');
-        if(cmd && eqField.executeCommand){
-          eqField.executeCommand(cmd);
-        } else if(tpl){
-          eqField.insert(tpl);
-        }
-        eqField.focus();
-      }catch(e){ console.warn(e); }
-    });
-  });
+  // إدخال قوالب بشكل بصري (هنا نستخدم \ داخل النص لتظهر أوامر LaTeX بشكل صحيح)
+  const _eqInsert = (latex, selectionMode='placeholder') => {
+    if(!eqField) return;
+    if(typeof eqField.executeCommand === 'function'){
+      eqField.executeCommand(['insert', latex, {selectionMode}]);
+    } else if(typeof eqField.insert === 'function'){
+      eqField.insert(latex);
+    }
+  };
 
-        eqField.focus();
-      }catch(e){ console.warn(e); }
-    });
+  const _eqAct = (act) => {
+    try{
+      switch(act){
+        case 'frac':
+          _eqInsert('\\frac{\\placeholder{}}{\\placeholder{}}');
+          break;
+        case 'sqrt':
+          _eqInsert('\\sqrt{\\placeholder{}}');
+          break;
+        case 'sup':
+          _eqInsert('^{\\placeholder{}}');
+          break;
+        case 'sub':
+          _eqInsert('_{\\placeholder{}}');
+          break;
+        case 'pm':
+          _eqInsert('\\pm', 'after');
+          break;
+        case 'times':
+          _eqInsert('\\times', 'after');
+          break;
+        case 'div':
+          _eqInsert('\\div', 'after');
+          break;
+        case 'plus':
+          _eqInsert('+', 'after');
+          break;
+        case 'minus':
+          _eqInsert('-', 'after');
+          break;
+        case 'eq':
+          _eqInsert('=', 'after');
+          break;
+        case 'lpar':
+          _eqInsert('(', 'after');
+          break;
+        case 'rpar':
+          _eqInsert(')', 'after');
+          break;
+      }
+      eqField && eqField.focus();
+    } catch(e){ console.warn(e); }
+  };
+
+  document.querySelectorAll('[data-act]').forEach(btn => {
+    btn.addEventListener('click', () => _eqAct(btn.getAttribute('data-act')));
   });
 
   $("eqClear") && ($("eqClear").onclick = () => {
@@ -2224,20 +2303,25 @@ $("tText").onclick = () => {
 
   $("eqInsert") && ($("eqInsert").onclick = () => {
     if(!eqField) return;
-    const latex = (eqField.value || '').trim();
+    // ✅ لا نستخدم value لأن MathLive قد يرجع placeholders غير مناسبة
+    let latex = '';
+    try{
+      latex = (typeof eqField.getValue === 'function') ? eqField.getValue('latex') : (eqField.value || '');
+    }catch(e){ latex = (eqField.value || ''); }
+    latex = String(latex || '').trim();
     if(!latex){ showToast('اكتب معادلة أولاً'); return; }
     try{
       const url = latexToSvgDataUrl(latex);
       addImageObject(url);
       closeEqModal();
       showToast('تم إدراج المعادلة');
-    }catch(err){
+    } catch(err){
       console.warn(err);
       showToast('تعذر إدراج المعادلة (انتظر تحميل MathJax)');
     }
   });
 
-  document.querySelectorAll("[data-color]").forEach(btn=>{
+document.querySelectorAll("[data-color]").forEach(btn=>{
     btn.onclick=()=>{
       document.querySelectorAll("[data-color]").forEach(x=>x.classList.remove("active"));
       btn.classList.add("active");
@@ -2349,6 +2433,711 @@ async function boot(){
   }
 }
 
+
+
+// ===============================
+// Copilot Enhancements (v3): Student board beside teacher + Evaluation + Certificates + Reports
+// ===============================
+
+// ---- Lightweight i18n for certificates/reports ----
+function _getAppLang(){
+  const v = safeStorage.getItem('boardak_lang');
+  return (v === 'en' || v === 'ar') ? v : 'ar';
+}
+function _setAppLang(v){
+  safeStorage.setItem('boardak_lang', (v==='en') ? 'en' : 'ar');
+}
+
+// ---- Evaluation cache (session + localStorage) ----
+function _evalKey(roomId, studentUserId, boardId){
+  return `boardak_eval:${roomId}:${boardId}:${studentUserId}`;
+}
+function _loadEval(roomId, studentUserId, boardId){
+  try{ return JSON.parse(safeStorage.getItem(_evalKey(roomId,studentUserId,boardId))||'null'); }catch(e){ return null; }
+}
+function _saveEval(roomId, studentUserId, boardId, payload){
+  try{ safeStorage.setItem(_evalKey(roomId,studentUserId,boardId), JSON.stringify(payload)); }catch(e){}
+}
+
+// ---- Realtime channel for evaluation/cert events ----
+let __evalChannel = null;
+function ensureEvalChannel(){
+  if(!State.room?.id) return null;
+  if(__evalChannel) return __evalChannel;
+  __evalChannel = sb.channel(`eval:${State.room.id}`);
+  __evalChannel.subscribe();
+  return __evalChannel;
+}
+async function teacherBroadcastEval(studentUserId, boardId, evaluation){
+  const ch = ensureEvalChannel();
+  if(!ch) return;
+  await ch.send({type:'broadcast', event:'eval', payload:{ student_user_id: studentUserId, board_id: boardId, evaluation }});
+}
+async function teacherBroadcastCert(studentUserId, boardId, cert){
+  const ch = ensureEvalChannel();
+  if(!ch) return;
+  await ch.send({type:'broadcast', event:'cert', payload:{ student_user_id: studentUserId, board_id: boardId, cert }});
+}
+function studentSubscribeEval(){
+  const ch = ensureEvalChannel();
+  if(!ch) return;
+  ch.on('broadcast', {event:'eval'}, ({payload})=>{
+    if(State.role!=='student') return;
+    if(payload.student_user_id !== State.user?.id) return;
+    if(payload.board_id !== State.currentBoard?.id) return;
+    const ev = payload.evaluation || {};
+    // cache locally
+    _saveEval(State.room.id, State.user.id, State.currentBoard.id, ev);
+    // show to student
+    const box = document.getElementById('feedbackBox');
+    if(box) box.textContent = ev.note || '—';
+    const sum = document.getElementById('studentEvalSummary');
+    if(sum){
+      sum.innerHTML = `الدرجة: <b>${ev.score ?? 0}</b> — المستوى: <b>${ev.level||'—'}</b> — الوسام: <b>${ev.badge||'—'}</b>`;
+    }
+  });
+  ch.on('broadcast', {event:'cert'}, ({payload})=>{
+    if(State.role!=='student') return;
+    if(payload.student_user_id !== State.user?.id) return;
+    if(payload.board_id !== State.currentBoard?.id) return;
+    const cert = payload.cert || {};
+    safeStorage.setItem(`boardak_cert:${State.room.id}:${State.currentBoard.id}:${State.user.id}`, JSON.stringify(cert));
+    const btn = document.getElementById('downloadCert');
+    if(btn) btn.classList.remove('hidden');
+    showToast(_getAppLang()==='ar' ? 'تم إصدار شهادتك ✅' : 'Your certificate is ready ✅');
+  });
+}
+
+// ---- Canvas-based Arabic-safe certificate image ----
+function _drawCertificateImage({lang='ar', studentName='الطالب', teacherName='المعلم', lessonTitle='درس', certType='شهادة شكر', score=0, level='', badge=''}){
+  const canvas = document.createElement('canvas');
+  canvas.width = 1600;
+  canvas.height = 1100;
+  const ctx = canvas.getContext('2d');
+  // background
+  const grad = ctx.createLinearGradient(0,0,canvas.width,canvas.height);
+  grad.addColorStop(0,'#eef2ff');
+  grad.addColorStop(1,'#ecfeff');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  // border
+  ctx.strokeStyle = '#2563eb';
+  ctx.lineWidth = 10;
+  ctx.strokeRect(40,40,canvas.width-80,canvas.height-80);
+  ctx.strokeStyle = '#16a34a';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(70,70,canvas.width-140,canvas.height-140);
+
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '900 60px Cairo';
+  ctx.textAlign = 'center';
+  ctx.direction = (lang==='ar') ? 'rtl' : 'ltr';
+
+  const title = (lang==='ar') ? 'شهادة' : 'Certificate';
+  ctx.fillText(title, canvas.width/2, 170);
+
+  ctx.fillStyle = '#2563eb';
+  ctx.font = '900 52px Cairo';
+  ctx.fillText((lang==='ar') ? certType : certType, canvas.width/2, 260);
+
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '700 42px Cairo';
+  const line1 = (lang==='ar') ? `نشهد بأن ${studentName} قد حصل على ${certType}` : `This certifies that ${studentName} achieved ${certType}`;
+  ctx.fillText(line1, canvas.width/2, 420);
+
+  ctx.font = '700 34px Cairo';
+  const line2 = (lang==='ar') ? `في درس: ${lessonTitle} — المعلم: ${teacherName}` : `Lesson: ${lessonTitle} — Teacher: ${teacherName}`;
+  ctx.fillText(line2, canvas.width/2, 490);
+
+  ctx.fillStyle = '#1e293b';
+  ctx.font = '800 34px Cairo';
+  const metrics = (lang==='ar') ? `الدرجة: ${score}  |  المستوى: ${level||'—'}  |  الوسام: ${badge||'—'}` : `Score: ${score} | Level: ${level||'-'} | Badge: ${badge||'-'}`;
+  ctx.fillText(metrics, canvas.width/2, 600);
+
+  // signature area
+  ctx.strokeStyle = '#94a3b8';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(260, 860); ctx.lineTo(680, 860); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(920, 860); ctx.lineTo(1340, 860); ctx.stroke();
+
+  ctx.fillStyle = '#475569';
+  ctx.font = '700 28px Cairo';
+  ctx.fillText((lang==='ar')?'توقيع المعلم':'Teacher Signature', 470, 910);
+  ctx.fillText((lang==='ar')?'ختم المدرسة':'School Stamp', 1130, 910);
+
+  ctx.fillStyle = '#64748b';
+  ctx.font = '600 24px Cairo';
+  ctx.fillText((lang==='ar')?'منصة بوردك — Boardak':'Boardak Platform', canvas.width/2, 1010);
+
+  return canvas.toDataURL('image/png');
+}
+
+function _downloadPdfFromImage(imgDataUrl, filename){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({orientation:'landscape', unit:'pt', format:'a4'});
+  const w = doc.internal.pageSize.getWidth();
+  const h = doc.internal.pageSize.getHeight();
+  doc.addImage(imgDataUrl, 'PNG', 0, 0, w, h);
+  doc.save(filename);
+}
+
+// ---- Build teacher-side Student Pane beside board (inside existing side panel) ----
+function ensureTeacherStudentPane(){
+  if(State.role !== 'teacher') return;
+  const side = document.querySelector('#teacherRoom .side');
+  if(!side) return;
+  if(document.getElementById('selectedStudentPreview')) return;
+
+  const pane = document.createElement('div');
+  pane.className = 'studentPane';
+
+  const title = document.createElement('div');
+  title.className = 'studentPaneTitle';
+  title.innerHTML = `🧑‍🎓 <span id="selectedStudentName">اختر طالبًا لعرض عمله</span> <span class="pillMini" id="selectedStudentMeta">—</span>`;
+
+  const bar = document.createElement('div');
+  bar.className = 'evalBar';
+  bar.innerHTML = `
+    <div class="evalRow tight">
+      <span class="chip">الدرجة</span>
+      <button class="iconBtn" type="button" id="scoreDown">−</button>
+      <input id="scoreInput" type="number" min="0" max="100" value="0" />
+      <button class="iconBtn" type="button" id="scoreUp">+</button>
+    </div>
+    <div class="evalRow tight">
+      <span class="chip">المستوى</span>
+      <select id="levelSelect">
+        <option>ممتاز</option><option>جيد جدًا</option><option>جيد</option><option>مقبول</option><option>ضعيف</option>
+      </select>
+    </div>
+    <div class="evalRow tight">
+      <span class="chip">الوسام</span>
+      <select id="badgeSelect">
+        <option>—</option><option>مبدع 🌟</option><option>فائق 🚀</option><option>عبقري 🧠</option>
+      </select>
+    </div>
+    <div class="evalRow">
+      <span class="chip">ملاحظة</span>
+      <textarea id="noteInput" placeholder="اكتب ملاحظة للطالب تظهر فورًا..."></textarea>
+    </div>
+    <div class="evalRow">
+      <span class="chip">شهادة</span>
+      <select id="certType">
+        <option>شهادة شكر</option><option>تميز أكاديمي</option><option>تميز سلوكي</option>
+      </select>
+      <button class="btn btn-green btn-sm" type="button" id="issueCert">🎓 إصدار</button>
+      <button class="btn btn-soft btn-sm" type="button" id="exportPDF">📄 تقرير PDF</button>
+      <button class="btn btn-soft btn-sm" type="button" id="exportExcel">📊 Excel</button>
+      <button class="btn btn-soft btn-sm" type="button" id="downloadWorks">⬇ الأعمال</button>
+      <span class="kbdHint">(يُحفظ تلقائيًا)</span>
+    </div>
+  `;
+
+  const prev = document.createElement('div');
+  prev.id = 'selectedStudentPreview';
+  prev.className = 'studentWorkPreview';
+  prev.innerHTML = '<span>لا يوجد اختيار بعد</span>';
+
+  pane.appendChild(title);
+  pane.appendChild(bar);
+  pane.appendChild(prev);
+
+  // insert after students list
+  const list = document.getElementById('studentsList');
+  if(list && list.parentElement === side){
+    side.appendChild(pane);
+  } else {
+    side.appendChild(pane);
+  }
+}
+
+// ---- Bind teacher evaluation controls ----
+let __saveTimer = null;
+function bindTeacherEvalControls(){
+  if(State.role !== 'teacher') return;
+  const up = document.getElementById('scoreUp');
+  const down = document.getElementById('scoreDown');
+  const score = document.getElementById('scoreInput');
+  const level = document.getElementById('levelSelect');
+  const badge = document.getElementById('badgeSelect');
+  const note = document.getElementById('noteInput');
+  const certType = document.getElementById('certType');
+
+  if(!up || !down || !score) return;
+
+  const queueSave = () => {
+    clearTimeout(__saveTimer);
+    __saveTimer = setTimeout(saveTeacherEvalNow, 350);
+  };
+
+  up.onclick = ()=>{ score.value = Math.min(100, (parseInt(score.value||0,10)+1)); queueSave(); };
+  down.onclick = ()=>{ score.value = Math.max(0, (parseInt(score.value||0,10)-1)); queueSave(); };
+  score.oninput = queueSave;
+  level.onchange = queueSave;
+  badge.onchange = queueSave;
+  note.oninput = queueSave;
+
+  document.getElementById('issueCert')?.addEventListener('click', async ()=>{
+    const sid = State.__selectedStudentUserId;
+    const bid = State.currentBoard?.id;
+    if(!sid || !bid) { showToast('اختر طالبًا أولاً'); return; }
+    const lang = _getAppLang();
+    const studentName = State.__selectedStudentName || 'الطالب';
+    const teacherName = document.getElementById('tRoomTeacher')?.textContent || 'المعلم';
+    const lessonTitle = document.getElementById('tRoomTitle')?.textContent || 'درس';
+    const ev = getTeacherEvalPayload();
+    const cert = {type: certType.value, lang, studentName, teacherName, lessonTitle, ev, issuedAt: new Date().toISOString()};
+
+    // mark cert in DB if possible
+    try{ await sb.from('student_boards').update({ certificate_granted: true }).eq('id', State.__selectedStudentBoardId); }catch(e){}
+
+    // cache + broadcast
+    safeStorage.setItem(`boardak_cert:${State.room.id}:${bid}:${sid}`, JSON.stringify(cert));
+    await teacherBroadcastCert(sid, bid, cert);
+
+    // download for teacher
+    const img = _drawCertificateImage({
+      lang, studentName, teacherName, lessonTitle,
+      certType: cert.type,
+      score: ev.score, level: ev.level, badge: ev.badge
+    });
+    _downloadPdfFromImage(img, `certificate-${studentName}.pdf`);
+    showToast('تم إصدار الشهادة');
+  });
+
+  document.getElementById('exportExcel')?.addEventListener('click', downloadExcelReport);
+  document.getElementById('exportPDF')?.addEventListener('click', downloadPdfReport);
+  document.getElementById('downloadWorks')?.addEventListener('click', downloadWorksHtml);
+}
+
+function getTeacherEvalPayload(){
+  const score = Number(document.getElementById('scoreInput')?.value||0);
+  const level = document.getElementById('levelSelect')?.value||'';
+  const badge = document.getElementById('badgeSelect')?.value||'';
+  const note = document.getElementById('noteInput')?.value||'';
+  return { score, level, badge, note };
+}
+
+async function saveTeacherEvalNow(){
+  if(State.role !== 'teacher') return;
+  const sid = State.__selectedStudentUserId;
+  const sbid = State.__selectedStudentBoardId;
+  const bid = State.currentBoard?.id;
+  if(!sid || !bid) return;
+  const ev = getTeacherEvalPayload();
+
+  // cache locally
+  _saveEval(State.room.id, sid, bid, ev);
+
+  // try DB (optional columns) + always broadcast
+  try{ await sb.from('student_boards').update({ evaluation: ev }).eq('id', sbid); }catch(e){}
+  await teacherBroadcastEval(sid, bid, ev);
+}
+
+function applyTeacherEvalToControls(ev){
+  if(!ev) ev = {score:0, level:'ممتاز', badge:'—', note:''};
+  const score = document.getElementById('scoreInput');
+  const level = document.getElementById('levelSelect');
+  const badge = document.getElementById('badgeSelect');
+  const note = document.getElementById('noteInput');
+  if(score) score.value = ev.score ?? 0;
+  if(level && ev.level) level.value = ev.level;
+  if(badge && ev.badge) badge.value = ev.badge;
+  if(note) note.value = ev.note || '';
+}
+
+// ---- Override teacher students rendering: select student and show work beside teacher ----
+const __origRenderStudentsBoards = typeof renderStudentsBoards === 'function' ? renderStudentsBoards : null;
+async function renderStudentsBoards(){
+  // reuse original loader logic but add selection pane + safe caches
+  ensureTeacherStudentPane();
+
+  // load members + boards exactly as original, but also keep caches for reports
+  const { data: members, error: mErr } = await sb.from("room_members")
+    .select("user_id, display_name, joined_at")
+    .eq("room_id", State.room.id)
+    .eq("role","student")
+    .order("joined_at",{ascending:true});
+  if(mErr) { console.warn(mErr); return; }
+
+  const { data: sbs, error: sbErr } = await sb.from("student_boards")
+    .select("id, student_user_id, board_id, board_data, status, help_requested, certificate_granted, updated_at")
+    .eq("room_id", State.room.id);
+  if(sbErr) { console.warn(sbErr); return; }
+
+  State.__membersCache = members || [];
+  State.__studentBoardsCache = sbs || [];
+
+  const map = new Map();
+  (sbs||[]).forEach(row=>{
+    if(State.currentBoard?.id && row.board_id && row.board_id !== State.currentBoard.id) return;
+    const prev = map.get(row.student_user_id);
+    if(!prev) return map.set(row.student_user_id, row);
+    const prevT = prev.updated_at ? new Date(prev.updated_at).getTime() : 0;
+    const curT = row.updated_at ? new Date(row.updated_at).getTime() : 0;
+    if(curT >= prevT) map.set(row.student_user_id, row);
+  });
+
+  const wrap = document.getElementById('studentsList');
+  if(!wrap) return;
+  wrap.innerHTML = '';
+
+  if(!members?.length){
+    wrap.innerHTML = `<div class="studentCard">لا يوجد طلاب بعد</div>`;
+    return;
+  }
+
+  members.forEach(mem=>{
+    const sbRow = map.get(mem.user_id);
+    const help = sbRow?.help_requested ? '🆘' : '';
+    const status = sbRow?.status || '—';
+
+    // show cached evaluation preview
+    const ev = _loadEval(State.room.id, mem.user_id, State.currentBoard?.id) || null;
+    const scoreTxt = ev ? `درجة: ${ev.score}` : '';
+    const levelTxt = ev?.level ? ` | ${ev.level}` : '';
+
+    const card = document.createElement('div');
+    card.className = 'studentCard';
+    card.innerHTML = `
+      <div class="studentRow">
+        <div style="font-weight:900">${escapeHtml(mem.display_name)} ${help}</div>
+        <button class="btn btn-soft btn-sm">عرض</button>
+      </div>
+      <div class="small">الحالة: ${escapeHtml(status)} ${sbRow?.certificate_granted ? ' | شهادة: ✅' : ' | شهادة: —'} ${ev ? `<br>${escapeHtml(scoreTxt + levelTxt)}` : ''}</div>
+    `;
+
+    card.querySelector('button').onclick = ()=>{
+      // select student
+      State.__selectedStudentUserId = mem.user_id;
+      State.__selectedStudentName = mem.display_name;
+      State.__selectedStudentBoardId = sbRow?.id || null;
+
+      document.getElementById('selectedStudentName').textContent = mem.display_name;
+      document.getElementById('selectedStudentMeta').textContent = `الحالة: ${status}`;
+
+      const prev = document.getElementById('selectedStudentPreview');
+      if(prev){
+        prev.innerHTML = sbRow?.board_data ? `<img src="${sbRow.board_data}" alt="student work"/>` : '<span>لا يوجد محتوى بعد</span>';
+      }
+
+      // load eval into controls
+      const cached = _loadEval(State.room.id, mem.user_id, State.currentBoard?.id);
+      applyTeacherEvalToControls(cached);
+
+      bindTeacherEvalControls();
+    };
+
+    wrap.appendChild(card);
+  });
+
+  // auto-bind controls once
+  bindTeacherEvalControls();
+}
+
+// ---- Student: show evaluation summary + certificate download ----
+function ensureStudentEvalUI(){
+  if(State.role !== 'student') return;
+  const box = document.getElementById('feedbackBox');
+  if(!box) return;
+  if(!document.getElementById('studentEvalSummary')){
+    const sum = document.createElement('div');
+    sum.id = 'studentEvalSummary';
+    sum.className = 'small';
+    sum.style.marginTop = '8px';
+    sum.textContent = '—';
+    box.parentElement.insertBefore(sum, box);
+  }
+}
+
+function bindStudentCertificateButton(){
+  if(State.role !== 'student') return;
+  const btn = document.getElementById('downloadCert');
+  if(!btn) return;
+  btn.onclick = ()=>{
+    const lang = _getAppLang();
+    const key = `boardak_cert:${State.room.id}:${State.currentBoard.id}:${State.user.id}`;
+    let cert = null;
+    try{ cert = JSON.parse(safeStorage.getItem(key)||'null'); }catch(e){}
+    const teacherName = State.room?.teacher_name || 'Teacher';
+    const lessonTitle = State.room?.title || 'Lesson';
+    const studentName = document.getElementById('sRoomStudent')?.textContent || 'Student';
+    const ev = _loadEval(State.room.id, State.user.id, State.currentBoard.id) || {};
+    const certType = cert?.type || (lang==='ar' ? 'شهادة شكر' : 'Certificate');
+
+    const img = _drawCertificateImage({
+      lang, studentName, teacherName, lessonTitle, certType,
+      score: ev.score||0, level: ev.level||'', badge: ev.badge||''
+    });
+    _downloadPdfFromImage(img, `certificate-${studentName}.pdf`);
+  };
+}
+
+// ---- Reports (teacher) ----
+function _getStudentNameByUserId(uid){
+  const m = (State.__membersCache||[]).find(x=>x.user_id===uid);
+  return m?.display_name || uid;
+}
+function _collectReportRows(){
+  const bid = State.currentBoard?.id;
+  const rows = [];
+  (State.__studentBoardsCache||[]).forEach(sbRow=>{
+    if(bid && sbRow.board_id && sbRow.board_id !== bid) return;
+    const name = _getStudentNameByUserId(sbRow.student_user_id);
+    const ev = _loadEval(State.room.id, sbRow.student_user_id, bid) || {};
+    rows.push({
+      name,
+      score: ev.score ?? 0,
+      level: ev.level || '',
+      badge: ev.badge || '',
+      note: ev.note || '',
+      status: sbRow.status || '',
+      certificate: sbRow.certificate_granted ? 'YES' : 'NO'
+    });
+  });
+  return rows;
+}
+
+function downloadExcelReport(){
+  if(State.role !== 'teacher') return;
+  const rows = _collectReportRows();
+  const bom = '\ufeff';
+  const header = 'الاسم,الدرجة,المستوى,الوسام,الملاحظة,الحالة,الشهادة\n';
+  const lines = rows.map(r=>[
+    r.name, r.score, r.level, r.badge, (r.note||'').replace(/\n/g,' '), r.status, r.certificate
+  ].map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([bom + header + lines], {type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`report-${State.room?.code||'room'}.csv`;
+  a.click();
+}
+
+function downloadPdfReport(){
+  if(State.role !== 'teacher') return;
+  const lang = _getAppLang();
+  const rows = _collectReportRows();
+
+  // build a simple image-based PDF (Arabic safe)
+  const canvas = document.createElement('canvas');
+  canvas.width = 1600;
+  canvas.height = 1100;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '900 48px Cairo';
+  ctx.textAlign = 'center';
+  ctx.direction = (lang==='ar') ? 'rtl' : 'ltr';
+
+  const title = (lang==='ar') ? 'تقرير الطلبة' : 'Students Report';
+  ctx.fillText(title, canvas.width/2, 90);
+
+  ctx.font = '700 30px Cairo';
+  const meta = (lang==='ar') ? `الغرفة: ${State.room?.code||''} — المعلم: ${State.room?.teacher_name||''}` : `Room: ${State.room?.code||''} — Teacher: ${State.room?.teacher_name||''}`;
+  ctx.fillStyle = '#334155';
+  ctx.fillText(meta, canvas.width/2, 140);
+
+  // table header
+  const startY = 210;
+  const rowH = 52;
+  ctx.fillStyle = '#eef2ff';
+  ctx.fillRect(80, startY-40, canvas.width-160, 44);
+  ctx.fillStyle = '#1e293b';
+  ctx.font = '800 26px Cairo';
+  const headers = (lang==='ar') ? ['الاسم','الدرجة','المستوى','الوسام','الشهادة'] : ['Name','Score','Level','Badge','Cert'];
+  const cols = [140, 760, 940, 1160, 1340];
+  headers.forEach((h,i)=>ctx.fillText(h, cols[i], startY-10));
+
+  // rows
+  ctx.font = '700 24px Cairo';
+  rows.slice(0,14).forEach((r, i)=>{
+    const y = startY + i*rowH;
+    ctx.fillStyle = (i%2===0) ? '#f8fafc' : '#ffffff';
+    ctx.fillRect(80, y-30, canvas.width-160, rowH);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillText(r.name, cols[0], y);
+    ctx.fillText(String(r.score), cols[1], y);
+    ctx.fillText(r.level||'—', cols[2], y);
+    ctx.fillText(r.badge||'—', cols[3], y);
+    ctx.fillText(r.certificate==='YES' ? '✅' : '—', cols[4], y);
+  });
+
+  const img = canvas.toDataURL('image/png');
+  _downloadPdfFromImage(img, `report-${State.room?.code||'room'}.pdf`);
+}
+
+function downloadWorksHtml(){
+  if(State.role !== 'teacher') return;
+  const rows = _collectReportRows();
+  const bid = State.currentBoard?.id;
+  const list = (State.__studentBoardsCache||[]).filter(s=>!bid || s.board_id===bid);
+  const items = list.map(sbRow=>{
+    const name = _getStudentNameByUserId(sbRow.student_user_id);
+    const ev = _loadEval(State.room.id, sbRow.student_user_id, bid) || {};
+    const img = sbRow.board_data || '';
+    return `
+      <div class="card">
+        <h2>${name}</h2>
+        <div class="meta">الدرجة: <b>${ev.score??0}</b> — المستوى: <b>${ev.level||'—'}</b> — الوسام: <b>${ev.badge||'—'}</b> — الشهادة: <b>${sbRow.certificate_granted?'✅':'—'}</b></div>
+        <div class="note">${(ev.note||'').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}</div>
+        ${img ? `<img src="${img}" />` : `<div class="empty">لا يوجد رسم</div>`}
+      </div>
+    `;
+  }).join('');
+
+  const doc = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"/>
+    <title>Boardak Works</title>
+    <style>
+      body{font-family:Cairo,system-ui;background:#f2f6ff;margin:0;padding:24px;color:#0f172a}
+      .top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px}
+      .card{background:#fff;border-radius:16px;box-shadow:0 12px 30px rgba(0,0,0,.08);padding:16px;margin-bottom:14px}
+      .meta{color:#475569;font-size:13px;margin-bottom:10px}
+      .note{background:#f8fafc;border:1px solid #eef2f7;border-radius:12px;padding:10px;margin-bottom:10px;min-height:22px}
+      img{max-width:100%;border-radius:12px;border:1px solid #e5e7eb}
+      .empty{padding:24px;text-align:center;color:#64748b;border:1px dashed #cbd5e1;border-radius:12px}
+    </style></head><body>
+    <div class="top"><h1>أعمال الطلبة</h1><div>غرفة: ${State.room?.code||''} — درس: ${State.room?.title||''}</div></div>
+    ${items}
+  </body></html>`;
+
+  const blob = new Blob([doc], {type:'text/html;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`works-${State.room?.code||'room'}.html`;
+  a.click();
+}
+
+
+function ensureTLangSelect(){
+  const tTitle = document.getElementById('tTitle');
+  const grid = tTitle?.closest('.grid');
+  if(!grid) return;
+  if(document.getElementById('tLang')) return;
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `<label>لغة الشهادات / Language</label>
+    <select id="tLang">
+      <option value="ar" selected>العربية</option>
+      <option value="en">English</option>
+    </select>`;
+  grid.insertBefore(wrap, grid.querySelector('#teacherStart'));
+}
+
+// ---- Override bindUI: enable language toggle + student eval receive ----
+const __origBindUI = typeof bindUI === 'function' ? bindUI : null;
+function bindUI(){
+  // call original
+  try{ __origBindUI && __origBindUI(); }catch(e){}
+
+  // language
+  const langBtn = document.getElementById('langBtn');
+  const tLang = document.getElementById('tLang');
+  const current = _getAppLang();
+  if(tLang) tLang.value = current;
+  if(langBtn){
+    langBtn.onclick = ()=>{
+      const next = (_getAppLang()==='ar') ? 'en' : 'ar';
+      _setAppLang(next);
+      if(tLang) tLang.value = next;
+      showToast(next==='ar' ? 'تم اختيار العربية' : 'English selected');
+    };
+  }
+
+  // Student: subscribe eval & cert
+  if(State.role==='student'){
+    ensureStudentEvalUI();
+    studentSubscribeEval();
+    bindStudentCertificateButton();
+  }
+}
+
+// ---- Override teacherStartFlow to pass selected language to room creation ----
+async function teacherStartFlow(){
+  const teacherName = document.getElementById('tName').value.trim();
+  const code = document.getElementById('tCode').value.trim();
+  const title = document.getElementById('tTitle').value.trim();
+  const lang = document.getElementById('tLang')?.value || _getAppLang();
+  _setAppLang(lang);
+
+  if(!teacherName){ showToast('اكتب اسم المعلم'); return; }
+  loading(true);
+  if(!State.user) State.user = await ensureAnon();
+  try{
+    const { data, error } = await sb.rpc('create_room_v3', {
+      p_code: code || null,
+      p_teacher_name: teacherName,
+      p_title: title || null,
+      p_lang: lang
+    });
+    if(error) throw error;
+
+    State.role='teacher';
+    State.room=data;
+    State.roomCode=data.code;
+    document.getElementById('tRoomTitle').textContent = data.title || 'درس';
+    document.getElementById('tRoomCode').textContent = data.code;
+    document.getElementById('tRoomTeacher').textContent = teacherName;
+
+    initCanvas();
+    await loadSessionMeta();
+    await loadBoards();
+    await refreshCanvas();
+    renderTeacherPreview();
+    subscribeDb(data.id);
+    subscribePresence(data.id);
+    ensureEvalChannel();
+    await renderStudentsBoards();
+
+    const url=new URL(location.href);
+    url.searchParams.set('room', data.code);
+    history.replaceState({}, '', url.toString());
+    showView('teacherRoom');
+    document.getElementById('liveText').textContent = 'مباشر';
+
+    // Build pane and bind controls
+    ensureTeacherStudentPane();
+    bindTeacherEvalControls();
+
+  }catch(e){
+    console.error(e);
+    document.getElementById('tMsg').textContent = e?.message || JSON.stringify(e);
+    showToast('تعذر إنشاء الغرفة');
+  }finally{ loading(false); }
+}
+
+// ---- Hook studentJoinFlow to subscribe eval channel ----
+const __origStudentJoinFlow = typeof studentJoinFlow === 'function' ? studentJoinFlow : null;
+async function studentJoinFlow(){
+  await __origStudentJoinFlow();
+  try{
+    if(State.role==='student'){
+      ensureEvalChannel();
+      ensureStudentEvalUI();
+      studentSubscribeEval();
+      bindStudentCertificateButton();
+      // apply cached eval if exists
+      const ev = _loadEval(State.room.id, State.user.id, State.currentBoard.id);
+      if(ev){
+        document.getElementById('feedbackBox').textContent = ev.note || '—';
+        document.getElementById('studentEvalSummary').innerHTML = `الدرجة: <b>${ev.score ?? 0}</b> — المستوى: <b>${ev.level||'—'}</b> — الوسام: <b>${ev.badge||'—'}</b>`;
+      }
+    }
+  }catch(e){ console.warn(e); }
+}
+
+// Ensure teacher pane exists after entering teacher view
+window.addEventListener('load', ()=>{
+  // if teacher enters later, ensure pane when view becomes visible
+  const obs = new MutationObserver(()=>{
+    if(State.role==='teacher' && !document.getElementById('selectedStudentPreview')){
+      ensureTeacherStudentPane();
+      bindTeacherEvalControls();
+    }
+  });
+  obs.observe(document.body, {subtree:true, attributes:true, attributeFilter:['class']});
+});
+
 window.addEventListener("load", () => { try{ boot(); } catch(e){ console.error(e); document.getElementById('home')?.classList.remove('hidden'); } });
 </script>
 
@@ -2362,21 +3151,20 @@ window.addEventListener("load", () => { try{ boot(); } catch(e){ console.error(e
       </div>
 
       <div class="eqBtns">
-        <button class="eqBtn" type="button" data-eq="\frac{\placeholder{}}{\placeholder{}}">كسر</button>
-        <button class="eqBtn" type="button" data-eq="^{\placeholder{}}">أس</button>
-        <button class="eqBtn" type="button" data-eq="_{\placeholder{}}">أسفل</button>
-        <button class="eqBtn" type="button" data-eq="\sqrt{\placeholder{}}">جذر</button>
-        <button class="eqBtn" type="button" data-eq="\\pm">±</button>
-        <button class="eqBtn" type="button" data-eq="+">+</button>
-        <button class="eqBtn" type="button" data-eq="-">−</button>
-        <button class="eqBtn" type="button" data-eq="\\times">×</button>
-        <button class="eqBtn" type="button" data-eq="\\div">÷</button>
-        <button class="eqBtn" type="button" data-eq="=">=</button>
-        <button class="eqBtn" type="button" data-eq="(">(</button>
-        <button class="eqBtn" type="button" data-eq=")">)</button>
-      </div>
-
-      <math-field id="eqField" virtual-keyboard-mode="onfocus" smart-fence></math-field>
+  <button class="eqBtn" type="button" data-act="frac">كسر</button>
+  <button class="eqBtn" type="button" data-act="sup">أس</button>
+  <button class="eqBtn" type="button" data-act="sub">أسفل</button>
+  <button class="eqBtn" type="button" data-act="sqrt">جذر</button>
+  <button class="eqBtn" type="button" data-act="pm">±</button>
+  <button class="eqBtn" type="button" data-act="plus">+</button>
+  <button class="eqBtn" type="button" data-act="minus">−</button>
+  <button class="eqBtn" type="button" data-act="times">×</button>
+  <button class="eqBtn" type="button" data-act="div">÷</button>
+  <button class="eqBtn" type="button" data-act="eq">=</button>
+  <button class="eqBtn" type="button" data-act="lpar">(</button>
+  <button class="eqBtn" type="button" data-act="rpar">)</button>
+</div>
+<math-field id="eqField" default-mode="math" virtual-keyboard-mode="onfocus" smart-fence></math-field>
 
       <div class="modalActions">
         <button id="eqInsert" class="btn btn-blue btn-sm" type="button">إدراج على السبورة</button>
@@ -2386,6 +3174,7 @@ window.addEventListener("load", () => { try{ boot(); } catch(e){ console.error(e
       <div class="small" style="margin-top:-4px">يمكنك كتابة المعادلة مباشرة أو استخدام الأزرار (كسر/أس/جذر...).</div>
     </div>
   </div>
+
 
 </body>
 </html>
