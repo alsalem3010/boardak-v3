@@ -1966,6 +1966,9 @@ async function teacherStartFlow(){
     history.replaceState({}, "", url.toString());
 
     showView("teacherRoom");
+    await renderStudentsBoards();
+ensureTeacherStudentPane();
+bindTeacherEvalControls();
     $("liveText").textContent = "مباشر";
   }catch(e){
     console.error(e);
@@ -1993,6 +1996,14 @@ async function studentJoinFlow(){
     if(error) throw error;
 
     joinedOk = true;
+    // ✅ تأكيد تسجيل الطالب في room_members (حتى يظهر للمعلم في القائمة)
+await sb.from('room_members').upsert({
+  room_id: (Array.isArray(data) ? data[0] : data).room_id,
+  user_id: State.user.id,
+  role: 'student',
+  display_name: studentName,
+  joined_at: new Date().toISOString()
+});
 
     const row = Array.isArray(data) ? data[0] : data;
     State.role="student";
