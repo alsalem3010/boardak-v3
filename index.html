@@ -2051,7 +2051,7 @@ function addImageObject(dataUrl){
 
   const img = new Image();
   img.onload = () => {
-    const maxScale = 0.6;
+   const maxScale = 1.2;
     const scale = Math.min(
       tCanvas.width / img.width,
       tCanvas.height / img.height,
@@ -2220,6 +2220,7 @@ async function saveStudentBoard(){
 async function refreshCanvas(){
   if(State.role === "teacher"){
     ensureLayers();
+    if(State.currentBoard?.id) loadObjectsForBoard(State.currentBoard.id);
 
     // امسح الخلفية + الحبر
     bgCtx.clearRect(0,0,bgCanvas.width,bgCanvas.height);
@@ -2503,8 +2504,20 @@ $('langBtn').onclick = async () => {
   const next = (_getAppLang() === 'ar') ? 'en' : 'ar';
   _setAppLang(next);
 
-  applyFullLang(next);
+applyFullLang(next);
 
+// ✅ أعد رسم كل الواجهات فورًا
+renderStudentsBoards();
+renderTeacherPreview();
+renderStudentTeacherPreview();
+renderTimerUI();
+
+// ✅ لو كنت داخل تقرير/تقييم، ينعكس التغيير مباشرة
+try {
+  if (State.role === 'teacher') {
+    bindTeacherEvalControls();
+  }
+} catch(e){}
   // ✅ بث اللغة للطلاب
   if (State.role === 'teacher' && State.room?.id && sb) {
     try {
@@ -3454,43 +3467,62 @@ function _drawReportPageImage(lang, metaText, rows, pageIndex){
   ctx.fillStyle = '#334155';
   ctx.fillText(metaText, canvas.width/2, 135);
 
-  const headers = (lang==='ar')
-    ? ['الاسم','الدرجة','المستوى','الوسام','الملاحظة','الحالة','الشهادة']
-    : ['Name','Score','Level','Badge','Note','Status','Certificate'];
+  // ===== Table headers: (Name | Score | Level) =====
+const nameX  = (lang === 'ar') ? 1420 : 180;
+const scoreX = 900;
+const levelX = (lang === 'ar') ? 550 : 1200;
 
-  const colX = [120, 520, 650, 820, 980, 1250, 1450];
-  const topY = 210;
+ctx.fillStyle = '#eef2ff';
+ctx.fillRect(60, topY-46, canvas.width-120, 48);
 
-  ctx.fillStyle = '#eef2ff';
-  ctx.fillRect(60, topY-46, canvas.width-120, 48);
-  ctx.fillStyle = '#0f172a';
-  ctx.font = '800 22px Cairo';
-  headers.forEach((h,i)=>ctx.fillText(h, colX[i], topY-14));
+ctx.fillStyle = '#0f172a';
+ctx.font = '800 22px Cairo';
 
+if(lang === 'ar'){
+  ctx.textAlign = 'right';
+  ctx.fillText('الاسم', nameX, topY-14);
+  ctx.textAlign = 'center';
+  ctx.fillText('الدرجة', scoreX, topY-14);
+  ctx.fillText('المستوى', levelX, topY-14);
+} else {
+  ctx.textAlign = 'left';
+  ctx.fillText('Name', nameX, topY-14);
+  ctx.textAlign = 'center';
+  ctx.fillText('Score', scoreX, topY-14);
+  ctx.fillText('Level', levelX, topY-14);
+}
   const rowH = 58;
   ctx.font = '700 20px Cairo';
-  for(let i=0;i<rows.length;i++){
-    const y = topY + i*rowH;
-    ctx.fillStyle = (i%2===0) ? '#f8fafc' : '#ffffff';
-    ctx.fillRect(60, y-30, canvas.width-120, rowH);
-    ctx.fillStyle = '#0f172a';
+ for(let i=0;i<rows.length;i++){
+  const y = topY + i*rowH;
 
-    const r = rows[i];
-    const cert = (lang==='en') ? (r.certificate==='YES' ? 'YES' : 'NO') : (r.certificate==='YES' ? 'نعم' : 'لا');
-   const note = String(r.note || '').split('\n').join(' ').slice(0, 28);
-const T = REPORT_I18N[lang] || REPORT_I18N.ar;
+  // خلفية الصف
+  ctx.fillStyle = (i%2===0) ? '#f8fafc' : '#ffffff';
+  ctx.fillRect(60, y-30, canvas.width-120, rowH);
+  ctx.fillStyle = '#0f172a';
 
-const line =
-  `${lang==='ar' ? 'الاسم' : 'Name'}: ${r.name}   |   ` +
-  `${T.score}: ${String(r.score ?? 0)}   |   ` +
-  `${T.level}: ${mapValue('level', r.level || 'none', lang)}   |   ` +
-  `${T.badge}: ${mapValue('badge', r.badge || 'none', lang)}   |   ` +
-  `${T.note}: ${note}   |   ` +
-  `${T.status}: ${mapStatus(r.status || 'none', lang)}   |   ` +
-  `${T.cert}: ${cert}`;
+  const r = rows[i];
 
-ctx.fillText(line, canvas.width/2, y);
-  }
+  // ===== إحداثيات الأعمدة =====
+  const nameX  = (lang === 'ar') ? 1420 : 180;
+  const scoreX = 900;
+  const levelX = (lang === 'ar') ? 550 : 1200;
+
+  // الاسم
+  ctx.textAlign = (lang === 'ar') ? 'right' : 'left';
+  ctx.fillText(String(r.name || ''), nameX, y);
+
+  // الدرجة
+  ctx.textAlign = 'center';
+  ctx.fillText(String(r.score ?? 0), scoreX, y);
+
+  // المستوى
+  ctx.fillText(
+    mapValue('level', r.level || 'none', lang),
+    levelX,
+    y
+  );
+}}
 
   ctx.fillStyle = '#64748b';
   ctx.font = '600 20px Cairo';
