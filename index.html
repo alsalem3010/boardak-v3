@@ -802,60 +802,69 @@ const SESSION_WARN_MS = 1 * 60 * 1000;   // ⚠️ 1 دقائق
 let __sessionTicker = null;
 let __sessionWarned = false;
 
+// ✅ 1) دالة تنسيق الوقت (توضع هنا)
+function formatMMSS(ms){
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
 function startSessionLifecycle(roomStartedAt){
   if(!roomStartedAt) return;
+
+  const timerEl = document.getElementById('sessionTimer');
+  if (timerEl) timerEl.style.display = 'inline-block';
 
   const startedAt = new Date(roomStartedAt).getTime();
   const endsAt = startedAt + SESSION_MAX_MS;
 
-  __sessionWarned = false;
-  if(__sessionTicker) clearInterval(__sessionTicker);
+  let warned = false;
 
-  __sessionTicker = setInterval(async () => {
+  if (window.__sessionTicker) clearInterval(window.__sessionTicker);
+
+  window.__sessionTicker = setInterval(async () => {
     const now = Date.now();
     const remaining = endsAt - now;
 
-    // ⚠️ تحذير قبل 10 دقائق
-    if(!__sessionWarned && remaining <= SESSION_WARN_MS && remaining > 0){
-      __sessionWarned = true;
-
-      const msg = (_getAppLang()==='en')
-        ? '⏰ Only 10 minutes left before the session ends.'
-        : '⏰ تبقى 10 دقائق على انتهاء الجلسة.';
-
-      showToast(msg);
-
-      // (اختياري) رسالة ثابتة أعلى الصفحة
-      try{
-        const id = 'sessionWarnBanner';
-        if(!document.getElementById(id)){
-          const div = document.createElement('div');
-          div.id = id;
-          div.className = 'alertbar';
-          div.style.position = 'fixed';
-          div.style.top = '12px';
-          div.style.left = '50%';
-          div.style.transform = 'translateX(-50%)';
-          div.style.zIndex = '9999';
-          div.textContent = msg;
-          document.body.appendChild(div);
-        }
-      }catch(e){}
+    // ✅ تحديث العداد (للجميع)
+    if (timerEl) {
+      timerEl.textContent = formatMMSS(remaining);
+      if (remaining <= SESSION_WARN_MS) {
+        timerEl.style.background = '#b00020'; // أحمر
+      }
     }
 
-    // ⛔ انتهت الجلسة: اخرج الجميع
-    if(remaining <= 0){
-      clearInterval(__sessionTicker);
+    // ⚠️ تحذير قبل الانتهاء (للـمعلم والطالب)
+    if (!warned && remaining <= SESSION_WARN_MS && remaining > 0) {
+      warned = true;
+      showToast(
+        _getAppLang()==='en'
+          ? '⏰ Only 1 minute left before the session ends.'
+          : '⏰ تبقى دقيقة واحدة على انتهاء الجلسة.'
+      );
+    }
 
-      // حاول إنهاء الجلسة وحذفها لو كنت معلّم
-      try{
-        if(State?.role === 'teacher' && State?.room?.id && sb){
+    // ⛔ انتهت الجلسة (للـمعلم والطالب)
+    if (remaining <= 0) {
+      clearInterval(window.__sessionTicker);
+
+      // ✅ الحذف فقط لو كنت معلّم
+      if (State?.role === 'teacher' && State?.room?.id) {
+        try {
           await sb.rpc('end_and_delete_room', { p_room_id: State.room.id });
-        }
-      }catch(e){}
+        } catch(e){}
+      }
 
-      alert((_getAppLang()==='en') ? '⛔ Session ended.' : '⛔ انتهت الجلسة.');
-      location.href = location.pathname; // يرجّع للشاشة الرئيسية
+      // ✅ رسالة إنهاء للجميع
+      alert(
+        _getAppLang()==='en'
+          ? '⛔ Session ended.'
+          : '⛔ انتهت الجلسة.'
+      );
+
+      // ✅ إخراج الجميع
+      location.href = location.pathname;
     }
   }, 1000);
 }
@@ -2389,64 +2398,88 @@ console.log("BEFORE ASYNC");
    Flows
 ============================= */
   // ===============================
+// ===============================
 // Session Lifecycle (TEST/PROD)
 // ===============================
+// اختبار: دقيقتين + تحذير قبل دقيقة
 const SESSION_MAX_MS  = 2 * 60 * 1000;   // دقيقتين (اختبار)
 const SESSION_WARN_MS = 1 * 60 * 1000;   // دقيقة (اختبار)
 
-let __sessionTicker = null;
-let __sessionWarned = false;
+function formatMMSS(ms){
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
 
 function startSessionLifecycle(roomStartedAt){
   if(!roomStartedAt) return;
 
+  const timerEl = document.getElementById('sessionTimer');
+  if (timerEl) timerEl.style.display = 'inline-block';
+
   const startedAt = new Date(roomStartedAt).getTime();
   const endsAt = startedAt + SESSION_MAX_MS;
 
-  __sessionWarned = false;
-  if(__sessionTicker) clearInterval(__sessionTicker);
+  let warned = false;
 
-  __sessionTicker = setInterval(async () => {
+  if (window.__sessionTicker) clearInterval(window.__sessionTicker);
+
+  window.__sessionTicker = setInterval(async () => {
     const now = Date.now();
     const remaining = endsAt - now;
 
-    if(!__sessionWarned && remaining <= SESSION_WARN_MS && remaining > 0){
-      __sessionWarned = true;
-      showToast((_getAppLang()==='en')
-        ? '⏰ 1 minute left.'
-        : '⏰ تبقى دقيقة على انتهاء الجلسة.'
+    // ✅ تحديث العداد المرئي
+    if (timerEl) {
+      timerEl.textContent = formatMMSS(remaining);
+      if (remaining <= SESSION_WARN_MS) timerEl.style.background = '#b00020';
+    }
+
+    // ⚠️ تحذير قبل الانتهاء (للمعلم والطالب)
+    if (!warned && remaining <= SESSION_WARN_MS && remaining > 0) {
+      warned = true;
+      showToast(
+        _getAppLang() === 'en'
+          ? '⏰ Only 1 minute left before the session ends.'
+          : '⏰ تبقى دقيقة واحدة على انتهاء الجلسة.'
       );
     }
 
-    if(remaining <= 0){
-      clearInterval(__sessionTicker);
+    // ⛔ انتهت الجلسة (للمعلم والطالب)
+    if (remaining <= 0) {
+      clearInterval(window.__sessionTicker);
 
-      try{
-        if(State?.role === 'teacher' && State?.room?.id && sb){
+      // ✅ الحذف فقط لو كنت معلّم
+      if (State?.role === 'teacher' && State?.room?.id && sb) {
+        try {
           await sb.rpc('end_and_delete_room', { p_room_id: State.room.id });
-        }
-      }catch(e){}
+        } catch(e){}
+      }
 
-      alert((_getAppLang()==='en') ? '⛔ Session ended.' : '⛔ انتهت الجلسة.');
+      alert(_getAppLang() === 'en' ? '⛔ Session ended.' : '⛔ انتهت الجلسة.');
       location.href = location.pathname;
     }
   }, 1000);
 }
+
+
+// ===============================
+// Teacher Start Flow
+// ===============================
 async function teacherStartFlow(){
   if(!sb){ localStartTeacher(); return; }
+
   const teacherName = $("tName").value.trim();
   const code = $("tCode").value.trim();
   const title = $("tTitle").value.trim();
+
   if(!teacherName){ showToast("اكتب اسم المعلم"); return; }
 
   loading(true);
   try{
-    if(!State.user) if(sb){
-    State.user = await ensureAnon();
-  } else {
-    // Offline mode: Supabase not available
-    try{ console.warn('[Boardak] Offline mode: supabase-js not loaded'); }catch(_){}
-  }
+    if(!State.user){
+      State.user = await ensureAnon();
+    }
 
     const { data, error } = await sb.rpc("create_room_v3", {
       p_code: code || null,
@@ -2464,28 +2497,28 @@ async function teacherStartFlow(){
     $("tRoomCode").textContent = data.code;
     $("tRoomTeacher").textContent = teacherName;
 
-   showView("teacherRoom");
+    showView("teacherRoom");
 
-// ✅ تشغيل مؤقت الجلسة للمعلم (مصدر موثوق من قاعدة البيانات)
-sb.from('rooms')
-  .select('started_at')
-  .eq('id', State.room.id)
-  .maybeSingle()
-  .then(({ data }) => startSessionLifecycle(data?.started_at))
-  .catch(() => {});
+    // ✅ تشغيل مؤقت الجلسة للمعلم (مصدر موثوق من DB)
+    sb.from('rooms')
+      .select('started_at')
+      .eq('id', State.room.id)
+      .maybeSingle()
+      .then(({ data }) => startSessionLifecycle(data?.started_at))
+      .catch(() => {});
 
-$("liveText").textContent = "مباشر";
+    $("liveText").textContent = "مباشر";
 
-if (typeof initCanvas === 'function') initCanvas();
+    if(typeof initCanvas === 'function') initCanvas();
 
-await loadSessionMeta();
-await loadBoards();
-await refreshCanvas();
-renderTeacherPreview();
+    await loadSessionMeta();
+    await loadBoards();
+    await refreshCanvas();
+    renderTeacherPreview();
 
-subscribeDb(State.room.id);
-subscribePresence(State.room.id);
-    
+    subscribeDb(State.room.id);
+    subscribePresence(State.room.id);
+
     // build teacher pane + first refresh
     try{ ensureTeacherStudentPane(); }catch(e){}
     try{ bindTeacherEvalControls(); }catch(e){}
@@ -2498,10 +2531,10 @@ subscribePresence(State.room.id);
     history.replaceState({}, "", url.toString());
 
     // poll students list (safe) - avoids realtime gaps
-    window.__studentsPoll && clearInterval(window.__studentsPoll);
+    if (window.__studentsPoll) clearInterval(window.__studentsPoll);
     window.__studentsPoll = setInterval(() => {
       if(State.role === 'teacher' && State.room?.id) {
-        renderStudentsBoards().catch(()=>{});
+        renderStudentsBoards().catch(() => {});
       }
     }, 2000);
 
@@ -2509,17 +2542,24 @@ subscribePresence(State.room.id);
     console.error(e);
     $("tMsg").textContent = e?.message || String(e);
     showToast("تعذر إنشاء الغرفة: " + (e?.message || String(e)));
-    try{ $("tMsg").textContent = (e?.message || String(e)); }catch(_){}
   }finally{
     loading(false);
   }
 }
 
 
+// ===============================
+// Student Join Flow
+// ===============================
 async function studentJoinFlow(){
-  if(!sb){ showToast('⚠️ لا يمكن انضمام الطالب بدون اتصال (Supabase). افتح عبر Live Server وتأكد من تحميل Supabase.'); return; }
+  if(!sb){
+    showToast('⚠️ لا يمكن انضمام الطالب بدون اتصال (Supabase). افتح عبر Live Server وتأكد من تحميل Supabase.');
+    return;
+  }
+
   loading(true);
   let joinedOk = false;
+
   try{
     if(!State.user) State.user = await ensureAnon();
 
@@ -2555,28 +2595,29 @@ async function studentJoinFlow(){
       }, { onConflict: 'room_id,user_id' });
     }catch(_e){}
 
-   showView("studentRoom");
+    showView("studentRoom");
 
-// ✅ تشغيل مؤقت الجلسة للطالب (مضمون من قاعدة البيانات)
-sb.from('rooms')
-  .select('started_at')
-  .eq('id', State.room.id)
-  .maybeSingle()
-  .then(({ data }) => startSessionLifecycle(data?.started_at))
-  .catch(() => {});
+    // ✅ تشغيل مؤقت الجلسة للطالب (مضمون من DB)
+    sb.from('rooms')
+      .select('started_at')
+      .eq('id', State.room.id)
+      .maybeSingle()
+      .then(({ data }) => startSessionLifecycle(data?.started_at))
+      .catch(() => {});
 
-$("liveText").textContent = "مباشر";
+    $("liveText").textContent = "مباشر";
 
-if (typeof initCanvas === 'function') initCanvas();
+    if(typeof initCanvas === 'function') initCanvas();
 
-await loadSessionMeta();
-await loadBoards();
-await ensureStudentBoard();
-await refreshCanvas();
-renderStudentTeacherPreview();
+    await loadSessionMeta();
+    await loadBoards();
+    await ensureStudentBoard();
+    await refreshCanvas();
+    renderStudentTeacherPreview();
 
-subscribeDb(State.room.id);
-subscribePresence(State.room.id);
+    subscribeDb(State.room.id);
+    subscribePresence(State.room.id);
+
     // evaluation UI
     try{ ensureStudentEvalUI(); }catch(e){}
     try{ ensureEvalChannel(); }catch(e){}
@@ -2588,8 +2629,7 @@ subscribePresence(State.room.id);
     if(joinedOk){ showToast("تم الدخول، لكن حصل خطأ في التهيئة"); return; }
     const msg = e?.message || String(e);
     $("sMsg").textContent = msg;
-    showToast("تعذّر الدخول: " + (e?.message || String(e)));
-    try{ $("sMsg").textContent = (e?.message || String(e)); }catch(_){}
+    showToast("تعذّر الدخول: " + msg);
   }finally{
     loading(false);
   }
