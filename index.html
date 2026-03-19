@@ -3283,8 +3283,7 @@ function _drawReportPageImage(lang, metaText, rows, pageIndex){
 
     const r = rows[i];
     const cert = (lang==='en') ? (r.certificate==='YES' ? 'YES' : 'NO') : (r.certificate==='YES' ? 'نعم' : 'لا');
-    const note = String(r.note||'').split('
-').join(' ').slice(0,28);
+   const note = String(r.note || '').split('\n').join(' ').slice(0, 28);
     const cells = [r.name, String(r.score ?? 0), r.level|| (lang==='ar'?'—':'-'), r.badge|| (lang==='ar'?'—':'-'), note, r.status|| (lang==='ar'?'—':'-'), cert];
     cells.forEach((c,ci)=>ctx.fillText(String(c), colX[ci], y));
   }
@@ -3350,8 +3349,7 @@ function _drawWorkPageImage(lang, studentName, metaLine, note, imgDataUrl){
   ctx.fillStyle = '#0f172a';
   ctx.font = '700 22px Cairo';
   const noteLabel = (lang==='ar') ? 'الملاحظة:' : 'Note:';
-  const text = String(note||'—').split('
-').join(' ').slice(0,140);
+  const text = String(note || '—').split('\n').join(' ').slice(0, 140);
   ctx.fillText(noteLabel + ' ' + text, canvas.width-110, 240);
 
   // image frame
