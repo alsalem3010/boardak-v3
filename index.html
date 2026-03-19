@@ -3455,78 +3455,83 @@ function _drawReportPageImage(lang, metaText, rows, pageIndex){
   const canvas = document.createElement('canvas');
   canvas.width = 1600; canvas.height = 1100;
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,canvas.width,canvas.height);
-  ctx.textAlign = 'center';
-  ctx.direction = (lang==='ar') ? 'rtl' : 'ltr';
 
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  ctx.direction = (lang==='ar') ? 'rtl' : 'ltr';
+  ctx.textAlign = 'center';
+
+  // عنوان التقرير
   ctx.fillStyle = '#0f172a';
   ctx.font = '900 48px Cairo';
   ctx.fillText(lang==='ar' ? 'تقرير الطلبة' : 'Students Report', canvas.width/2, 85);
 
+  // سطر الميتا
   ctx.font = '700 28px Cairo';
   ctx.fillStyle = '#334155';
   ctx.fillText(metaText, canvas.width/2, 135);
 
-  // ===== Table headers: (Name | Score | Level) =====
-const nameX  = (lang === 'ar') ? 1420 : 180;
-const scoreX = 900;
-const levelX = (lang === 'ar') ? 550 : 1200;
-
-ctx.fillStyle = '#eef2ff';
-ctx.fillRect(60, topY-46, canvas.width-120, 48);
-
-ctx.fillStyle = '#0f172a';
-ctx.font = '800 22px Cairo';
-
-if(lang === 'ar'){
-  ctx.textAlign = 'right';
-  ctx.fillText('الاسم', nameX, topY-14);
-  ctx.textAlign = 'center';
-  ctx.fillText('الدرجة', scoreX, topY-14);
-  ctx.fillText('المستوى', levelX, topY-14);
-} else {
-  ctx.textAlign = 'left';
-  ctx.fillText('Name', nameX, topY-14);
-  ctx.textAlign = 'center';
-  ctx.fillText('Score', scoreX, topY-14);
-  ctx.fillText('Level', levelX, topY-14);
-}
+  // ✅ لازم تعريف topY قبل استخدامه
+  const topY = 210;
   const rowH = 58;
-  ctx.font = '700 20px Cairo';
- for(let i=0;i<rows.length;i++){
-  const y = topY + i*rowH;
 
-  // خلفية الصف
-  ctx.fillStyle = (i%2===0) ? '#f8fafc' : '#ffffff';
-  ctx.fillRect(60, y-30, canvas.width-120, rowH);
-  ctx.fillStyle = '#0f172a';
-
-  const r = rows[i];
-
-  // ===== إحداثيات الأعمدة =====
+  // ===== Table headers: (Name | Score | Level) =====
   const nameX  = (lang === 'ar') ? 1420 : 180;
   const scoreX = 900;
   const levelX = (lang === 'ar') ? 550 : 1200;
 
-  // الاسم
-  ctx.textAlign = (lang === 'ar') ? 'right' : 'left';
-  ctx.fillText(String(r.name || ''), nameX, y);
+  ctx.fillStyle = '#eef2ff';
+  ctx.fillRect(60, topY-46, canvas.width-120, 48);
 
-  // الدرجة
-  ctx.textAlign = 'center';
-  ctx.fillText(String(r.score ?? 0), scoreX, y);
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '800 22px Cairo';
 
-  // المستوى
-  ctx.fillText(
-    mapValue('level', r.level || 'none', lang),
-    levelX,
-    y
-  );
-}}
+  if(lang === 'ar'){
+    ctx.textAlign = 'right';
+    ctx.fillText('الاسم', nameX, topY-14);
+    ctx.textAlign = 'center';
+    ctx.fillText('الدرجة', scoreX, topY-14);
+    ctx.fillText('المستوى', levelX, topY-14);
+  } else {
+    ctx.textAlign = 'left';
+    ctx.fillText('Name', nameX, topY-14);
+    ctx.textAlign = 'center';
+    ctx.fillText('Score', scoreX, topY-14);
+    ctx.fillText('Level', levelX, topY-14);
+  }
 
+  // ===== Rows =====
+  ctx.font = '700 20px Cairo';
+
+  for(let i=0;i<rows.length;i++){
+    const y = topY + i*rowH;
+
+    // خلفية الصف
+    ctx.fillStyle = (i%2===0) ? '#f8fafc' : '#ffffff';
+    ctx.fillRect(60, y-30, canvas.width-120, rowH);
+    ctx.fillStyle = '#0f172a';
+
+    const r = rows[i];
+
+    // الاسم
+    ctx.textAlign = (lang === 'ar') ? 'right' : 'left';
+    ctx.fillText(String(r.name || ''), nameX, y);
+
+    // الدرجة
+    ctx.textAlign = 'center';
+    ctx.fillText(String(r.score ?? 0), scoreX, y);
+
+    // المستوى
+    ctx.fillText(mapValue('level', r.level || 'none', lang), levelX, y);
+  }
+
+  // رقم الصفحة
   ctx.fillStyle = '#64748b';
   ctx.font = '600 20px Cairo';
+  ctx.textAlign = 'center';
   ctx.fillText((lang==='ar' ? 'صفحة ' : 'Page ') + String(pageIndex+1), canvas.width/2, canvas.height-40);
+
   return canvas.toDataURL('image/png');
 }
 
