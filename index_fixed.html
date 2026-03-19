@@ -1,0 +1,3789 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Boardak | بوردك</title>
+
+<script>
+// Minimal navigation (safe for GitHub Pages)
+window.boardakMainBound = false;
+
+window.addEventListener('DOMContentLoaded', () => {
+  const show = (id) => {
+    ['home','teacherEntry','studentEntry','teacherRoom','studentRoom'].forEach(v=>{
+      const el=document.getElementById(v);
+      if(el) el.classList.add('hidden');
+    });
+    const el=document.getElementById(id);
+    if(el) el.classList.remove('hidden');
+  };
+  document.getElementById('goTeacher')?.addEventListener('click', ()=>show('teacherEntry'));
+  document.getElementById('goStudent')?.addEventListener('click', ()=>show('studentEntry'));
+  document.getElementById('backFromTeacher')?.addEventListener('click', ()=>show('home'));
+  document.getElementById('backFromStudent')?.addEventListener('click', ()=>show('home'));
+});
+</script>
+
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Supabase JS v2 (UMD) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- jsPDF (optional, certificate download placeholder) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    /* ===== Compact Timer ===== */
+.timerBar{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 10px;
+  background:#eef2ff;
+  border-radius:12px;
+  font-weight:900;
+  font-size:12px;
+}
+
+.timerBar input{
+  width:44px;
+  padding:4px 6px;
+  font-size:12px;
+  border-radius:8px;
+}
+
+.timerBar button{
+  padding:4px 6px;
+  font-size:12px;
+  border-radius:8px;
+  border:none;
+  cursor:pointer;
+  background:#2563eb;
+  color:#fff;
+}
+
+.timerBar button:last-of-type{
+  background:#dc2626;
+}
+
+#timerDisplayT{
+  min-width:42px;
+  text-align:center;
+}
+    :root{
+      --bg:#f2f6ff;
+      --card:#ffffff;
+      --text:#102033;
+      --muted:#64748b;
+      --blue:#2563eb;
+      --green:#16a34a;
+      --red:#dc2626;
+      --soft:#eef2ff;
+      --shadow:0 12px 30px rgba(0,0,0,.08);
+      --radius:18px;
+      --line:#e5e7eb;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:"Cairo",system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+    .hidden{display:none!important}
+    .fileGhost{position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none}
+    .app{max-width:1500px;margin:0 auto;padding:20px}
+    .glass{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .topbar{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;margin-bottom:16px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .badge{width:40px;height:40px;border-radius:12px;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800}
+    .title{font-weight:900;font-size:18px}
+    .subtitle{font-size:12px;color:var(--muted)}
+    .right{display:flex;gap:10px;align-items:center}
+    .pill{background:#e8f2ff;padding:6px 12px;border-radius:999px;font-size:13px;display:flex;gap:8px;align-items:center}
+    .dot{width:8px;height:8px;border-radius:50%;background:#22c55e}
+    .btn{border:none;border-radius:12px;padding:10px 14px;font-weight:800;cursor:pointer;transition:.15s}
+    .btn:hover{transform:translateY(-1px)}
+button[disabled]{opacity:.6;cursor:not-allowed;filter:grayscale(.2);}
+    .btn-soft{background:var(--soft)}
+    .btn-blue{background:var(--blue);color:#fff}
+    .btn-green{background:var(--green);color:#fff}
+    .btn-red{background:var(--red);color:#fff}
+    .btn-sm{padding:6px 10px;border-radius:10px;font-size:12px;font-weight:800}
+    .lang{min-width:70px}
+
+    .view{padding:18px}
+    .hero{display:grid;grid-template-columns:1.2fr .8fr;gap:18px;padding:28px}
+    .hero h1{font-size:40px;font-weight:900}
+    .hero p{margin-top:10px;line-height:1.75;color:var(--muted)}
+    .cards{display:flex;flex-direction:column;gap:14px}
+    .entry{border:none;background:var(--card);box-shadow:var(--shadow);border-radius:22px;padding:18px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:.2s}
+    .entry:hover{transform:translateY(-3px)}
+    .iconCircle{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px}
+    .cGreen{background:#eafff1;color:var(--green)}
+    .cBlue{background:#e8f2ff;color:var(--blue)}
+    .entryTitle{font-weight:900}
+    .entryDesc{font-size:12px;color:var(--muted);margin-top:2px}
+    .footerLine{margin-top:18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;color:var(--muted);font-size:12px}
+    .counter{font-weight:900;color:var(--text)}
+    .toast{position:fixed;bottom:18px;left:18px;background:#111827;color:#fff;padding:10px 14px;border-radius:12px;opacity:0;transform:translateY(6px);transition:.2s;z-index:999}
+    .toast.show{opacity:1;transform:translateY(0)}
+    .loading{position:fixed;inset:0;background:rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;z-index:9999}
+    .loadingBox{background:#fff;padding:18px 20px;border-radius:14px;font-weight:900}
+
+    .form{max-width:560px;padding:22px}
+    .grid{display:grid;gap:14px}
+    label{font-size:13px;font-weight:900}
+    input,select{padding:10px 12px;border-radius:12px;border:1px solid #d1d5db;font-family:"Cairo"}
+    .msg{color:var(--muted);font-size:13px;margin-top:8px}
+
+    .roomTop{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:14px 16px;margin-bottom:12px}
+    .roomMeta{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+    .tag{background:var(--soft);padding:6px 10px;border-radius:999px;font-size:12px}
+
+    .layoutTeacher{display:grid;grid-template-columns:1.4fr .6fr;gap:12px}
+    .layoutStudent{display:grid;grid-template-columns:1.2fr .8fr;gap:12px}
+    .boardWrap{padding:12px}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+    .tool{background:var(--soft);border:none;border-radius:12px;padding:6px 8px;font-weight:900;font-size:12px;cursor:pointer}
+    .tool.active{background:var(--blue);color:#fff}
+    .colors{display:flex;gap:6px;align-items:center}
+    .dotBtn{width:18px;height:18px;border-radius:50%;border:2px solid #fff;cursor:pointer;outline:2px solid transparent}
+    .dotBtn.active{outline:2px solid var(--blue)}
+    canvas{width:100%;height:calc(100vh - 320px);min-height:560px;background:#fff;border:0;border-radius:14px}
+    .side{padding:12px}
+    .side h3{font-size:14px;font-weight:900;margin-bottom:10px}
+    .students{display:flex;flex-direction:column;gap:8px;max-height:560px;overflow:auto}
+    .studentCard{background:#f9fafb;border:1px solid #eef2f7;border-radius:14px;padding:10px;cursor:pointer}
+    .studentCard:hover{background:#eef2ff}
+    .studentRow{display:flex;justify-content:space-between;gap:8px;align-items:center}
+    .small{font-size:12px;color:var(--muted);margin-top:6px}
+    .previewBox{height:300px;border:1px dashed #cbd5e1;border-radius:14px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff}
+    .previewBox img{max-width:100%;max-height:100%}
+    .alertbar{margin-top:8px;padding:10px 12px;border-radius:14px;background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;font-size:13px}
+ .sizeWrap{display:flex;align-items:center;gap:8px;background:var(--soft);padding:8px 10px;border-radius:12px}
+.sizeIcon{font-weight:900;font-size:14px;opacity:.8;user-select:none}
+.sizeWrap input[type="range"]{width:120px}
+.sizeVal{min-width:18px;text-align:center;font-weight:900;font-size:12px;color:var(--muted)} 
+    /* Cursor modes */
+canvas.cursor-pointer{cursor:default}
+canvas.cursor-move{cursor:move}
+canvas.cursor-resize{cursor:nwse-resize}
+    
+
+
+    /* ===== Equation Modal ===== */
+    .modalOverlay{position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;z-index:9999;}
+    .modalCard{background:#fff;border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,.25);width:min(720px,92vw);padding:14px;display:flex;flex-direction:column;gap:10px;}
+    .modalTop{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+    .modalTitle{font-weight:900;}
+    .eqBtns{display:flex;gap:6px;flex-wrap:wrap;}
+    .eqBtn{border:none;border-radius:10px;padding:6px 10px;font-weight:900;cursor:pointer;background:var(--soft);}
+    .eqBtn:hover{transform:translateY(-1px);}
+    math-field#eqField{width:100%;min-height:54px;border:1px solid #d1d5db;border-radius:12px;padding:10px;font-size:22px;direction:ltr;}
+    .modalActions{display:flex;gap:8px;justify-content:flex-end;}
+
+  
+.evalBox{display:flex;flex-direction:column;gap:6px}
+.stepper{display:flex;align-items:center;gap:6px}
+.stepper button{width:32px;height:32px;border-radius:8px;border:none;background:#2563eb;color:#fff;font-weight:900}
+.stepper input{width:64px;text-align:center;font-weight:900}
+
+
+/* ===== Copilot Enhancements: Aesthetics + Student Evaluation Pane ===== */
+body{background: radial-gradient(1200px 600px at 10% 0%, #e0ecff 0%, rgba(224,236,255,0) 60%),
+             radial-gradient(900px 500px at 90% 10%, #e9fff1 0%, rgba(233,255,241,0) 55%),
+             var(--bg);}
+.topbar.glass{backdrop-filter:saturate(1.2) blur(8px);}
+.entry{position:relative;overflow:hidden;}
+.entry::after{content:'';position:absolute;inset:-40% -60%;background:linear-gradient(90deg,transparent,rgba(37,99,235,.12),transparent);
+              transform:rotate(18deg);opacity:.0;transition:.25s;}
+.entry:hover::after{opacity:1;}
+
+.studentPane{display:flex;flex-direction:column;gap:10px;margin-top:10px;}
+.studentPaneTitle{font-weight:900;font-size:13px;display:flex;align-items:center;gap:8px;}
+.studentPaneTitle .pillMini{background:var(--soft);padding:4px 10px;border-radius:999px;font-size:12px;color:var(--muted)}
+.studentWorkPreview{height:320px;border:1px dashed #cbd5e1;border-radius:14px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff;}
+.studentWorkPreview img{max-width:100%;max-height:100%;}
+.evalBar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#f8fafc;border:1px solid #eef2f7;border-radius:14px;padding:10px;}
+.evalBar .iconBtn{border:none;border-radius:12px;padding:8px 10px;background:var(--soft);cursor:pointer;font-weight:900;display:flex;gap:6px;align-items:center;}
+.evalBar .iconBtn:hover{transform:translateY(-1px)}
+.evalBar .chip{background:#eef2ff;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:900;color:#1e293b;}
+.evalBar input[type=number]{width:76px;text-align:center;font-weight:900;}
+.evalBar select{padding:8px 10px;border-radius:12px;border:1px solid #d1d5db;font-weight:900;}
+.evalBar textarea{width:100%;min-height:58px;border-radius:12px;border:1px solid #d1d5db;padding:10px;font-family:"Cairo";}
+.evalRow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;width:100%;}
+.evalRow.tight{width:auto;}
+
+.kbdHint{font-size:11px;color:var(--muted)}
+
+
+
+/* ===== Teacher-First Smart Layout v2 ===== */
+/* Default (شرح): سبورة المعلم كبيرة + شريط أعمال الطلبة أفقي */
+.layoutTeacher.tf-default{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.layoutTeacher.tf-default .boardWrap{
+  width:100%;
+}
+.layoutTeacher.tf-default #tCanvas{
+  height:calc(100vh - 360px);
+  min-height:640px;
+}
+.layoutTeacher.tf-default #teacherSide{
+  width:100%;
+}
+/* شريط الأعمال (studentsAllWall) أفقي */
+.layoutTeacher.tf-default #studentsAllWall{
+  display:flex !important;
+  flex-wrap:nowrap !important;
+  gap:10px !important;
+  overflow-x:auto !important;
+  overflow-y:hidden !important;
+  max-height:none !important;
+  padding-bottom:6px;
+  scroll-snap-type:x mandatory;
+}
+.layoutTeacher.tf-default #studentsAllWall .studentTile{
+  min-width:180px;
+  scroll-snap-align:start;
+}
+.layoutTeacher.tf-default #studentsAllWall .studentThumb{
+  height:92px;
+}
+/* نخفي وضع التركيز افتراضياً (كما هو بالفعل) */
+
+/* Focus (👁): سبورة المعلم يسار + سبورة الطالب/التقييم يمين */
+.layoutTeacher.tf-focus{
+  display:grid;
+  grid-template-columns: 1.7fr 1fr;
+  gap:12px;
+  align-items:stretch;
+}
+.layoutTeacher.tf-focus #teacherSide{
+  max-height:calc(100vh - 220px);
+  overflow:auto;
+}
+.layoutTeacher.tf-focus #tCanvas{
+  height:calc(100vh - 260px);
+  min-height:620px;
+}
+
+/* All (🎯): إخفاء سبورة المعلم + إظهار شبكة الأعمال كاملة */
+.layoutTeacher.tf-all{
+  display:block;
+}
+.layoutTeacher.tf-all .boardWrap{display:none !important;}
+.layoutTeacher.tf-all #teacherSide{
+  width:100%;
+}
+.layoutTeacher.tf-all #studentsAllWall{
+  display:grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(190px,1fr)) !important;
+  gap:12px !important;
+  overflow:auto !important;
+  max-height:calc(100vh - 260px) !important;
+}
+.layoutTeacher.tf-all #studentsAllWall .studentThumb{height:130px;}
+
+/* Dock Buttons */
+.viewDock{
+  position:sticky;
+  top:10px;
+  z-index:60;
+  display:flex;
+  gap:8px;
+  justify-content:flex-end;
+  margin-bottom:10px;
+}
+.viewDock button{
+  width:40px;height:40px;
+  border-radius:999px;
+  border:none;
+  background:var(--soft);
+  cursor:pointer;
+  font-size:18px;
+  font-weight:900;
+  box-shadow:0 6px 14px rgba(0,0,0,.10);
+}
+.viewDock button:hover{background:var(--blue);color:#fff;transform:translateY(-1px)}
+
+@media (max-width: 1100px){
+  .layoutTeacher.tf-focus{grid-template-columns:1fr;}
+  .layoutTeacher.tf-default #tCanvas{height:calc(100vh - 420px);min-height:520px;}
+}
+
+
+
+/* ===== Premium UI Enhancements v3 (Lang Focus) ===== */
+.btn, .tool, .eqBtn, .iconBtn{transition:transform .18s ease, box-shadow .18s ease, background .18s ease, color .18s ease;}
+.btn{box-shadow:0 10px 20px rgba(2,6,23,.10);}
+.btn-blue{background:linear-gradient(135deg,#2563eb 0%,#1d4ed8 55%,#0ea5e9 120%);}
+.btn-green{background:linear-gradient(135deg,#16a34a 0%,#22c55e 60%,#10b981 120%);}
+.btn-red{background:linear-gradient(135deg,#dc2626 0%,#ef4444 65%,#fb7185 120%);}
+.btn-soft{background:linear-gradient(135deg,rgba(238,242,255,1) 0%,rgba(255,255,255,1) 100%);border:1px solid rgba(148,163,184,.35);}
+.btn:hover,.tool:hover,.eqBtn:hover,.iconBtn:hover{transform:translateY(-2px);box-shadow:0 16px 28px rgba(2,6,23,.14);}
+.tool.active{box-shadow:0 10px 20px rgba(37,99,235,.25);}
+
+/* Home floaties (never cover text) */
+.hero{position:relative;overflow:hidden;}
+.hero > div{position:relative;z-index:2;}
+.cards{position:relative;z-index:2;}
+.hero::before{content:'';position:absolute;inset:-40% -30%;background:radial-gradient(circle at 20% 20%,rgba(37,99,235,.14),transparent 55%),radial-gradient(circle at 80% 30%,rgba(34,197,94,.14),transparent 55%),radial-gradient(circle at 60% 80%,rgba(14,165,233,.12),transparent 60%);pointer-events:none;z-index:0;}
+.floaties{position:absolute;inset:0;pointer-events:none;z-index:1;}
+.floatie{position:absolute;width:52px;height:52px;border-radius:18px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.45);border:1px solid rgba(148,163,184,.32);box-shadow:0 18px 40px rgba(2,6,23,.10);backdrop-filter:blur(10px);opacity:.65;animation:floatUp 8s ease-in-out infinite;}
+.floatie:nth-child(2){animation-duration:9.5s;}
+.floatie:nth-child(3){animation-duration:11s;}
+.floatie:nth-child(4){animation-duration:12.5s;}
+@keyframes floatUp{0%,100%{transform:translateY(0) rotate(-2deg);}50%{transform:translateY(-14px) rotate(2deg);}}
+@media (max-width: 980px){.floaties{display:none;}}
+
+/* Student tiles separation */
+.studentTile{background:linear-gradient(180deg,#ffffff,#f8fafc);border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 10px 22px rgba(2,6,23,.08);overflow:hidden;}
+.studentTile.active{outline:2px solid rgba(37,99,235,.55);box-shadow:0 16px 32px rgba(37,99,235,.18);}
+.studentThumb{border-top:1px solid rgba(148,163,184,.22);background:#fff;}
+    /* ✅ STEP 5: تصغير شبكة أعمال الطلبة */
+
+.studentThumb {
+  height: 90px;               /* تصغير ارتفاع المعاينة */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.studentThumb img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;        /* بدون قص */
+}
+
+.studentTile {
+  max-width: 200px;           /* تصغير حجم البلاطة */
+}
+
+/* ضبط شبكة الطلبة */
+#studentsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+</style>
+
+  <!-- MathLive (Equation Editor) -->
+  <link rel="stylesheet" href="https://unpkg.com/mathlive/dist/mathlive.core.css" />
+  <link rel="stylesheet" href="https://unpkg.com/mathlive/dist/mathlive.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/mathlive"></script>
+
+  <!-- MathJax (TeX -> SVG) -->
+  <script>
+    window.MathJax = {
+      tex: { packages: { '[+]': ['ams'] } },
+      svg: { fontCache: 'none' }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+</head>
+
+<body>
+  <div id="loading" class="loading hidden"><div class="loadingBox">جاري التحميل...</div></div>
+  <div id="toast" class="toast"></div>
+<div id="fileWarning" class="alertbar hidden" style="margin:12px 20px;">⚠️ افتح الملف عبر Live Server (http://localhost) وليس file:// لأن المتصفح يمنع بعض الوظائف.</div>
+
+  <div class="app">
+    <header class="topbar glass">
+      <div class="brand">
+        <div class="badge">B</div>
+        <div>
+          <div class="title">بوردك | Boardak</div>
+          <div class="subtitle">Your Smart Board - A calm educational platform</div>
+        </div>
+      </div>
+
+      <div class="right">
+        <div class="pill">
+          <span class="dot"></span>
+          <span id="liveText">جاهز</span>
+        </div>
+        <button id="langBtn" class="btn btn-soft lang">AR/EN</button>
+      </div>
+    </header>
+
+    <!-- HOME -->
+    <section id="home" class="view glass">
+      <div class="hero">
+  <div class="floaties">
+    <div class="floatie" style="top:10%; right:4%">🧠</div>
+    <div class="floatie" style="top:28%; right:6%">📘</div>
+    <div class="floatie" style="top:12%; left:4%">✍️</div>
+    <div class="floatie" style="top:44%; left:6%">✨</div>
+  </div>
+        <div>
+          <h1>بوردك | Boardak</h1>
+          <p>سوبرتك الذكية - منصة تعليمية هادئة للشرح والمتابعة والتقييم</p>
+
+          <div class="footerLine">
+            <span>اللهم علّمنا ما ينفعنا وانفعنا بما علمتنا</span>
+            <span>—</span>
+            <span>إعداد وتصميم: الأستاذ عبدالله السالم</span>
+            <span>—</span>
+            <span>الزوار: <span id="visitors" class="counter">5000</span></span>
+          </div>
+        </div>
+
+        <div class="cards">
+          <button class="entry" id="goStudent">
+            <div class="iconCircle cGreen">👥</div>
+            <div>
+              <div class="entryTitle">دخول الطالب</div>
+              <div class="entryDesc">ادخل بالكود أو الرابط وابدأ العمل على سبورتك.</div>
+            </div>
+          </button>
+
+          <button class="entry" id="goTeacher">
+            <div class="iconCircle cBlue">🎓</div>
+            <div>
+              <div class="entryTitle">دخول المعلم</div>
+              <div class="entryDesc">أنشئ الغرفة بسرعة وابدأ الشرح مباشرة.</div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TEACHER ENTRY -->
+    <section id="teacherEntry" class="view glass hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div>
+          <h2>دخول المعلم</h2>
+          <div class="subtitle">اسم المعلم مطلوب، والكود وعنوان الدرس اختياريان.</div>
+        </div>
+        <button class="btn btn-soft" id="backFromTeacher">رجوع</button>
+      </div>
+
+      <div class="form glass">
+        <div class="grid">
+          <div>
+            <label>اسم المعلم</label>
+            <input id="tName" placeholder="مثال: عبدالله السالم" />
+          </div>
+          <div>
+            <label>كود الغرفة (اختياري)</label>
+            <input id="tCode" placeholder="يتولد تلقائيًا إن تركته فارغًا" />
+          </div>
+          <div>
+            <label>عنوان الدرس (اختياري)</label>
+            <input id="tTitle" placeholder="مثال: الكسور العشرية" />
+</div>
+<div>
+<label>لغة الشهادات / Language</label>
+<select id="tLang">
+  <option value="ar" selected>العربية</option>
+  <option value="en">English</option>
+</select>
+</div>
+
+
+          <button class="btn btn-blue" id="teacherStart">ابدأ الجلسة</button>
+          <div id="tMsg" class="msg"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STUDENT ENTRY -->
+    <section id="studentEntry" class="view glass hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div>
+          <h2>دخول الطالب</h2>
+          <div class="subtitle">اكتب الاسم والكود للدخول إلى الغرفة.</div>
+        </div>
+        <button class="btn btn-soft" id="backFromStudent">رجوع</button>
+      </div>
+
+      <div class="form glass">
+        <div class="grid">
+          <div>
+            <label>اسم الطالب</label>
+            <input id="sName" placeholder="اسم الطالب" />
+          </div>
+          <div>
+            <label>كود الغرفة</label>
+            <input id="sCode" placeholder="أدخل كود الغرفة" />
+          </div>
+
+          <button class="btn btn-green" id="studentJoin">انضم الآن</button>
+          <div id="sMsg" class="msg"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TEACHER ROOM -->
+    <section id="teacherRoom" class="view hidden">
+      <div class="roomTop glass">
+        <div>
+          <div style="font-weight:900;font-size:18px" id="tRoomTitle">—</div>
+          <div class="roomMeta">
+            <span class="tag">كود الغرفة: <b id="tRoomCode">—</b></span>
+            <span class="tag">المعلم: <b id="tRoomTeacher">—</b></span>
+            <span class="tag">المتصلون: <b id="tOnline">0</b></span>
+          </div>
+          <div id="tBar" class="alertbar hidden"></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+          <button class="btn btn-soft btn-sm" id="copyLink">نسخ الرابط</button>
+          <button class="btn btn-soft btn-sm" id="resetStudents">تصفير أعمال الطلبة</button>
+          <button class="btn btn-red btn-sm" id="endRoom">إنهاء الجلسة</button>
+        </div>
+      </div>
+
+      <div class="layoutTeacher tf-default">
+        <div class="glass boardWrap">
+       
+ <!-- ✅ TIMER COMPACT -->
+<div class="timerBar">
+  <span>⏱️</span>
+
+  <input
+    id="timerMinutesInput"
+    type="number"
+    min="1"
+    placeholder="د"
+  />
+
+  <button id="timerStartBtn">▶</button>
+  <button id="timerResetBtn">⏹</button>
+
+  <span id="timerDisplayT">00:00</span>
+</div>
+
+<div class="toolbar">
+            <div id="boardTabs" class="toolbar"></div>
+            <button class="btn btn-blue btn-sm" id="addBoard" title="+">+</button>
+          </div>
+
+          <div class="toolbar">
+            <button class="tool active" id="tPen">قلم</button>
+            <button class="tool" id="tEraser">ممحاة</button>
+            <button class="tool" id="tText">نص</button>
+            <button class="tool" id="tEquation">معادلة</button>
+            <button class="tool" id="tImage" title="إدراج صورة">🖼️</button>
+            <button class="tool" id="tPointer" title="مؤشر">🖱️</button>
+            <button class="btn btn-soft btn-sm" id="clearTeacher">مسح السبورة</button>
+            <div class="sizeWrap">
+               <span class="sizeIcon">↔</span>
+              <input id="tSize" type="range" min="2" max="18" value="4" />
+              <span id="tSizeVal" class="sizeVal">4</span>
+              </div>
+            <div class="colors">
+              <button class="dotBtn active" data-color="#000000" style="background:#000000"></button>
+              <button class="dotBtn" data-color="#dc2626" style="background:#dc2626"></button>
+              <button class="dotBtn" data-color="#16a34a" style="background:#16a34a"></button>
+            </div>
+            <button class="btn btn-soft btn-sm" id="toggleExplain">الشرح فقط</button>
+            <button class="btn btn-soft btn-sm" id="toggleLock">قفل</button>
+            <button class="btn btn-soft btn-sm" id="toggleFocus">عرض جماعي</button>
+          </div>
+          <div style="position:relative;">
+            <canvas id="tCanvas" width="1400" height="820"></canvas>
+            <input type="file" id="imagePicker" accept="image/*" class="fileGhost">
+            <!-- Overlay لمعاينة سبورة الطالب فوق سبورة المعلم -->
+            <div id="teacherOverlay"
+                 class="hidden"
+                 style="
+                   position:absolute;
+                   inset:0;
+                   background:rgba(15,23,42,0.60);
+                   display:flex;
+                   align-items:center;
+                   justify-content:center;
+                   flex-direction:column;
+                   z-index:20;
+                 ">
+              <div style="
+                  background:#ffffff;
+                  border-radius:18px;
+                  padding:12px;
+                  max-width:95%;
+                  max-height:95%;
+                  display:flex;
+                  flex-direction:column;
+                  gap:8px;
+                  box-shadow:0 20px 40px rgba(0,0,0,0.35);
+                ">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <div id="teacherOverlayTitle" style="font-weight:900;font-size:14px;">عرض سبورة الطالب</div>
+                  <button id="closeOverlay" class="btn btn-soft btn-sm">رجوع لسبورتي</button>
+                </div>
+
+                <div id="teacherOverlayMsg" style="font-size:13px;color:#64748b;text-align:center;"></div>
+
+                <div style="
+                    border-radius:14px;
+                    border:1px solid #e5e7eb;
+                    overflow:hidden;
+                    background:#f9fafb;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                  ">
+                  <img id="teacherOverlayImg"
+                       src=""
+                       alt="student board full"
+                       style="max-width:100%;max-height:80vh;object-fit:contain;" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="small" id="tHint"></div>
+        </div>
+
+        <div class="glass side">
+          <h3>الطلاب داخل الغرفة</h3>
+
+          <!-- أدوات التحكم -->
+          <div class="studentsHeader">
+            <div class="seg">
+              <button class="tool" id="studentsViewList" type="button">قائمة</button>
+              <button class="tool active" id="studentsViewGrid" type="button">شبكة</button>
+            </div>
+            <input id="studentSearch" type="text" placeholder="بحث عن طالب..." />
+            <select id="studentFilter">
+              <option value="all">الكل</option>
+              <option value="help">🆘 طلب مساعدة</option>
+              <option value="done">✅ منجز</option>
+              <option value="noWork">⏳ بدون عمل</option>
+            </select>
+          </div>
+
+          <!-- العرض الشبكي -->
+          <div id="studentsGrid" class="studentsGrid"></div>
+
+          <!-- العرض بالقائمة (اختياري) -->
+          <div id="studentsList" class="students hidden"></div>
+
+          <!-- لوحة التقييم (تُبنى تلقائيًا بواسطة ensureTeacherStudentPane) -->
+        </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STUDENT ROOM -->
+    <section id="studentRoom" class="view hidden">
+      <div class="roomTop glass">
+        <div>
+          <div style="font-weight:900;font-size:18px" id="sRoomTitle">—</div>
+          <div class="roomMeta">
+            <span class="tag">كود الغرفة: <b id="sRoomCode">—</b></span>
+            <span class="tag">الطالب: <b id="sRoomStudent">—</b></span>
+            <span class="tag">المتصلون: <b id="sOnline">0</b></span>
+          </div>
+          <div id="sBar" class="alertbar hidden"></div>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+          <span id="timerDisplayS" class="tag" style="font-weight:900">00:00</span>
+          <span id="timerStateS" class="tag">—</span>
+          <select id="sStatus">
+            <option value="understood">فهمت</option>
+            <option value="help">لم أفهم</option>
+            <option value="done">انتهيت</option>
+          </select>
+          <button class="btn btn-green btn-sm" id="helpBtn">مساعدة</button>
+          <button class="btn btn-soft btn-sm" id="studentExit">خروج</button>
+        </div>
+      </div>
+
+      <div class="layoutStudent">
+        <div class="glass boardWrap">
+          <div class="toolbar">
+            <button class="tool active" id="sPen">قلم</button>
+            <button class="tool" id="sEraser">ممحاة</button>
+            <div class="sizeWrap">
+  <span class="sizeIcon">↔</span>
+  <input id="sSize" type="range" min="2" max="18" value="4" />
+  <span id="sSizeVal" class="sizeVal">4</span>
+</div>
+            <div class="colors">
+              <button class="dotBtn active" data-scolor="#000000" style="background:#000000"></button>
+              <button class="dotBtn" data-scolor="#dc2626" style="background:#dc2626"></button>
+              <button class="dotBtn" data-scolor="#16a34a" style="background:#16a34a"></button>
+            </div>
+            <button class="btn btn-soft btn-sm" id="clearStudent">مسح</button>
+            <button class="btn btn-blue btn-sm hidden" id="downloadCert">تحميل شهادتك</button>
+          </div>
+          <canvas id="sCanvas" width="1400" height="820"></canvas>
+          <div class="small" id="sHint"></div>
+        </div>
+
+        <div class="glass side">
+          <h3>سبورة المعلم / العرض الجماعي</h3>
+          <div id="studentTeacherPreview" class="previewBox"><span>لا يوجد محتوى بعد</span></div>
+
+          <div style="margin-top:12px">
+            <h3>التغذية الراجعة</h3>
+            <div class="small" id="feedbackBox">—</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+<script>
+/* =============================
+   CONFIG
+============================= */
+const SUPABASE_URL = "https://juqqhqbiirmgsjewyols.supabase.co";
+const SUPABASE_KEY = "sb_publishable_GZdVXisuLM1qnAUoiN7bng_UhQ9UQrx";
+
+/* =============================
+   Safe Storage (fallback memory)
+============================= */
+const __mem = new Map();
+const safeStorage = {
+  getItem: (k)=>{ try{return localStorage.getItem(k);}catch{return __mem.get(k) ?? null;} },
+  setItem: (k,v)=>{ try{localStorage.setItem(k,v);}catch{__mem.set(k,v);} },
+  removeItem:(k)=>{ try{localStorage.removeItem(k);}catch{__mem.delete(k);} }
+};
+
+/* Supabase client (guarded for GitHub Pages/CDN blockers) */
+const createClient = window.supabase?.createClient;
+let sb = null;
+if(!createClient){
+  console.warn('Supabase library not loaded');
+}
+else{
+  sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: { persistSession:true, autoRefreshToken:true, storage: safeStorage }
+  });
+}
+
+const { jsPDF } = window.jspdf || {};
+
+/* =============================
+   UI helpers
+============================= */
+const $ = (id)=>document.getElementById(id);
+function showToast(msg){
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"), 2200);
+}
+function loading(flag){ $("loading").classList.toggle("hidden", !flag); }
+function showView(id){
+  ["home","teacherEntry","studentEntry","teacherRoom","studentRoom"].forEach(v=>$(v).classList.add("hidden"));
+  $(id).classList.remove("hidden");
+}
+function bumpVisitors(){
+  const key="boardak_visitors";
+  let v = parseInt(safeStorage.getItem(key) || "5000", 10);
+  v += 1;
+  safeStorage.setItem(key, String(v));
+  $("visitors").textContent = String(v);
+}
+
+
+// ===== Lang Core (Dynamic) =====
+function _appLang(){
+  try{ return (safeStorage.getItem('boardak_lang')==='en') ? 'en' : 'ar'; }catch(e){ return 'ar'; }
+}
+const LANG_DYN = {
+  ar: {
+    view:'عرض', select:'اختيار',
+    status:'الحالة',
+    hasWork:'🖼️ لديه عمل', noWork:'— بدون عمل',
+    certWord:'شهادة', yes:'نعم', no:'لا',
+    doneBadge:'منجز', noWorkBadge:'بدون عمل',
+    noStudents:'لا يوجد طلاب بعد',
+    needsHelp:'🆘',
+    metaSep:'—'
+  },
+  en: {
+    view:'View', select:'Select',
+    status:'Status',
+    hasWork:'🖼️ Has work', noWork:'— No work',
+    certWord:'Cert', yes:'YES', no:'NO',
+    doneBadge:'Done', noWorkBadge:'No work',
+    noStudents:'No students yet',
+    needsHelp:'🆘',
+    metaSep:'—'
+  }
+};
+function TT(key){
+  const l=_appLang();
+  return (LANG_DYN[l] && LANG_DYN[l][key]) ? LANG_DYN[l][key] : (LANG_DYN.ar[key]||key);
+}
+// ✅ ترجمة موحدة للتقارير/الشهادات (AR/EN)
+// ✅ ترجمة موحدة للتقارير/الشهادات (AR/EN)
+const REPORT_I18N = {
+  ar: {
+    score: 'الدرجة',
+    level: 'المستوى',
+    badge: 'الوسام',
+    note: 'الملاحظة',
+    status: 'الحالة',
+    cert: 'الشهادة',
+    yes: 'نعم',
+    no: 'لا',
+    noDrawing: 'لا يوجد رسم بعد',
+    noContent: 'لا يوجد محتوى بعد',
+    noWork: 'لا يوجد'
+  },
+  en: {
+    score: 'Score',
+    level: 'Level',
+    badge: 'Badge',
+    note: 'Note',
+    status: 'Status',
+    cert: 'Certificate',
+    yes: 'YES',
+    no: 'NO',
+    noDrawing: 'No drawing yet',
+    noContent: 'No content yet',
+    noWork: 'No work'
+  }
+};
+
+// ✅ توحيد قيم الحالة (Keys -> Labels)
+const STATUS_I18N = {
+  understood: { ar: 'فهمت',     en: 'Understood' },
+  help:       { ar: 'مساعدة',   en: 'Need help' },
+  done:       { ar: 'منجز',     en: 'Done' },
+  none:       { ar: '—',        en: '-' }
+};
+function mapStatus(key, lang){
+  return STATUS_I18N[key]?.[lang] || (lang === 'ar' ? '—' : '-');
+}
+
+// ✅ توحيد قيم المستوى والوسام (Keys -> Labels)
+const VALUE_I18N = {
+  level: {
+    excellent: { ar: 'ممتاز',     en: 'Excellent' },
+    very_good: { ar: 'جيد جدًا',  en: 'Very Good' },
+    good:      { ar: 'جيد',       en: 'Good' },
+    pass:      { ar: 'مقبول',     en: 'Pass' },
+    weak:      { ar: 'ضعيف',      en: 'Weak' },
+    none:      { ar: '—',         en: '-' }
+  },
+  badge: {
+    creative:  { ar: 'مبدع 🌟',   en: 'Creative 🌟' },
+    super:     { ar: 'فائق 🚀',   en: 'Super 🚀' },
+    genius:    { ar: 'عبقري 🧠',  en: 'Genius 🧠' },
+    none:      { ar: '—',         en: '-' }
+  }
+};
+function mapValue(kind, key, lang){
+  return VALUE_I18N[kind]?.[key]?.[lang] || (lang === 'ar' ? '—' : '-');
+}
+
+function escapeHtml(s){
+  return String(s ?? '')
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('\"','&quot;')
+    .replaceAll("'",'&#39;');
+}
+
+function latexToSvgDataUrl(latex){
+  if(!window.MathJax || !window.MathJax.tex2svg){
+    throw new Error('MathJax not ready');
+  }
+  const node = window.MathJax.tex2svg(latex, { display: true });
+  const svg = node.querySelector('svg');
+  const svgText = new XMLSerializer().serializeToString(svg);
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgText);
+}
+
+
+/* =============================
+   Session Timer (Synced)
+============================= */
+let __timerTick = null;
+
+function _fmtMMSS(totalSec){
+  const sec = Math.max(0, parseInt(totalSec||0,10) || 0);
+  const m = Math.floor(sec/60);
+  const s = sec%60;
+  return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+
+function _computeRemaining(meta){
+  if(!meta) return 0;
+  let remaining = parseInt(meta.timer_seconds||0,10) || 0;
+  if(meta.timer_enabled && meta.timer_started_at){
+    const start = new Date(meta.timer_started_at).getTime();
+    const now = Date.now();
+    const diff = Math.floor((now-start)/1000);
+    remaining = Math.max(0, remaining - diff);
+  }
+  return remaining;
+}
+
+function renderTimerUI(){
+  const meta = State.sessionMeta || {};
+  const remaining = _computeRemaining(meta);
+  const mmss = _fmtMMSS(remaining);
+
+  if(State.role==='teacher'){
+    const d = $('timerDisplayT');
+    const st = $('timerStateT');
+    if(d) d.textContent = mmss;
+    if(st) st.textContent = meta.timer_enabled ? 'يعمل' : (meta.timer_started_at ? 'موقوف' : 'غير مفعل');
+  }
+
+  if(State.role==='student'){
+    const d = $('timerDisplayS');
+    const st = $('timerStateS');
+    if(d) d.textContent = mmss;
+    if(st) st.textContent = meta.timer_enabled ? 'يعمل' : (meta.timer_started_at ? 'موقوف' : 'غير مفعل');
+  }
+
+  // ✅ عند انتهاء المؤقت: نفّذ الإجراء مرة واحدة (تنبيه/قفل) ثم أوقف المؤقت
+  if(State.role==='teacher'){
+    if(remaining === 0 && meta.timer_enabled){
+      // أوقف المؤقت مع حفظ الحالة
+      sb.from('session_meta')
+        .update({
+          timer_enabled: false,
+          timer_seconds: 0,
+          timer_action: meta.timer_action || 'done',
+          updated_at: new Date().toISOString()
+        })
+        .eq('room_id', State.room.id)
+        .then(()=>{})
+        .catch(()=>{});
+
+      // قفل السبورة فقط إذا تم اختيار lock
+      if(meta.timer_action === 'lock'){
+        sb.rpc('set_board_locked_v3', { p_room_id: State.room.id, p_locked: true }).catch(()=>{});
+      }
+    }
+  }
+}
+
+function startTimerTicker(){
+  if(__timerTick) clearInterval(__timerTick);
+  __timerTick = setInterval(renderTimerUI, 1000);
+}
+
+async function timerUpdate(action){
+  const meta = State.sessionMeta || {};
+
+  if(action === 'start'){
+    const mins = parseInt($('timerMinutesInput')?.value || '0', 10);
+    if(!mins || mins <= 0){
+      showToast("أدخل عدد الدقائق");
+      return;
+    }
+
+    const sec = mins * 60;
+    const timer_action = $('timerAction')?.value || 'alert';
+
+    const { error } = await sb.from('session_meta')
+      .update({
+        timer_enabled: true,
+        timer_seconds: sec,
+        timer_started_at: new Date().toISOString(),
+        timer_action: timer_action,
+        updated_at: new Date().toISOString()
+      })
+      .eq('room_id', State.room.id);
+
+    if(error){
+      console.error(error);
+      showToast("فشل تشغيل المؤقت");
+      return;
+    }
+
+    // ✅ هذا السطر هو الفرق
+    State.sessionMeta.timer_enabled = true;
+    State.sessionMeta.timer_seconds = sec;
+    State.sessionMeta.timer_started_at = new Date().toISOString();
+
+    renderTimerUI();
+    startTimerTicker();
+    return;
+  }
+
+  if(action === 'pause'){
+    const remaining = _computeRemaining(meta);
+
+    await sb.from('session_meta').update({
+      timer_enabled: false,
+      timer_seconds: remaining,
+      updated_at: new Date().toISOString()
+    }).eq('room_id', State.room.id);
+
+    State.sessionMeta.timer_enabled = false;
+    State.sessionMeta.timer_seconds = remaining;
+
+    renderTimerUI();
+    return;
+  }
+
+  if(action === 'reset'){
+    await sb.from('session_meta').update({
+      timer_enabled: false,
+      timer_seconds: 0,
+      timer_started_at: null,
+      updated_at: new Date().toISOString()
+    }).eq('room_id', State.room.id);
+
+    State.sessionMeta.timer_enabled = false;
+    State.sessionMeta.timer_seconds = 0;
+    State.sessionMeta.timer_started_at = null;
+
+    renderTimerUI();
+    return;
+  }
+}
+
+/* =============================
+   State
+============================= */
+  // Text objects (teacher only)
+const TextState = {
+  items: [],             // عناصر النص
+  activeId: null,
+  mode: null,            // null | "move" | "resize"
+  dragStart: null,
+
+  // ✅ Snapshot ثابت للخلفية أثناء وضع المؤشر (بدون نصوص)
+  backing: null,         // ImageData
+};
+  const ImageState = {
+  items: [],        // {id, x, y, w, h, img}
+  activeId: null,
+  mode: null,       // null | "move" | "resize"
+  dragStart: null,  // {x,y, ox,oy, ow,oh}
+};
+const State = {
+  role:null,
+  user:null,
+  room:null,
+  roomCode:null,
+  sessionMeta:null,
+  boards:[],
+  currentBoard:null,
+  studentBoard:null,
+  focusedStudentBoard:null,
+  evaluation:null,
+  certificate:null,
+  dbChannel:null,
+  presenceChannel:null,
+  onlineCount:0,
+  selectedStudentBoardId:null,
+};
+
+// ===== Offline Local Mode (no Supabase) =====
+function localStartTeacher(){
+  const teacherName = ($('tName')?.value || '').trim();
+  const codeIn = ($('tCode')?.value || '').trim();
+  const title = ($('tTitle')?.value || '').trim();
+  if(!teacherName){ showToast('اكتب اسم المعلم'); return; }
+  const code = (codeIn || Math.random().toString(36).slice(2,8)).toUpperCase();
+  State.role = 'teacher';
+  State.room = { id: 'local-'+code, code: code, teacher_name: teacherName, title: title || 'درس' };
+  State.roomCode = code;
+  State.sessionMeta = { session_open:true, explanation_mode:false, board_locked:false, focused_student_board_id:null, timer_enabled:false, timer_seconds:0, timer_started_at:null, timer_action:'alert' };
+  State.boards = [{ id:'local-board-1', room_id: State.room.id, title:'السبورة 1', sort_order:1, visible_to_students:true, content:{ type:'boardak_v3', version:1, drawing:'', preview:'' } }];
+  State.currentBoard = State.boards[0];
+  try{ $('tRoomTitle').textContent = State.room.title; }catch(_){}
+  try{ $('tRoomCode').textContent = code; }catch(_){}
+  try{ $('tRoomTeacher').textContent = teacherName; }catch(_){}
+  showView('teacherRoom');
+  try{ $('liveText').textContent = 'مباشر'; }catch(_){}
+  try{ initCanvas(); }catch(e){ console.warn(e); }
+  try{ applySessionMetaUI(); }catch(e){}
+  try{ renderTimerUI(); startTimerTicker(); }catch(e){}
+  try{ renderBoardTabs(); }catch(e){}
+  try{ refreshCanvas(); }catch(e){}
+  try{ renderTeacherPreview(); }catch(e){}
+  try{ ensureTeacherStudentPane(); bindTeacherEvalControls(); }catch(e){}
+  showToast('✅ تم فتح الجلسة بوضع محلي (بدون اتصال). لتفعيل الاتصال: افتح عبر Live Server وتأكد من تحميل Supabase.');
+}
+
+
+// ✅ Per-board objects memory (prevents objects leaking between boards)
+const BoardObjects = new Map();
+// key: boardId
+// value: { texts:[], images:[] }
+
+function loadObjectsForBoard(boardId){
+  const pack = BoardObjects.get(boardId) || { texts:[], images:[] };
+
+  TextState.items = pack.texts;
+  ImageState.items = pack.images;
+
+  // صفّر فقط التحديد/السحب (بدون مسح العناصر)
+  TextState.activeId = null;
+  TextState.mode = null;
+  TextState.dragStart = null;
+
+  ImageState.activeId = null;
+  ImageState.mode = null;
+  ImageState.dragStart = null;
+}
+
+function saveObjectsForBoard(boardId){
+  BoardObjects.set(boardId, {
+    texts: TextState.items,
+    images: ImageState.items
+  });
+}
+
+
+function updateOnlineUI(){
+  if(State.role==="teacher") $("tOnline").textContent = String(State.onlineCount||0);
+  if(State.role==="student") $("sOnline").textContent = String(State.onlineCount||0);
+}
+
+/* =============================
+   Auth
+============================= */
+async function ensureAnon(){
+  if(!sb) throw new Error('SUPABASE_NOT_LOADED');
+  const { data: sess } = await sb.auth.getSession();
+  if(!sess.session){
+    const { error } = await sb.auth.signInAnonymously();
+    if(error){ console.error(error); try{ alert('AUTH ERROR: ' + (error.message||JSON.stringify(error))); }catch(_){}; throw error; }
+  }
+  const { data: u, error: uErr } = await sb.auth.getUser();
+  if(uErr) throw uErr;
+  return u.user;
+}
+
+function getRoomFromUrl(){
+  const p = new URLSearchParams(location.search);
+  return (p.get("room") || "").trim().toUpperCase();
+}
+
+/* =============================
+   DB loaders
+============================= */
+async function loadSessionMeta(){
+  const { data, error } = await sb.from("session_meta").select("*").eq("room_id", State.room.id).maybeSingle();
+  if(error) throw error;
+  State.sessionMeta = data;
+  applySessionMetaUI();
+  renderTimerUI();
+  startTimerTicker();
+}
+
+async function loadBoards(){
+  const { data, error } = await sb
+    .from("boards")
+    .select("*")
+    .eq("room_id", State.room.id)
+    .order("sort_order", { ascending:true });
+
+  if(error) throw error;
+
+  State.boards = data || [];
+  State.currentBoard = State.boards.find(b=>b.visible_to_students) || State.boards[0] || null;
+
+  // ✅ حمّل عناصر هذه السبورة فقط (حتى لا تتسرب عناصر من سبورة أخرى)
+  if(State.currentBoard?.id){
+    loadObjectsForBoard(State.currentBoard.id);
+  }
+
+  renderBoardTabs();
+}
+
+async function ensureStudentBoard(){
+  if(!State.currentBoard) return;
+
+  const { data, error } = await sb.from("student_boards")
+    .select("*")
+    .eq("room_id", State.room.id)
+    .eq("student_user_id", State.user.id)
+    .eq("board_id", State.currentBoard.id)
+    .maybeSingle();
+  if(error) throw error;
+
+  if(data){ State.studentBoard = data; return; }
+
+  const { data: ins, error: insErr } = await sb.from("student_boards").insert({
+    room_id: State.room.id,
+    student_user_id: State.user.id,
+    board_id: State.currentBoard.id
+  }).select().single();
+
+  if(insErr) throw insErr;
+  State.studentBoard = ins;
+}
+
+/* =============================
+   Realtime: Postgres Changes
+============================= */
+function subscribeDb(roomId){
+  if(State.dbChannel) sb.removeChannel(State.dbChannel);
+
+  const ch = sb.channel(`db:${roomId}`)
+    .on('postgres_changes', { event:'*', schema:'public', table:'session_meta', filter:`room_id=eq.${roomId}` }, async () => {
+      try { await loadSessionMeta(); } catch(e){ console.warn(e); }
+    })
+    .on('postgres_changes', { event:'*', schema:'public', table:'boards', filter:`room_id=eq.${roomId}` }, async () => {
+      try {
+        await loadBoards();
+        renderTeacherPreview();
+        if(State.role==="student"){
+          await ensureStudentBoard();
+          renderStudentTeacherPreview();
+        }
+     } catch(e){ console.warn(e); }
+    })
+    .on('postgres_changes', { event:'*', schema:'public', table:'room_members', filter:`room_id=eq.${roomId}` }, async () => {
+      try { if(State.role==="teacher") await renderStudentsBoards(); } catch(e){ console.warn(e); }
+    })
+    .on('postgres_changes', { event:'*', schema:'public', table:'student_boards', filter:`room_id=eq.${roomId}` }, async () => {
+      try {
+        if(State.role==="teacher") await renderStudentsBoards();
+        if(State.role==="student") await ensureStudentBoard();
+      } catch(e){ console.warn(e); }
+    })
+    .subscribe();
+
+  State.dbChannel = ch;
+}
+
+/* =============================
+   Presence: online count
+============================= */
+function subscribePresence(roomId){
+  if(!State.user || !State.user.id){ console.warn("presence skipped"); return; }
+  if(State.presenceChannel) sb.removeChannel(State.presenceChannel);
+
+  const channel = sb.channel(`presence:room:${roomId}`, {
+    config: { presence: { key: State.user.id } }
+  });
+
+  const recalc = () => {
+    const state = channel.presenceState();
+    State.onlineCount = Object.keys(state).length;
+    updateOnlineUI();
+  };
+
+  channel
+    .on('presence', { event: 'sync' }, recalc)
+    .on('presence', { event: 'join' }, recalc)
+    .on('presence', { event: 'leave' }, recalc);
+
+  channel.subscribe(async (status) => {
+    if(status === 'SUBSCRIBED'){
+      await channel.track({
+        role: State.role,
+        name: State.role === "teacher" ? $("tRoomTeacher").textContent : $("sRoomStudent").textContent
+      });
+    }
+  });
+
+  State.presenceChannel = channel;
+}
+
+/* =============================
+   Teacher: students list + overlay preview (CLEAN)
+============================= */
+async function renderStudentsBoards(){
+  if(State.role !== 'teacher' || !State.room?.id) return;
+
+  const gridWrap = document.getElementById('studentsGrid');
+  const listWrap = document.getElementById('studentsList');
+  if(!gridWrap || !listWrap) return;
+
+  // one-time bindings for view toggle + search/filter
+  if(!window.__galleryBound){
+    window.__galleryBound = true;
+    const listBtn = document.getElementById('studentsViewList');
+    const gridBtn = document.getElementById('studentsViewGrid');
+    const q = document.getElementById('studentSearch');
+    const f = document.getElementById('studentFilter');
+
+    const setMode = (mode) => {
+      window.__studentsMode = mode;
+      listBtn && listBtn.classList.toggle('active', mode==='list');
+      gridBtn && gridBtn.classList.toggle('active', mode==='grid');
+      listWrap.classList.toggle('hidden', mode!=='list');
+      gridWrap.classList.toggle('hidden', mode!=='grid');
+    };
+
+    if(listBtn) listBtn.onclick = () => { setMode('list'); renderStudentsBoards().catch(()=>{}); };
+    if(gridBtn) gridBtn.onclick = () => { setMode('grid'); renderStudentsBoards().catch(()=>{}); };
+
+    const reb = () => {
+      clearTimeout(window.__rebT);
+      window.__rebT = setTimeout(() => renderStudentsBoards().catch(()=>{}), 120);
+    };
+    if(q) q.oninput = reb;
+    if(f) f.onchange = reb;
+
+    setMode(window.__studentsMode || 'grid');
+  }
+
+  const { data: members, error: mErr } = await sb.from('room_members')
+    .select('user_id, display_name, joined_at')
+    .eq('room_id', State.room.id)
+    .eq('role','student')
+    .order('joined_at', { ascending: true });
+  if(mErr){ console.warn(mErr); return; }
+
+  const { data: sbs, error: sbErr } = await sb.from('student_boards')
+    .select('id, student_user_id, board_id, board_data, status, help_requested, certificate_granted, updated_at')
+    .eq('room_id', State.room.id);
+  if(sbErr){ console.warn(sbErr); return; }
+
+  State.__membersCache = members || [];
+  State.__studentBoardsCache = sbs || [];
+
+ // ✅ STEP 6: اختر آخر سجل يحتوي على رسم (imgSrc) وليس مجرد آخر تحديث
+const latest = new Map();
+(sbs || []).forEach(row => {
+  const hasImg =
+    !!row?.board_data ||
+    !!row?.content?.preview ||
+    !!row?.content?.drawing;
+
+  if (!hasImg) return; // تجاهل السجلات بدون رسم
+
+  const prev = latest.get(row.student_user_id);
+  const prevT = prev?.updated_at ? new Date(prev.updated_at).getTime() : 0;
+  const curT = row.updated_at ? new Date(row.updated_at).getTime() : 0;
+
+  if (!prev || curT > prevT) {
+    latest.set(row.student_user_id, row);
+  }
+});
+
+  const qv = (document.getElementById('studentSearch')?.value || '').trim().toLowerCase();
+  const fv = (document.getElementById('studentFilter')?.value || 'all');
+
+  const pass = (mem, row) => {
+    if(qv){
+      const nm = (mem.display_name || '').toLowerCase();
+      if(!nm.includes(qv)) return false;
+    }
+    if(fv==='help') return !!row?.help_requested;
+    if(fv==='done') return row?.status === 'done';
+    if(fv==='noWork') return !(row && row.board_data);
+    return true;
+  };
+
+  gridWrap.innerHTML = '';
+  listWrap.innerHTML = '';
+
+  if(!members?.length){
+    gridWrap.innerHTML = `<div class="studentCard">${TT('noStudents')}</div>`;
+    listWrap.innerHTML = `<div class="studentCard">${TT('noStudents')}</div>`;
+    return;
+  }
+
+  const selectStudent = (mem, row) => {
+    const imgSrc = (row?.board_data || row?.content?.preview || row?.content?.drawing || '');
+    State.__selectedStudentUserId = mem.user_id;
+    State.__selectedStudentBoardId = row?.id || null;
+    State.__selectedStudentName = mem.display_name;
+    State.selectedStudentBoardId = row?.id || null; // used by focus button
+
+    const nameEl = document.getElementById('selectedStudentName');
+    const metaEl = document.getElementById('selectedStudentMeta');
+    const prevEl = document.getElementById('selectedStudentPreview');
+    if(nameEl) nameEl.textContent = mem.display_name;
+    if(metaEl) metaEl.textContent = TT('status') + ':  ' + (row?.status || '—') + (row?.help_requested ? ' 🆘' : '');
+   if (prevEl) {
+  prevEl.innerHTML = imgSrc
+    ? `<img src="${imgSrc}" alt="student work" style="max-width:100%;max-height:100%;object-fit:contain;" />`
+    : `<span>${_getAppLang() === 'en' ? 'No drawing yet' : 'لا يوجد رسم بعد'}</span>`;
+}
+
+// highlight grid selection
+document.querySelectorAll('.studentTile').forEach(x => x.classList.remove('active'));
+document.querySelector(`[data-stu="${mem.user_id}"]`)?.classList.add('active');
+
+// also update overlay preview quickly
+const prev = $("teacherPreview");
+if (prev) {
+  prev.innerHTML = imgSrc
+    ? `<img src="${imgSrc}" alt="student preview" style="max-width:100%;max-height:100%;object-fit:contain;" />`
+    : `<span>${_getAppLang() === 'en' ? 'No content yet' : 'لا يوجد محتوى بعد'}</span>`;
+}
+
+try { bindTeacherEvalControls(); } catch (e) {}
+  };
+
+  members.forEach(mem => {
+    const row = latest.get(mem.user_id) || null;
+    if(!pass(mem, row)) return;
+    const imgSrc =
+  row?.board_data ||
+  row?.content?.preview ||
+  row?.content?.drawing ||
+  '';
+    const status = mapStatus(row?.status || 'none', _getAppLang());
+    const hasImg = !!imgSrc;
+    const help = !!row?.help_requested;
+
+    // grid tile
+    const tile = document.createElement('div');
+    tile.className = 'studentTile';
+    tile.setAttribute('data-stu', mem.user_id);
+    tile.innerHTML = `
+      <div class="studentName">${escapeHtml(mem.display_name)}</div>
+      <div class="badgeRow">
+        ${help ? '<span class="badgeMini help">🆘</span>' : ''}
+${status === 'done'
+  ? '<span class="badgeMini done">' + TT('doneBadge') + '</span>'
+  : ''
+}
+${(!hasImg)
+  ? `<span class="badgeMini none">${TT('noWorkBadge')}</span>`
+  : ''
+}        ${row?.certificate_granted ? '<span class="badgeMini">🎓</span>' : ''}
+      </div>
+     <div class="studentThumb">
+  ${hasImg
+    ? `<img src="${imgSrc}" loading="lazy" alt="work">`
+    : `<span class="small">${_getAppLang()==='en' ? 'No work' : 'لا يوجد'}</span>`
+  }
+</div>
+    `;
+    tile.onclick = () => selectStudent(mem, row);
+    gridWrap.appendChild(tile);
+
+    // list card
+    const card = document.createElement('div');
+    card.className = 'studentCard';
+    card.innerHTML = `
+      <div class="studentRow">
+        <div style="font-weight:900">${escapeHtml(mem.display_name)} ${help ? '🆘' : ''}</div>
+        <button class="btn btn-soft btn-sm" type="button">${TT('view')}</button>
+      </div>
+      <div class="small">${TT('status')}:  ${escapeHtml(status)} — ${hasImg ? TT('hasWork') + '' : TT('noWork') + ''} — ${TT('certWord')}:  ${row?.certificate_granted ? '✅' : '—'}</div>
+    `;
+    card.onclick = () => selectStudent(mem, row);
+    card.querySelector('button').onclick = (e) => { e.stopPropagation(); selectStudent(mem, row); };
+    listWrap.appendChild(card);
+  });
+
+  // auto-select first visible student
+  if(!State.__selectedStudentUserId){
+    const first = members.find(m => pass(m, latest.get(m.user_id) || null));
+    if(first) selectStudent(first, latest.get(first.user_id) || null);
+  }
+}
+
+
+/* =============================
+   Boards UI
+============================= */
+function renderBoardTabs(){
+  const wrap = $("boardTabs");
+  wrap.innerHTML = "";
+
+  (State.boards||[]).forEach(b=>{
+    const btn = document.createElement("button");
+    btn.className = "tool" + (State.currentBoard && State.currentBoard.id===b.id ? " active":"");
+    btn.textContent = b.title || "Board";
+
+    btn.onclick = async ()=>{
+      // ✅ احفظ عناصر السبورة الحالية قبل التبديل
+      if(State.currentBoard?.id){
+        saveObjectsForBoard(State.currentBoard.id);
+      }
+
+      if(State.role==="teacher"){
+        const { error } = await sb.rpc("set_visible_board_v3", { p_room_id: State.room.id, p_board_id: b.id });
+        if(error) console.warn(error);
+      }
+
+      State.currentBoard = b;
+
+      // ✅ حمّل عناصر هذه السبورة فقط
+      if(State.currentBoard?.id){
+        loadObjectsForBoard(State.currentBoard.id);
+      }
+
+      renderBoardTabs();
+      await refreshCanvas();
+    };
+
+    wrap.appendChild(btn);
+  });
+}
+
+function renderTeacherPreview(){
+  if(State.role!=="teacher") return;
+  const wrap = $("teacherPreview");
+  if(!wrap) return;
+  const b = State.boards.find(x=>x.visible_to_students);
+  if(!b){ wrap.innerHTML = "<span>لا يوجد محتوى بعد</span>"; return; }
+  const preview = b.content?.preview || b.content?.drawing || "";
+  wrap.innerHTML = preview ? `<img src="${preview}" alt="preview">` : `<span>لا يوجد محتوى بعد</span>`;
+}
+
+function renderStudentTeacherPreview(){
+  if(State.role!=="student") return;
+  const wrap = $("studentTeacherPreview");
+  const m = State.sessionMeta || {};
+  if(m.focused_student_board_id){
+    showFocusedBoard().catch(console.warn);
+    return;
+  }
+  const b = State.boards.find(x=>x.visible_to_students);
+  if(!b){ wrap.innerHTML = "<span>لا يوجد محتوى بعد</span>"; return; }
+  const preview = b.content?.preview || b.content?.drawing || "";
+  wrap.innerHTML = preview ? `<img src="${preview}" alt="teacher">` : `<span>لا يوجد محتوى بعد</span>`;
+}
+
+async function showFocusedBoard(){
+  const wrap = $("studentTeacherPreview");
+  const fid = State.sessionMeta?.focused_student_board_id;
+  if(!fid){ return; }
+  const { data, error } = await sb.from("student_boards").select("board_data").eq("id", fid).maybeSingle();
+  if(error){ console.warn(error); wrap.innerHTML = "<span>لا يمكن عرض السبورة</span>"; return; }
+  wrap.innerHTML = data?.board_data ? `<img src="${data.board_data}" alt="focus">` : "<span>لا يوجد محتوى بعد</span>";
+}
+
+
+
+function studentCanEdit(){
+  const m = State.sessionMeta || {};
+  if(m.explanation_mode) return false;
+  if(m.board_locked) return false;
+  if(m.focused_student_board_id) return false;
+  return true;
+}
+
+/* =============================
+   Canvas drawing
+============================= */
+let tCanvas, tCtx, tDrawing = false, tTool = "pen", tColor = "#000000", tSize = 4;
+  // ===== 3-layer system for teacher canvas =====
+let bgCanvas, bgCtx;     // loaded board image (from DB)
+let inkCanvas, inkCtx;   // pen/eraser strokes (always on top)
+
+function ensureLayers(){
+  if(bgCanvas && inkCanvas) return;
+
+  // background layer
+  bgCanvas = document.createElement("canvas");
+  bgCanvas.width = tCanvas.width;
+  bgCanvas.height = tCanvas.height;
+  bgCtx = bgCanvas.getContext("2d");
+
+  // ink layer
+  inkCanvas = document.createElement("canvas");
+  inkCanvas.width = tCanvas.width;
+  inkCanvas.height = tCanvas.height;
+  inkCtx = inkCanvas.getContext("2d");
+  inkCtx.lineCap = "round";
+  inkCtx.lineJoin = "round";
+}
+  // ===== Base drawing layer (strokes only) =====
+
+// ===== 3-layer system (bg + objects + ink) =====
+
+
+function ensureBaseLayer(){
+  if(bgCanvas && inkCanvas) return;
+
+  // background layer (DB drawing)
+  bgCanvas = document.createElement("canvas");
+  bgCanvas.width = tCanvas.width;
+  bgCanvas.height = tCanvas.height;
+  bgCtx = bgCanvas.getContext("2d");
+
+  // ink layer (pen/eraser) always on top
+  inkCanvas = document.createElement("canvas");
+  inkCanvas.width = tCanvas.width;
+  inkCanvas.height = tCanvas.height;
+  inkCtx = inkCanvas.getContext("2d");
+  inkCtx.lineCap = "round";
+  inkCtx.lineJoin = "round";
+}
+let sCanvas, sCtx, sDrawing = false, sTool = "pen", sColor = "#000000", sSize = 4;
+let saveTimerT = null, saveTimerS = null;
+
+function initCanvas() {
+  tCanvas = $("tCanvas");
+  tCtx = tCanvas.getContext("2d");
+  ensureBaseLayer();
+  sCanvas = $("sCanvas");
+  sCtx = sCanvas.getContext("2d");
+
+  [tCtx, sCtx].forEach(ctx => {
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+  });
+
+ tCanvas.onpointerdown = (e) => {
+  const p = pos(tCanvas, e);
+
+  // ✅ إذا المؤشر: تعامل مع عناصر النص
+if (tTool === "pointer") {
+  
+  // ===== (A) افحص الصور أولاً =====
+let imgHitId = null;
+let imgHit = null;
+
+for(let i = ImageState.items.length - 1; i >= 0; i--){
+  const im = ImageState.items[i];
+  const h = _hitTestImageItem(im, p.x, p.y);
+  if(h.inside || h.onHandle || h.onDelete){
+    imgHitId = im.id;
+    imgHit = h;
+    break;
+  }
+}
+
+if(imgHitId){
+  ImageState.activeId = imgHitId;
+  TextState.activeId = null;
+
+  const im = ImageState.items.find(x => x.id === imgHitId);
+
+  if(imgHit.onDelete){
+    ImageState.items = ImageState.items.filter(x => x.id !== imgHitId);
+    ImageState.activeId = null;
+    _redrawTeacherCanvas();
+    return;
+  }
+
+  ImageState.dragStart = { x:p.x, y:p.y, ox:im.x, oy:im.y, ow:im.w, oh:im.h };
+  ImageState.mode = imgHit.onHandle ? "resize" : "move";
+
+  _redrawTeacherCanvas();
+  return;
+}
+
+  const p2 = p; // نفس النقطة
+  let hitId = null;
+  let hit = null;
+
+  for (let i = TextState.items.length - 1; i >= 0; i--) {
+    const it2 = TextState.items[i];
+    const h2 = _hitTestTextItem(tCtx, it2, p2.x, p2.y);
+    if (h2.inside || h2.onHandle || h2.onDelete) {
+      hitId = it2.id;
+      hit = h2;
+      break;
+    }
+  }
+
+  TextState.activeId = hitId;
+
+ // ✅ لا شيء محدد: ثبّت كل شيء واطفِ الإطار
+if (!hitId) {
+  // ✅ فقط الغِ التحديد (إخفاء الإطار الأزرق) بدون تثبيت
+  TextState.activeId = null;
+  TextState.mode = null;
+  TextState.dragStart = null;
+
+  ImageState.activeId = null;
+  ImageState.mode = null;
+  ImageState.dragStart = null;
+
+  _redrawTeacherCanvas();
+  return;
+}
+
+  const it = TextState.items.find(x => x.id === hitId);
+
+  // ✅ حذف
+  if (hit.onDelete) {
+    TextState.items = TextState.items.filter(x => x.id !== hitId);
+    TextState.activeId = null;
+    TextState.mode = null;
+    TextState.dragStart = null;
+    _redrawTeacherCanvas();
+    return;
+  }
+
+  // ✅ بدء سحب/تحجيم
+  TextState.dragStart = { x: p2.x, y: p2.y, ox: it.x, oy: it.y, osize: it.size };
+  TextState.mode = hit.onHandle ? "resize" : "move";
+
+  _redrawTeacherCanvas();
+  return;
+}
+  // ✅ غير ذلك: الرسم الطبيعي
+  if (tTool === "pointer") return;
+tDrawing = true;
+inkCtx.beginPath();
+inkCtx.moveTo(p.x, p.y);
+};
+
+tCanvas.onpointermove = (e) => {
+  const p = pos(tCanvas, e);
+
+ // ✅ إذا المؤشر: تحريك/تكبير عنصر النص
+ // ===== تحريك/تكبير صورة إن كانت محددة =====
+const imgId = ImageState.activeId;
+const im = imgId ? ImageState.items.find(x => x.id === imgId) : null;
+
+if(im){
+  if(ImageState.mode === "move" && ImageState.dragStart){
+    im.x = ImageState.dragStart.ox + (p.x - ImageState.dragStart.x);
+    im.y = ImageState.dragStart.oy + (p.y - ImageState.dragStart.y);
+    _redrawTeacherCanvas();
+    return;
+  }
+
+  if(ImageState.mode === "resize" && ImageState.dragStart){
+    const dx = (p.x - ImageState.dragStart.x);
+    const dy = (p.y - ImageState.dragStart.y);
+    im.w = Math.max(30, ImageState.dragStart.ow + dx);
+    im.h = Math.max(30, ImageState.dragStart.oh + dy);
+    _redrawTeacherCanvas();
+    return;
+  }
+
+  const h = _hitTestImageItem(im, p.x, p.y);
+  if (h.onHandle) {
+    tCanvas.classList.add("cursor-resize");
+    tCanvas.classList.remove("cursor-move");
+  } else if (h.inside) {
+    tCanvas.classList.add("cursor-move");
+    tCanvas.classList.remove("cursor-resize");
+  } else {
+    tCanvas.classList.remove("cursor-move","cursor-resize");
+    tCanvas.classList.add("cursor-pointer");
+  }
+  return;
+}
+  if (tTool === "pointer") {
+    const id = TextState.activeId;
+    const it = id ? TextState.items.find(x => x.id === id) : null;
+
+    if (!it) {
+      tCanvas.classList.remove("cursor-move","cursor-resize");
+      tCanvas.classList.add("cursor-pointer");
+      return;
+    }
+
+    // أثناء السحب
+    if (TextState.mode === "move" && TextState.dragStart) {
+      it.x = TextState.dragStart.ox + (p.x - TextState.dragStart.x);
+      it.y = TextState.dragStart.oy + (p.y - TextState.dragStart.y);
+      _redrawTeacherCanvas();
+      return;
+    }
+
+    // أثناء التكبير/التصغير (عن طريق مقابض)
+    if (TextState.mode === "resize" && TextState.dragStart) {
+      const dy = (p.y - TextState.dragStart.y);
+      const next = Math.max(10, Math.min(120, TextState.dragStart.osize + Math.round(dy / 4)));
+      it.size = next;
+      _redrawTeacherCanvas();
+      return;
+    }
+
+    // hover cursor (بدون سحب)
+    const hit = _hitTestTextItem(tCtx, it, p.x, p.y);
+   if (hit.onDelete) {
+  tCanvas.classList.remove("cursor-move","cursor-resize");
+  tCanvas.classList.add("cursor-pointer");
+} else if (hit.onHandle) {
+  tCanvas.classList.add("cursor-resize");
+  tCanvas.classList.remove("cursor-move");
+} else if (hit.inside) {
+  tCanvas.classList.add("cursor-move");
+  tCanvas.classList.remove("cursor-resize");
+} else {
+  tCanvas.classList.remove("cursor-move","cursor-resize");
+  tCanvas.classList.add("cursor-pointer");
+}
+    return;
+  }
+
+ // ✅ الرسم الطبيعي
+if (tTool === "pointer") return;
+if (!tDrawing) return;
+
+inkCtx.lineWidth = tSize;
+
+if (tTool === "eraser") {
+  inkCtx.globalCompositeOperation = "destination-out";
+  inkCtx.strokeStyle = "#fff";
+} else {
+  inkCtx.globalCompositeOperation = "source-over";
+  inkCtx.strokeStyle = tColor;
+}
+
+inkCtx.lineTo(p.x, p.y);
+inkCtx.stroke();
+
+// اعرض كل شيء (خلفية + عناصر)
+_redrawTeacherCanvas();
+
+queueSaveTeacher();
+};
+
+tCanvas.onpointerup = () => {
+  // ✅ إنهاء المؤشر
+  if (tTool === "pointer") {
+    TextState.mode = null;
+    TextState.dragStart = null;
+    tCanvas.classList.remove("cursor-move","cursor-resize");
+    tCanvas.classList.add("cursor-pointer");
+    ImageState.mode = null;
+    ImageState.dragStart = null;
+    queueSaveTeacher();
+    return;
+  }
+
+  // ✅ إنهاء الرسم الطبيعي
+  tDrawing = false;
+  inkCtx.beginPath();
+  inkCtx.globalCompositeOperation = "source-over";
+  _redrawTeacherCanvas();
+};
+
+  
+  sCanvas.onpointerdown = (e) => {
+    if(!studentCanEdit()) return;
+    sDrawing = true;
+    const p = pos(sCanvas, e);
+    sCtx.beginPath();
+    sCtx.moveTo(p.x, p.y);
+  };
+
+  sCanvas.onpointermove = (e) => {
+    if (!studentCanEdit()) return;
+    if (!sDrawing) return;
+    const p = pos(sCanvas, e);
+
+    sCtx.lineWidth = sSize;
+
+    if (sTool === "eraser") {
+      sCtx.globalCompositeOperation = "destination-out";
+      sCtx.strokeStyle = "#fff";
+    } else {
+      sCtx.globalCompositeOperation = "source-over";
+      sCtx.strokeStyle = sColor;
+    }
+
+    sCtx.lineTo(p.x, p.y);
+    sCtx.stroke();
+    queueSaveStudent();
+  };
+
+  sCanvas.onpointerup = () => {
+    sDrawing = false;
+    sCtx.beginPath();
+    sCtx.globalCompositeOperation = "source-over";
+  };
+}
+
+function queueSaveTeacher() {
+  // ✅ احفظ عناصر السبورة الحالية داخل BoardObjects قبل أي حفظ
+  if (State.currentBoard?.id) {
+    saveObjectsForBoard(State.currentBoard.id);
+  }
+
+  clearTimeout(saveTimerT);
+  saveTimerT = setTimeout(saveTeacherBoard, 450);
+}
+function queueSaveStudent() {
+  clearTimeout(saveTimerS);
+  saveTimerS = setTimeout(saveStudentBoard, 450);
+}
+
+function pos(canvas, e){
+  const rect = canvas.getBoundingClientRect();
+
+  const ox = (typeof e.offsetX === "number") ? e.offsetX : (e.clientX - rect.left);
+  const oy = (typeof e.offsetY === "number") ? e.offsetY : (e.clientY - rect.top);
+
+  const scaleX = canvas.width  / canvas.clientWidth;
+  const scaleY = canvas.height / canvas.clientHeight;
+
+  return { x: ox * scaleX, y: oy * scaleY };
+}
+ function ensureTextBacking(){
+  if(!tCanvas || !tCtx) return;
+  if(!TextState.backing){
+    // Snapshot للخلفية الحالية (بدون إطار تحديد)
+    TextState.backing = tCtx.getImageData(0,0,tCanvas.width,tCanvas.height);
+  }
+}
+
+function commitTextsToCanvas(){
+  if(!tCanvas || !tCtx) return;
+  if(!TextState.backing) return;
+
+  // ارجع الخلفية
+  tCtx.putImageData(TextState.backing, 0, 0);
+
+  // ارسم كل النصوص (بدون تحديد)
+  const oldActive = TextState.activeId;
+  TextState.activeId = null;
+  (TextState.items || []).forEach(it => _drawTextItem(tCtx, it, false));
+  TextState.activeId = oldActive;
+
+  // ثبت الخلفية الجديدة (بعد دمج النصوص)
+  TextState.backing = tCtx.getImageData(0,0,tCanvas.width,tCanvas.height);
+
+  // صفّر النصوص (بعد التثبيت)
+  TextState.items = [];
+  TextState.activeId = null;
+  TextState.mode = null;
+  TextState.dragStart = null;
+} 
+  function commitImagesToCanvas(){
+  if(!tCanvas || !tCtx) return;
+  if(!TextState.backing) return;
+
+  // ارجع الخلفية الحالية
+  tCtx.putImageData(TextState.backing, 0, 0);
+
+  // ارسم كل الصور بدون إطار
+  (ImageState.items || []).forEach(im => {
+    if(im.img){
+      tCtx.drawImage(im.img, im.x, im.y, im.w, im.h);
+    }
+  });
+
+  // ثبت الخلفية الجديدة بعد دمج الصور
+  TextState.backing = tCtx.getImageData(0,0,tCanvas.width,tCanvas.height);
+
+  // صفّر حالة الصور (إنهاء التحرير)
+  ImageState.items = [];
+  ImageState.activeId = null;
+  ImageState.mode = null;
+  ImageState.dragStart = null;
+}
+ function _measureTextBox(ctx, item){
+  ctx.save();
+  ctx.font = `${item.size}px Cairo`;                  
+  const metrics = ctx.measureText(item.text || "");
+  const w = Math.max(20, metrics.width);
+  const h = Math.max(20, item.size * 1.4);
+  ctx.restore();
+  return { w, h };
+}
+
+function _drawTextItem(ctx, item, selected){
+  const { w, h } = _measureTextBox(ctx, item);
+
+  ctx.save();
+  ctx.font = `${item.size}px Cairo`;
+  ctx.fillStyle = item.color || "#000";
+  ctx.textBaseline = "top";
+  ctx.direction = "rtl";
+  ctx.textAlign = "right";
+  ctx.fillText(item.text || "", item.x, item.y);
+  ctx.restore();
+
+  if(!selected) return;
+
+  const left = item.x - w - 6;
+  const top  = item.y - 6;
+  const bw   = w + 12;
+  const bh   = h + 12;
+
+  ctx.save();
+  ctx.strokeStyle = "#2563eb";
+  ctx.lineWidth = 1;
+  ctx.setLineDash([6,4]);
+  ctx.strokeRect(left, top, bw, bh);
+  ctx.setLineDash([]);
+
+  // ✅ زر حذف X (أعلى يسار)
+  ctx.fillStyle = "#dc2626";
+  ctx.fillRect(left, top, 16, 16);
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 12px Cairo";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("×", left + 8, top + 8);
+
+  // ✅ مقبض تكبير/تصغير (أسفل يمين)
+  const hx = left + bw - 10;
+  const hy = top  + bh - 10;
+  ctx.fillStyle = "#2563eb";
+  ctx.fillRect(hx, hy, 10, 10);
+
+  ctx.restore();
+}
+function _hitTestTextItem(ctx, item, px, py){
+  const { w, h } = _measureTextBox(ctx, item);
+
+  const left = item.x - w - 6;
+  const top  = item.y - 6;
+  const right = item.x + 6;
+  const bottom = top + (h + 12);
+
+  // ✅ زر X (16x16 أعلى يسار)
+  const onDelete = (px >= left && px <= left+16 && py >= top && py <= top+16);
+
+  // ✅ handle أسفل يمين (10x10)
+  const hx = right - 10;
+  const hy = bottom - 10;
+  const onHandle = (px >= hx && px <= hx+10 && py >= hy && py <= hy+10);
+
+  const inside = (px >= left && px <= right && py >= top && py <= bottom);
+
+  return { inside, onHandle, onDelete };
+  }
+function addImageObject(dataUrl){
+  // ❌ ممنوع commit هنا (حتى لا تختفي العناصر السابقة)
+
+  const img = new Image();
+  img.onload = () => {
+    const maxScale = 0.6;
+    const scale = Math.min(
+      tCanvas.width / img.width,
+      tCanvas.height / img.height,
+      maxScale
+    );
+
+    const w = img.width * scale;
+    const h = img.height * scale;
+
+    const item = {
+      id: crypto.randomUUID(),
+      x: (tCanvas.width - w) / 2,
+      y: (tCanvas.height - h) / 2,
+      w, h,
+      img,
+      src: dataUrl // ✅ مهم
+    };
+
+    // ✅ فقط أضف — لا تثبيت ولا مسح
+    ImageState.items.push(item);
+    ImageState.activeId = item.id;
+
+    // ادخل المؤشر مباشرة للتحريك (نفس سلوكك الحالي)
+    tTool = "pointer";
+    $("tPointer")?.classList.add("active");
+    $("tPen")?.classList.remove("active");
+    $("tEraser")?.classList.remove("active");
+    $("tText")?.classList.remove("active");
+    $("tImage")?.classList.remove("active");
+
+    _redrawTeacherCanvas();
+    queueSaveTeacher();
+  };
+
+  img.src = dataUrl;
+}
+
+function _drawImageItem(ctx, item, selected){
+  if(!item.img) return;
+  ctx.drawImage(item.img, item.x, item.y, item.w, item.h);
+
+  if(!selected) return;
+
+  ctx.save();
+  // إطار
+  ctx.strokeStyle = "#2563eb";
+  ctx.lineWidth = 1;
+  ctx.setLineDash([6,4]);
+  ctx.strokeRect(item.x - 6, item.y - 6, item.w + 12, item.h + 12);
+  ctx.setLineDash([]);
+
+  // زر حذف X (أعلى يسار)
+  ctx.fillStyle = "#dc2626";
+  ctx.fillRect(item.x - 6, item.y - 6, 16, 16);
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 12px Cairo";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("×", item.x - 6 + 8, item.y - 6 + 8);
+
+  // مقبض resize (أسفل يمين)
+  ctx.fillStyle = "#2563eb";
+  ctx.fillRect(item.x + item.w + 6 - 10, item.y + item.h + 6 - 10, 10, 10);
+
+  ctx.restore();
+}
+
+function _hitTestImageItem(item, px, py){
+  const left = item.x - 6;
+  const top = item.y - 6;
+  const right = item.x + item.w + 6;
+  const bottom = item.y + item.h + 6;
+
+  const onDelete = (px >= left && px <= left+16 && py >= top && py <= top+16);
+
+  const hx = right - 10;
+  const hy = bottom - 10;
+  const onHandle = (px >= hx && px <= hx+10 && py >= hy && py <= hy+10);
+
+  const inside = (px >= left && px <= right && py >= top && py <= bottom);
+
+  return { inside, onHandle, onDelete };
+}
+function _redrawTeacherCanvas(){
+  if(!tCanvas || !tCtx) return;
+  if(!bgCanvas || !inkCanvas) return;
+
+  // امسح العرض
+  tCtx.clearRect(0, 0, tCanvas.width, tCanvas.height);
+
+  // 1) الخلفية (آخر حفظ من DB)
+  tCtx.drawImage(bgCanvas, 0, 0);
+
+  // 2) الصور
+  const activeImg = ImageState.activeId;
+  (ImageState.items || []).forEach(im =>
+    _drawImageItem(tCtx, im, im.id === activeImg)
+  );
+
+  // 3) النصوص
+  const activeText = TextState.activeId;
+  (TextState.items || []).forEach(tx =>
+    _drawTextItem(tCtx, tx, tx.id === activeText)
+  );
+
+  // ✅ 4) الحبر (القلم/الممحاة) — فوق كل شيء
+  tCtx.drawImage(inkCanvas, 0, 0);
+}
+function clearCanvas(canvas,ctx){ ctx.clearRect(0,0,canvas.width,canvas.height); }
+function loadDataUrlToCanvas(canvas,ctx,src){
+  if(!src) return;
+  const img=new Image();
+  img.onload=()=>{ clearCanvas(canvas,ctx); ctx.drawImage(img,0,0,canvas.width,canvas.height); };
+  img.src=src;
+}
+function teacherDataUrl(){
+  const out = document.createElement("canvas");
+  out.width = tCanvas.width;
+  out.height = tCanvas.height;
+  const octx = out.getContext("2d");
+
+  // 1) bg
+  if(bgCanvas) octx.drawImage(bgCanvas, 0, 0);
+
+  // 2) images (بدون تحديد)
+  const oldImg = ImageState.activeId;
+  ImageState.activeId = null;
+  (ImageState.items || []).forEach(im => _drawImageItem(octx, im, false));
+  ImageState.activeId = oldImg;
+
+  // 3) texts (بدون تحديد)
+  const oldText = TextState.activeId;
+  TextState.activeId = null;
+  (TextState.items || []).forEach(tx => _drawTextItem(octx, tx, false));
+  TextState.activeId = oldText;
+
+  // 4) ink on top
+  if(inkCanvas) octx.drawImage(inkCanvas, 0, 0);
+
+  return out.toDataURL("image/png");
+}
+
+function studentDataUrl(){
+  if(!sCanvas) return "";
+  return sCanvas.toDataURL("image/png");
+}
+
+async function saveTeacherBoard(){
+  if(State.role!=="teacher" || !State.currentBoard) return;
+  const payload = { type:"boardak_v3", version:1, drawing: teacherDataUrl(), preview: teacherDataUrl() };
+  const { error } = await sb.from("boards").update({ content: payload }).eq("id", State.currentBoard.id);
+  if(error){ console.warn(error); showToast("تعذر حفظ السبورة"); }
+}
+
+async function saveStudentBoard(){
+  if(State.role!=="student" || !State.studentBoard) return;
+  const { error } = await sb.from("student_boards").update({
+    board_data: studentDataUrl(),
+    status: $("sStatus").value
+  }).eq("id", State.studentBoard.id);
+  if(error){ console.warn(error); showToast("تعذر حفظ سبورتك"); return; }
+  $("sHint").textContent = "يتم الحفظ...";
+  setTimeout(()=>$("sHint").textContent="", 700);
+}
+
+async function refreshCanvas(){
+  if(State.role === "teacher"){
+    ensureLayers();
+
+    // امسح الخلفية + الحبر
+    bgCtx.clearRect(0,0,bgCanvas.width,bgCanvas.height);
+    inkCtx.clearRect(0,0,inkCanvas.width,inkCanvas.height);
+
+    const d = State.currentBoard?.content?.drawing;
+
+    if(!d){
+  _redrawTeacherCanvas();
+  return;
+}
+
+await new Promise((resolve) => {
+  const img = new Image();
+  img.onload = () => { 
+    bgCtx.clearRect(0,0,bgCanvas.width,bgCanvas.height);
+    bgCtx.drawImage(img, 0, 0, bgCanvas.width, bgCanvas.height);
+    resolve(); 
+  };
+  img.onerror = () => resolve();
+  img.src = d;
+});
+
+    _redrawTeacherCanvas();
+    return;
+  }
+
+  // student كما هو عندك
+  clearCanvas(sCanvas, sCtx);
+  await ensureStudentBoard();
+  if(State.studentBoard?.board_data) loadDataUrlToCanvas(sCanvas, sCtx, State.studentBoard.board_data);
+  renderStudentTeacherPreview();
+}
+/* =============================
+   Session meta UI
+============================= */
+function setTeacherBar(msg){
+  const el = $("tBar");
+  if(!msg){ el.classList.add("hidden"); el.textContent=""; return; }
+  el.textContent = msg;
+  el.classList.remove("hidden");
+}
+function setStudentBar(msg){
+  const el = $("sBar");
+  if(!msg){ el.classList.add("hidden"); el.textContent=""; return; }
+  el.textContent = msg;
+  el.classList.remove("hidden");
+}
+
+function applySessionMetaUI(){
+  const m = State.sessionMeta || {};
+  if(State.role==="teacher"){
+    $("toggleExplain").textContent = m.explanation_mode ? "إيقاف الشرح" : "الشرح فقط";
+    $("toggleLock").textContent = m.board_locked ? "فتح القفل" : "قفل";
+    $("toggleFocus").textContent = m.focused_student_board_id ? "إيقاف العرض" : "عرض جماعي";
+    setTeacherBar(
+      (m.explanation_mode ? "👀 وضع الشرح مفعل" : "") +
+      (m.board_locked ? (m.explanation_mode ? " | " : "") + "🔒 السبورة مقفلة" : "") +
+      (m.focused_student_board_id ? ((m.explanation_mode||m.board_locked) ? " | " : "") + "🖥️ العرض الجماعي مفعل" : "")
+    );
+  }
+
+  if (State.role === "student") {
+
+    if (m.session_open === false) {
+      showToast("انتهت الجلسة — انتظر دخول المعلم");
+      setTimeout(() => {
+        location.href = location.pathname;
+      }, 800);
+      return;
+    }
+
+    if (m.explanation_mode)
+      setStudentBar("👀 المعلم يشرح الآن (التعديل متوقف)");
+    else if (m.board_locked)
+      setStudentBar("🔒 السبورة مقفلة (التعديل متوقف)");
+    else if (m.focused_student_board_id)
+      setStudentBar("🖥️ عرض جماعي (التعديل متوقف)");
+    else
+      setStudentBar("");
+
+    renderStudentTeacherPreview();
+  }
+  renderTimerUI();
+}
+console.log("BEFORE ASYNC");
+/* =============================
+   Flows
+============================= */
+async function teacherStartFlow(){
+  if(!sb){ localStartTeacher(); return; }
+  const teacherName = $("tName").value.trim();
+  const code = $("tCode").value.trim();
+  const title = $("tTitle").value.trim();
+  if(!teacherName){ showToast("اكتب اسم المعلم"); return; }
+
+  loading(true);
+  try{
+    if(!State.user) if(sb){
+    State.user = await ensureAnon();
+  } else {
+    // Offline mode: Supabase not available
+    try{ console.warn('[Boardak] Offline mode: supabase-js not loaded'); }catch(_){}
+  }
+
+    const { data, error } = await sb.rpc("create_room_v3", {
+      p_code: code || null,
+      p_teacher_name: teacherName,
+      p_title: title || null,
+      p_lang: (document.getElementById('tLang')?.value || _getAppLang())
+    });
+    if(error) throw error;
+
+    State.role = "teacher";
+    State.room = data;
+    State.roomCode = data.code;
+
+    $("tRoomTitle").textContent = data.title || "درس";
+    $("tRoomCode").textContent = data.code;
+    $("tRoomTeacher").textContent = teacherName;
+
+    showView("teacherRoom");
+    $("liveText").textContent = "مباشر";
+
+    if(typeof initCanvas==='function') initCanvas();
+
+    await loadSessionMeta();
+    await loadBoards();
+    await refreshCanvas();
+    renderTeacherPreview();
+
+    subscribeDb(data.id);
+    subscribePresence(data.id);
+
+    // build teacher pane + first refresh
+    try{ ensureTeacherStudentPane(); }catch(e){}
+    try{ bindTeacherEvalControls(); }catch(e){}
+
+    await renderStudentsBoards();
+
+    // keep URL room code
+    const url = new URL(location.href);
+    url.searchParams.set("room", data.code);
+    history.replaceState({}, "", url.toString());
+
+    // poll students list (safe) - avoids realtime gaps
+    window.__studentsPoll && clearInterval(window.__studentsPoll);
+    window.__studentsPoll = setInterval(() => {
+      if(State.role === 'teacher' && State.room?.id) {
+        renderStudentsBoards().catch(()=>{});
+      }
+    }, 2000);
+
+  }catch(e){
+    console.error(e);
+    $("tMsg").textContent = e?.message || String(e);
+    showToast("تعذر إنشاء الغرفة: " + (e?.message || String(e)));
+    try{ $("tMsg").textContent = (e?.message || String(e)); }catch(_){}
+  }finally{
+    loading(false);
+  }
+}
+
+
+async function studentJoinFlow(){
+  if(!sb){ showToast('⚠️ لا يمكن انضمام الطالب بدون اتصال (Supabase). افتح عبر Live Server وتأكد من تحميل Supabase.'); return; }
+  loading(true);
+  let joinedOk = false;
+  try{
+    if(!State.user) State.user = await ensureAnon();
+
+    const studentName = $("sName").value.trim();
+    const code = $("sCode").value.trim().toUpperCase();
+    if(!studentName || !code){ showToast("اكتب الاسم والكود"); return; }
+
+    const { data, error } = await sb.rpc("join_room_v3_sql", {
+      p_room_code: code,
+      p_student_name: studentName
+    });
+    if(error) throw error;
+
+    const row = Array.isArray(data) ? data[0] : data;
+    joinedOk = true;
+
+    State.role = "student";
+    State.room = { id: row.room_id, code, teacher_name: row.teacher_name, title: row.title };
+    State.roomCode = code;
+
+    $("sRoomTitle").textContent = row.title || "Room";
+    $("sRoomCode").textContent = code;
+    $("sRoomStudent").textContent = studentName;
+
+    // ensure student appears in teacher list
+    try{
+      await sb.from('room_members').upsert({
+        room_id: row.room_id,
+        user_id: State.user.id,
+        role: 'student',
+        display_name: studentName,
+        joined_at: new Date().toISOString()
+      }, { onConflict: 'room_id,user_id' });
+    }catch(_e){}
+
+    showView("studentRoom");
+    $("liveText").textContent = "مباشر";
+
+    if(typeof initCanvas==='function') initCanvas();
+
+    await loadSessionMeta();
+    await loadBoards();
+    await ensureStudentBoard();
+    await refreshCanvas();
+    renderStudentTeacherPreview();
+
+    subscribeDb(State.room.id);
+    subscribePresence(State.room.id);
+
+    // evaluation UI
+    try{ ensureStudentEvalUI(); }catch(e){}
+    try{ ensureEvalChannel(); }catch(e){}
+    try{ studentSubscribeEval(); }catch(e){}
+    try{ bindStudentCertificateButton(); }catch(e){}
+
+  }catch(e){
+    console.error("JOIN ERROR FULL:", e);
+    if(joinedOk){ showToast("تم الدخول، لكن حصل خطأ في التهيئة"); return; }
+    const msg = e?.message || String(e);
+    $("sMsg").textContent = msg;
+    showToast("تعذّر الدخول: " + (e?.message || String(e)));
+    try{ $("sMsg").textContent = (e?.message || String(e)); }catch(_){}
+  }finally{
+    loading(false);
+  }
+}
+
+/* =============================
+   Button bindings (CLEAN)
+============================= */
+function bindUI(){
+  window.boardakMainBound = true;
+  
+  const tSizeEl = $("tSize");
+if(tSizeEl){
+  tSize = parseInt(tSizeEl.value,10) || 4;
+  $("tSizeVal").textContent = String(tSize);
+  tSizeEl.oninput = () => {
+    tSize = parseInt(tSizeEl.value,10) || 4;
+    $("tSizeVal").textContent = String(tSize);
+  };
+}
+
+const sSizeEl = $("sSize");
+if(sSizeEl){
+  sSize = parseInt(sSizeEl.value,10) || 4;
+  $("sSizeVal").textContent = String(sSize);
+  sSizeEl.oninput = () => {
+    sSize = parseInt(sSizeEl.value,10) || 4;
+    $("sSizeVal").textContent = String(sSize);
+  };
+}
+
+
+  const closeOverlayBtn = $("closeOverlay");
+  if (closeOverlayBtn) {
+    closeOverlayBtn.onclick = () => {
+      $("teacherOverlay")?.classList.add("hidden");
+      $("teacherOverlayImg").src = "";
+      $("teacherOverlayMsg").textContent = "";
+    };
+  }
+
+$('langBtn').onclick = () => {
+  const next = (_getAppLang() === 'ar') ? 'en' : 'ar';
+  _setAppLang(next);
+  try{ applyFullLang(next); }catch(e){}
+  showToast(next === 'ar' ? 'تم اختيار العربية' : 'English selected');
+};
+  $("goTeacher").onclick = ()=> showView("teacherEntry");
+  $("goStudent").onclick = ()=> showView("studentEntry");
+  $("backFromTeacher").onclick = ()=> showView("home");
+  $("backFromStudent").onclick = ()=> showView("home");
+
+  $("teacherStart").onclick = teacherStartFlow;
+  $("studentJoin").onclick = studentJoinFlow;
+  
+  $("copyLink").onclick = ()=>{
+    const link = `${location.origin}${location.pathname}?room=${State.roomCode||""}`;
+    navigator.clipboard.writeText(link);
+    showToast("تم نسخ الرابط");
+  };
+
+  $("resetStudents").onclick = async ()=>{
+    if(!confirm("تصفير أعمال الطلبة؟")) return;
+    const { error } = await sb.rpc("reset_room_students_v3", { p_room_id: State.room.id });
+    if(error){ console.warn(error); showToast("فشل التصفير"); return; }
+    showToast("تم التصفير");
+  };
+
+  $("endRoom").onclick = async ()=>{
+    const sure = confirm("إنهاء الجلسة وحذف الغرفة نهائيًا؟");
+    if(!sure) return;
+    const { error } = await sb.rpc("delete_room_full_v3", { p_room_id: State.room.id });
+    if(error){ console.warn(error); showToast("فشل إنهاء الجلسة"); return; }
+    showToast("تم إنهاء الجلسة");
+    location.href = location.pathname;
+  };
+
+  $("toggleExplain").onclick = async ()=>{
+    const next = !State.sessionMeta?.explanation_mode;
+    const { error } = await sb.rpc("set_explanation_mode_v3", { p_room_id: State.room.id, p_enabled: next });
+    if(error) console.warn(error);
+  };
+
+  $("toggleLock").onclick = async ()=>{
+    const next = !State.sessionMeta?.board_locked;
+    const { error } = await sb.rpc("set_board_locked_v3", { p_room_id: State.room.id, p_locked: next });
+    if(error) console.warn(error);
+  };
+
+  $("toggleFocus").onclick = async ()=>{
+    if(!State.sessionMeta?.focused_student_board_id){
+      if(!State.selectedStudentBoardId){
+        showToast("اختر طالبًا ثم اضغط عرض جماعي");
+        return;
+      }
+      const { error } = await sb.rpc("focus_student_board_v3", { p_room_id: State.room.id, p_student_board_id: State.selectedStudentBoardId });
+      if(error) console.warn(error);
+    } else {
+      const { error } = await sb.rpc("clear_focused_student_board_v3", { p_room_id: State.room.id });
+      if(error) console.warn(error);
+    }
+  };
+
+  $("addBoard").onclick = async ()=>{
+    const n = (State.boards?.length||0)+1;
+    const { error } = await sb.from("boards").insert({
+      room_id: State.room.id,
+      title: `السبورة ${n}`,
+      sort_order: n,
+      visible_to_students: false,
+      content: { type:"boardak_v3", version:1 }
+    });
+    if(error){ console.warn(error); showToast("ربما وصلت حد 10 سبورات"); }
+  };
+
+$("tPen").onclick = () => {
+  ImageState.activeId = null;
+  ImageState.mode = null;
+  ImageState.dragStart = null;
+
+  TextState.activeId = null;
+  TextState.mode = null;
+  TextState.dragStart = null;
+
+  tTool = "pen";
+  $("tPen").classList.add("active");
+  $("tEraser").classList.remove("active");
+  $("tPointer").classList.remove("active");
+  $("tImage").classList.remove("active");
+  $("tCanvas").style.cursor = "default";
+
+  _redrawTeacherCanvas();
+};
+ $("tEraser").onclick = () => {
+  // ❌ ممنوع commit هنا
+
+  ImageState.activeId = null;
+  ImageState.mode = null;
+  ImageState.dragStart = null;
+
+  TextState.activeId = null;
+  TextState.mode = null;
+  TextState.dragStart = null;
+
+  tTool = "eraser";
+  $("tEraser").classList.add("active");
+  $("tPen").classList.remove("active");
+  $("tPointer").classList.remove("active");
+  $("tCanvas").style.cursor = "default";
+
+  _redrawTeacherCanvas();
+};
+  $("tPointer").onclick = () => {
+  tTool = "pointer";
+  $("tPointer").classList.add("active");
+  $("tPen").classList.remove("active");
+  $("tEraser").classList.remove("active");
+
+  ensureTextBacking();
+  _redrawTeacherCanvas();
+};
+  // ===== Image Picker (Teacher) =====
+const imagePicker = $("imagePicker");
+const tImageBtn = $("tImage");
+if(tImageBtn) tImageBtn.onclick = () => {
+  if(!imagePicker){
+    showToast("imagePicker غير موجود");
+    return;
+  }
+
+  tTool = "image";
+
+  $("tImage").classList.add("active");
+  $("tPen").classList.remove("active");
+  $("tEraser").classList.remove("active");
+  $("tText").classList.remove("active");
+  $("tPointer").classList.remove("active");
+
+  imagePicker.click();
+  $("tImage").classList.remove("active");
+};
+  imagePicker.onchange = () => {
+  const file = imagePicker.files && imagePicker.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+ reader.onload = () => addImageObject(reader.result);
+
+  reader.readAsDataURL(file);
+  imagePicker.value = "";
+};
+// ===== Paste Image (Ctrl+V) =====
+document.addEventListener("paste", (event) => {
+  if(State.role !== "teacher") return;
+  if($("teacherRoom")?.classList.contains("hidden")) return;
+
+  const items = event.clipboardData?.items || [];
+  for (const it of items) {
+    if (it.type && it.type.startsWith("image/")) {
+      const file = it.getAsFile();
+      if (!file) continue;
+
+      event.preventDefault();
+      const reader = new FileReader();
+      reader.onload = () => addImageObject(reader.result);
+      reader.readAsDataURL(file);
+      return;
+    }
+  }
+});
+
+$("tText").onclick = () => {
+  const text = prompt("اكتب النص");
+  if(!text) return;
+
+  // ❌ ممنوع commit هنا
+
+  // ادخل وضع المؤشر تلقائيًا (نفس سلوكك الحالي)
+  tTool = "pointer";
+  $("tPointer")?.classList.add("active");
+  $("tPen")?.classList.remove("active");
+  $("tEraser")?.classList.remove("active");
+  $("tImage")?.classList.remove("active");
+
+  const item = {
+    id: crypto.randomUUID(),
+    x: 120,   // نقطة يمين النص (RTL)
+    y: 120,
+    text,
+    size: 32,
+    color: tColor || "#000"
+  };
+
+  // ✅ فقط أضف — لا تثبيت ولا مسح
+  TextState.items.push(item);
+  TextState.activeId = item.id;
+
+  _redrawTeacherCanvas();
+  queueSaveTeacher();
+};
+  
+
+  
+  // ===== Equation Button (Teacher) =====
+  const eqModal = $("eqModal");
+  const eqField = document.getElementById('eqField');
+
+  const openEqModal = () => {
+    if(!eqModal || !eqField){ showToast('محرر المعادلات غير جاهز'); return; }
+    eqModal.classList.remove('hidden');
+    eqField.value = '';
+    setTimeout(() => eqField.focus(), 30);
+  };
+  const closeEqModal = () => {
+    if(!eqModal) return;
+    eqModal.classList.add('hidden');
+  };
+
+  $("tEquation") && ($("tEquation").onclick = () => {
+    if(State.role !== 'teacher') return;
+    openEqModal();
+  });
+
+  $("eqClose") && ($("eqClose").onclick = closeEqModal);
+  eqModal && (eqModal.onclick = (e) => { if(e.target === eqModal) closeEqModal(); });
+
+  // إدخال قوالب بشكل بصري (هنا نستخدم \ داخل النص لتظهر أوامر LaTeX بشكل صحيح)
+  const _eqInsert = (latex, selectionMode='placeholder') => {
+    if(!eqField) return;
+    if(typeof eqField.executeCommand === 'function'){
+      eqField.executeCommand(['insert', latex, {selectionMode}]);
+    } else if(typeof eqField.insert === 'function'){
+      eqField.insert(latex);
+    }
+  };
+
+  const _eqAct = (act) => {
+    try{
+      switch(act){
+        case 'frac':
+          _eqInsert('\\frac{\\placeholder{}}{\\placeholder{}}');
+          break;
+        case 'sqrt':
+          _eqInsert('\\sqrt{\\placeholder{}}');
+          break;
+        case 'sup':
+          _eqInsert('^{\\placeholder{}}');
+          break;
+        case 'sub':
+          _eqInsert('_{\\placeholder{}}');
+          break;
+        case 'pm':
+          _eqInsert('\\pm', 'after');
+          break;
+        case 'times':
+          _eqInsert('\\times', 'after');
+          break;
+        case 'div':
+          _eqInsert('\\div', 'after');
+          break;
+        case 'plus':
+          _eqInsert('+', 'after');
+          break;
+        case 'minus':
+          _eqInsert('-', 'after');
+          break;
+        case 'eq':
+          _eqInsert('=', 'after');
+          break;
+        case 'lpar':
+          _eqInsert('(', 'after');
+          break;
+        case 'rpar':
+          _eqInsert(')', 'after');
+          break;
+      }
+      eqField && eqField.focus();
+    } catch(e){ console.warn(e); }
+  };
+
+  document.querySelectorAll('[data-act]').forEach(btn => {
+    btn.addEventListener('click', () => _eqAct(btn.getAttribute('data-act')));
+  });
+
+  $("eqClear") && ($("eqClear").onclick = () => {
+    if(eqField) eqField.value = '';
+    eqField && eqField.focus();
+  });
+
+  $("eqInsert") && ($("eqInsert").onclick = () => {
+    if(!eqField) return;
+    // ✅ لا نستخدم value لأن MathLive قد يرجع placeholders غير مناسبة
+    let latex = '';
+    try{
+      latex = (typeof eqField.getValue === 'function') ? eqField.getValue('latex') : (eqField.value || '');
+    }catch(e){ latex = (eqField.value || ''); }
+    latex = String(latex || '').trim();
+    if(!latex){ showToast('اكتب معادلة أولاً'); return; }
+    try{
+      const url = latexToSvgDataUrl(latex);
+      addImageObject(url);
+      closeEqModal();
+      showToast('تم إدراج المعادلة');
+    } catch(err){
+      console.warn(err);
+      showToast('تعذر إدراج المعادلة (انتظر تحميل MathJax)');
+    }
+  });
+
+document.querySelectorAll("[data-color]").forEach(btn=>{
+    btn.onclick=()=>{
+      document.querySelectorAll("[data-color]").forEach(x=>x.classList.remove("active"));
+      btn.classList.add("active");
+      tColor = btn.getAttribute("data-color");
+      tTool="pen";
+      $("tPen").classList.add("active"); $("tEraser").classList.remove("active");
+    };
+  });
+
+  $("sPen").onclick = ()=>{ sTool="pen"; $("sPen").classList.add("active"); $("sEraser").classList.remove("active"); };
+  $("sEraser").onclick = ()=>{ sTool="eraser"; $("sEraser").classList.add("active"); $("sPen").classList.remove("active"); };
+  document.querySelectorAll("[data-scolor]").forEach(btn=>{
+    btn.onclick=()=>{
+      document.querySelectorAll("[data-scolor]").forEach(x=>x.classList.remove("active"));
+      btn.classList.add("active");
+      sColor = btn.getAttribute("data-scolor");
+      sTool="pen";
+      $("sPen").classList.add("active"); $("sEraser").classList.remove("active");
+    };
+  });
+
+  
+
+  // ✅ مسح سبورة المعلم (السبورة الحالية فقط)
+  $("clearTeacher").onclick = async () => {
+    if(State.role !== "teacher" || !State.currentBoard) return;
+
+    // تأكد من الطبقات
+    ensureLayers();
+
+    // امسح الخلفية + الحبر
+    bgCtx.clearRect(0,0,bgCanvas.width,bgCanvas.height);
+    inkCtx.clearRect(0,0,inkCanvas.width,inkCanvas.height);
+
+    // امسح عناصر النصوص/الصور
+    TextState.items = [];
+    TextState.activeId = null;
+    TextState.mode = null;
+    TextState.dragStart = null;
+
+    ImageState.items = [];
+    ImageState.activeId = null;
+    ImageState.mode = null;
+    ImageState.dragStart = null;
+
+    // احفظ الحالة داخل ذاكرة السبورة الحالية
+    if(State.currentBoard?.id) saveObjectsForBoard(State.currentBoard.id);
+
+    _redrawTeacherCanvas();
+
+    // احفظ في قاعدة البيانات
+    await saveTeacherBoard();
+    renderTeacherPreview();
+    showToast("تم مسح سبورة المعلم");
+  };
+  $("clearStudent").onclick = ()=>{
+    if(!studentCanEdit()){ showToast("التعديل متوقف"); return; }
+    clearCanvas(sCanvas,sCtx);
+    queueSaveStudent();
+  };
+
+  $("sStatus").onchange = ()=> queueSaveStudent();
+
+  $("helpBtn").onclick = async ()=>{
+    if (!State.studentBoard) {
+      showToast("ارسم أو افتح السبورة أولاً");
+      return;
+    }
+    const { error } = await sb.from("student_boards")
+      .update({ help_requested:true, status:"help" })
+      .eq("id", State.studentBoard.id);
+    if(error){ console.warn(error); showToast("تعذر إرسال طلب المساعدة"); return; }
+    showToast("تم إرسال طلب المساعدة");
+  };
+
+  
+
+    /* Timer bindings */
+  if($('timerStartBtn')) $('timerStartBtn').onclick = () => timerUpdate('start');
+  if($('timerResetBtn')) $('timerResetBtn').onclick = () => timerUpdate('reset');
+
+  $("studentExit").onclick = ()=> location.href = location.pathname;
+}
+
+/* =============================
+   Boot
+============================= */
+async function boot(){
+  bumpVisitors();
+  try{ if(location.protocol==='file:'){ const w=document.getElementById('fileWarning'); if(w){ w.classList.remove('hidden'); } } }catch(e){}
+  try{ applyFullLang(_getAppLang()); }catch(e){}
+  if(typeof bindUI==='function') bindUI();
+  // GitHub Pages safe mode: if Supabase didn't load, keep UI visible and show a clear message
+  if(!sb){
+    try{ $('liveText').textContent = 'غير متصل'; }catch(e){}
+    showToast('⚠️ تعذر تحميل Supabase (قد يكون محجوبًا أو فشل تحميل CDN). جرّب تعطيل AdBlock أو تحديث الصفحة.');
+    // Disable actions that require backend
+    try{ document.getElementById('teacherStart')?.setAttribute('disabled','disabled'); }catch(e){}
+    try{ document.getElementById('studentJoin')?.setAttribute('disabled','disabled'); }catch(e){}
+  }
+
+  loading(true);
+  try{
+    State.user = await ensureAnon();
+
+    const code = getRoomFromUrl();
+    if(code){
+      $("sCode").value = code;
+      showView("studentEntry");
+    } else {
+      showView("home");
+    }
+
+  } catch(e){
+    console.error(e);
+    showToast("Auth error");
+  } finally {
+    loading(false);
+  }
+}
+
+
+
+// ===============================
+// Copilot Enhancements (v3): Student board beside teacher + Evaluation + Certificates + Reports
+// ===============================
+
+// ---- Lightweight i18n for certificates/reports ----
+function _getAppLang(){
+  const v = safeStorage.getItem('boardak_lang');
+  return (v === 'en' || v === 'ar') ? v : 'ar';
+}
+function _setAppLang(v){
+  safeStorage.setItem('boardak_lang', (v==='en') ? 'en' : 'ar');
+}
+
+// ===============================
+// UI Texts (AR / EN)
+// ===============================
+const UI_TEXT = {
+  ar: {
+    homeTitle: 'بوردك | Boardak',
+    homeDesc: 'سوبرتك الذكية - منصة تعليمية هادئة للشرح والمتابعة والتقييم',
+    studentTitle: 'دخول الطالب',
+    studentDesc: 'ادخل بالكود أو الرابط وابدأ العمل على سبورتك.',
+    teacherTitle: 'دخول المعلم',
+    teacherDesc: 'أنشئ الغرفة بسرعة وابدأ الشرح مباشرة.',
+    back: 'رجوع'
+  },
+  en: {
+    homeTitle: 'Boardak',
+    homeDesc: 'Your Smart Board – A calm platform for teaching, tracking and evaluation',
+    studentTitle: 'Student',
+    studentDesc: 'Join with a code or link and start working.',
+    teacherTitle: 'Teacher',
+    teacherDesc: 'Create a room and start teaching instantly.',
+    back: 'Back'
+  }
+};
+
+function applyAppLang(lang){
+  const t = UI_TEXT[lang] || UI_TEXT.ar;
+  document.documentElement.lang = lang;
+  document.documentElement.dir = (lang === 'en') ? 'ltr' : 'rtl';
+
+  const h1 = document.querySelector('#home h1');
+  if(h1) h1.textContent = t.homeTitle;
+  const p = document.querySelector('#home p');
+  if(p) p.textContent = t.homeDesc;
+
+  const sTitle = document.querySelector('#goStudent .entryTitle');
+  if(sTitle) sTitle.textContent = t.studentTitle;
+  const sDesc = document.querySelector('#goStudent .entryDesc');
+  if(sDesc) sDesc.textContent = t.studentDesc;
+
+  const tTitle = document.querySelector('#goTeacher .entryTitle');
+  if(tTitle) tTitle.textContent = t.teacherTitle;
+  const tDesc = document.querySelector('#goTeacher .entryDesc');
+  if(tDesc) tDesc.textContent = t.teacherDesc;
+
+  const b1 = document.getElementById('backFromTeacher');
+  if(b1) b1.textContent = t.back;
+  const b2 = document.getElementById('backFromStudent');
+  if(b2) b2.textContent = t.back;
+}
+
+
+// ---- Evaluation cache (session + localStorage) ----
+function _evalKey(roomId, studentUserId, boardId){
+  return `boardak_eval:${roomId}:${boardId}:${studentUserId}`;
+}
+function _loadEval(roomId, studentUserId, boardId){
+  try{ return JSON.parse(safeStorage.getItem(_evalKey(roomId,studentUserId,boardId))||'null'); }catch(e){ return null; }
+}
+function _saveEval(roomId, studentUserId, boardId, payload){
+  try{ safeStorage.setItem(_evalKey(roomId,studentUserId,boardId), JSON.stringify(payload)); }catch(e){}
+}
+
+// ---- Realtime channel for evaluation/cert events ----
+let __evalChannel = null;
+function ensureEvalChannel(){
+  if(!State.room?.id) return null;
+  if(__evalChannel) return __evalChannel;
+  __evalChannel = sb.channel(`eval:${State.room.id}`);
+  __evalChannel.subscribe();
+  return __evalChannel;
+}
+async function teacherBroadcastEval(studentUserId, boardId, evaluation){
+  const ch = ensureEvalChannel();
+  if(!ch) return;
+  await ch.send({type:'broadcast', event:'eval', payload:{ student_user_id: studentUserId, board_id: boardId, evaluation }});
+}
+async function teacherBroadcastCert(studentUserId, boardId, cert){
+  const ch = ensureEvalChannel();
+  if(!ch) return;
+  await ch.send({type:'broadcast', event:'cert', payload:{ student_user_id: studentUserId, board_id: boardId, cert }});
+}
+function studentSubscribeEval(){
+  const ch = ensureEvalChannel();
+  if(!ch) return;
+  ch.on('broadcast', {event:'eval'}, ({payload})=>{
+    if(State.role!=='student') return;
+    if(payload.student_user_id !== State.user?.id) return;
+    if(payload.board_id !== State.currentBoard?.id) return;
+    const ev = payload.evaluation || {};
+    // cache locally
+    _saveEval(State.room.id, State.user.id, State.currentBoard.id, ev);
+    // show to student
+    const box = document.getElementById('feedbackBox');
+    if(box) box.textContent = ev.note || '—';
+    const sum = document.getElementById('studentEvalSummary');
+    if(sum){
+      sum.innerHTML = `الدرجة: <b>${ev.score ?? 0}</b> — المستوى: <b>${ev.level||'—'}</b> — الوسام: <b>${ev.badge||'—'}</b>`;
+    }
+  });
+  ch.on('broadcast', {event:'cert'}, ({payload})=>{
+    if(State.role!=='student') return;
+    if(payload.student_user_id !== State.user?.id) return;
+    if(payload.board_id !== State.currentBoard?.id) return;
+    const cert = payload.cert || {};
+    safeStorage.setItem(`boardak_cert:${State.room.id}:${State.currentBoard.id}:${State.user.id}`, JSON.stringify(cert));
+    const btn = document.getElementById('downloadCert');
+    if(btn) btn.classList.remove('hidden');
+    showToast(_getAppLang()==='ar' ? 'تم إصدار شهادتك ✅' : 'Your certificate is ready ✅');
+  });
+}
+
+// ---- Canvas-based Arabic-safe certificate image ----
+function _drawCertificateImage({lang='ar', studentName='الطالب', teacherName='المعلم', lessonTitle='درس', certType='شهادة شكر', score=0, level='', badge=''}){
+  const canvas = document.createElement('canvas');
+  canvas.width = 1600;
+  canvas.height = 1100;
+  const ctx = canvas.getContext('2d');
+  // background
+  const grad = ctx.createLinearGradient(0,0,canvas.width,canvas.height);
+  grad.addColorStop(0,'#eef2ff');
+  grad.addColorStop(1,'#ecfeff');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  // border
+  ctx.strokeStyle = '#2563eb';
+  ctx.lineWidth = 10;
+  ctx.strokeRect(40,40,canvas.width-80,canvas.height-80);
+  ctx.strokeStyle = '#16a34a';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(70,70,canvas.width-140,canvas.height-140);
+
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '900 60px Cairo';
+  ctx.textAlign = 'center';
+  ctx.direction = (lang==='ar') ? 'rtl' : 'ltr';
+
+  const title = (lang==='ar') ? 'شهادة' : 'Certificate';
+  ctx.fillText(title, canvas.width/2, 170);
+
+  ctx.fillStyle = '#2563eb';
+  ctx.font = '900 52px Cairo';
+  ctx.fillText((lang==='ar') ? certType : certType, canvas.width/2, 260);
+
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '700 42px Cairo';
+  const line1 = (lang==='ar') ? `نشهد بأن ${studentName} قد حصل على ${certType}` : `This certifies that ${studentName} achieved ${certType}`;
+  ctx.fillText(line1, canvas.width/2, 420);
+
+  ctx.font = '700 34px Cairo';
+  const line2 = (lang==='ar') ? `في درس: ${lessonTitle} — المعلم: ${teacherName}` : `Lesson: ${lessonTitle} — Teacher: ${teacherName}`;
+  ctx.fillText(line2, canvas.width/2, 490);
+
+  ctx.fillStyle = '#1e293b';
+  ctx.font = '800 34px Cairo';
+const T = REPORT_I18N[lang] || REPORT_I18N.ar;
+
+const m1 = `${T.score}: ${score ?? 0}`;
+const m2 = `${T.level}: ${mapValue('level', level || 'none', lang)}`;
+const m3 = `${T.badge}: ${mapValue('badge', badge || 'none', lang)}`;
+
+ctx.fillText(m1, canvas.width / 2, 600);
+ctx.fillText(m2, canvas.width / 2, 645);
+ctx.fillText(m3, canvas.width / 2, 690);
+  // signature area
+  ctx.strokeStyle = '#94a3b8';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(260, 860); ctx.lineTo(680, 860); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(920, 860); ctx.lineTo(1340, 860); ctx.stroke();
+
+  ctx.fillStyle = '#475569';
+  ctx.font = '700 28px Cairo';
+  ctx.fillText((lang==='ar')?'توقيع المعلم':'Teacher Signature', 470, 910);
+  ctx.fillText((lang==='ar')?'ختم المدرسة':'School Stamp', 1130, 910);
+
+  ctx.fillStyle = '#64748b';
+  ctx.font = '600 24px Cairo';
+  ctx.fillText((lang==='ar')?'منصة بوردك — Boardak':'Boardak Platform', canvas.width/2, 1010);
+
+  return canvas.toDataURL('image/png');
+}
+
+function _downloadPdfFromImage(imgDataUrl, filename){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({orientation:'landscape', unit:'pt', format:'a4'});
+  const w = doc.internal.pageSize.getWidth();
+  const h = doc.internal.pageSize.getHeight();
+  doc.addImage(imgDataUrl, 'PNG', 0, 0, w, h);
+  doc.save(filename);
+}
+
+// ---- Build teacher-side Student Pane beside board (inside existing side panel) ----
+function ensureTeacherStudentPane(){
+  if(State.role !== 'teacher') return;
+  const side = document.querySelector('#teacherRoom .side');
+  if(!side) return;
+  if(document.getElementById('selectedStudentPreview')) return;
+
+  const pane = document.createElement('div');
+  pane.className = 'studentPane';
+
+  const title = document.createElement('div');
+  title.className = 'studentPaneTitle';
+  title.innerHTML = `🧑‍🎓 <span id="selectedStudentName">اختر طالبًا لعرض عمله</span> <span class="pillMini" id="selectedStudentMeta">—</span>`;
+
+  const bar = document.createElement('div');
+  bar.className = 'evalBar';
+  bar.innerHTML = `
+    <div class="evalRow tight">
+      <span class="chip">الدرجة</span>
+      <button class="iconBtn" type="button" id="scoreDown">−</button>
+      <input id="scoreInput" type="number" min="0" max="100" value="0" />
+      <button class="iconBtn" type="button" id="scoreUp">+</button>
+    </div>
+    <div class="evalRow tight">
+      <span class="chip">المستوى</span>
+      <select id="levelSelect">
+  <option value="excellent">ممتاز</option>
+  <option value="very_good">جيد جدًا</option>
+  <option value="good">جيد</option>
+  <option value="pass">مقبول</option>
+  <option value="weak">ضعيف</option>
+</select>
+    </div>
+    <div class="evalRow tight">
+      <span class="chip">الوسام</span>
+      <select id="badgeSelect">
+  <option value="none">—</option>
+  <option value="creative">مبدع 🌟</option>
+  <option value="super">فائق 🚀</option>
+  <option value="genius">عبقري 🧠</option>
+</select>
+    </div>
+    <div class="evalRow">
+      <span class="chip">ملاحظة</span>
+      <textarea id="noteInput" placeholder="اكتب ملاحظة للطالب تظهر فورًا..."></textarea>
+    </div>
+    <div class="evalRow">
+      <span class="chip">شهادة</span>
+      <select id="certType">
+        <option>شهادة شكر</option><option>تميز أكاديمي</option><option>تميز سلوكي</option>
+      </select>
+      <button class="btn btn-green btn-sm" type="button" id="issueCert">🎓 إصدار</button>
+      <button class="btn btn-soft btn-sm" type="button" id="exportPDF">📄 تقرير PDF</button>
+      <button class="btn btn-soft btn-sm" type="button" id="exportExcel">📊 Excel</button>
+      <button class="btn btn-soft btn-sm" type="button" id="downloadWorks">⬇ الأعمال</button>
+      <span class="kbdHint">(يُحفظ تلقائيًا)</span>
+    </div>
+  `;
+
+  const prev = document.createElement('div');
+  prev.id = 'selectedStudentPreview';
+  prev.className = 'studentWorkPreview';
+  prev.innerHTML = '<span>لا يوجد اختيار بعد</span>';
+
+  pane.appendChild(title);
+  pane.appendChild(bar);
+  pane.appendChild(prev);
+
+  // insert after students list
+  const list = document.getElementById('studentsList');
+  if(list && list.parentElement === side){
+    side.appendChild(pane);
+  } else {
+    side.appendChild(pane);
+  }
+}
+
+// ---- Bind teacher evaluation controls ----
+let __saveTimer = null;
+function bindTeacherEvalControls(){
+  if(State.role !== 'teacher') return;
+  const up = document.getElementById('scoreUp');
+  const down = document.getElementById('scoreDown');
+  const score = document.getElementById('scoreInput');
+  const level = document.getElementById('levelSelect');
+  const badge = document.getElementById('badgeSelect');
+  const note = document.getElementById('noteInput');
+  const certType = document.getElementById('certType');
+
+  if(!up || !down || !score) return;
+
+  const queueSave = () => {
+    clearTimeout(__saveTimer);
+    __saveTimer = setTimeout(saveTeacherEvalNow, 350);
+  };
+
+  up.onclick = ()=>{ score.value = Math.min(100, (parseInt(score.value||0,10)+1)); queueSave(); };
+  down.onclick = ()=>{ score.value = Math.max(0, (parseInt(score.value||0,10)-1)); queueSave(); };
+  score.oninput = queueSave;
+  level.onchange = queueSave;
+  badge.onchange = queueSave;
+  note.oninput = queueSave;
+
+  document.getElementById('issueCert')?.addEventListener('click', async ()=>{
+    const sid = State.__selectedStudentUserId;
+    const bid = State.currentBoard?.id;
+    if(!sid || !bid) { showToast('اختر طالبًا أولاً'); return; }
+    const lang = _getAppLang();
+    const studentName = State.__selectedStudentName || 'الطالب';
+    const teacherName = document.getElementById('tRoomTeacher')?.textContent || 'المعلم';
+    const lessonTitle = document.getElementById('tRoomTitle')?.textContent || 'درس';
+    const ev = getTeacherEvalPayload();
+    const cert = {type: certType.value, lang, studentName, teacherName, lessonTitle, ev, issuedAt: new Date().toISOString()};
+
+    // mark cert in DB if possible
+    try{ await sb.from('student_boards').update({ certificate_granted: true }).eq('id', State.__selectedStudentBoardId); }catch(e){}
+
+    // cache + broadcast
+    safeStorage.setItem(`boardak_cert:${State.room.id}:${bid}:${sid}`, JSON.stringify(cert));
+    await teacherBroadcastCert(sid, bid, cert);
+
+    // download for teacher
+    const img = _drawCertificateImage({
+      lang, studentName, teacherName, lessonTitle,
+      certType: cert.type,
+      score: ev.score, level: ev.level, badge: ev.badge
+    });
+    _downloadPdfFromImage(img, `certificate-${studentName}.pdf`);
+    showToast('تم إصدار الشهادة');
+  });
+
+  document.getElementById('exportExcel')?.addEventListener('click', downloadExcelReport);
+  document.getElementById('exportPDF')?.addEventListener('click', downloadPdfReport);
+  document.getElementById('downloadWorks')?.addEventListener('click', downloadWorksPdf);
+}
+
+function getTeacherEvalPayload(){
+  const score = Number(document.getElementById('scoreInput')?.value||0);
+  const level = document.getElementById('levelSelect')?.value||'';
+  const badge = document.getElementById('badgeSelect')?.value||'';
+  const note = document.getElementById('noteInput')?.value||'';
+  return { score, level, badge, note };
+}
+
+async function saveTeacherEvalNow(){
+  if(State.role !== 'teacher') return;
+  const sid = State.__selectedStudentUserId;
+  const sbid = State.__selectedStudentBoardId;
+  const bid = State.currentBoard?.id;
+  if(!sid || !bid) return;
+  const ev = getTeacherEvalPayload();
+
+  // cache locally
+  _saveEval(State.room.id, sid, bid, ev);
+
+  // try DB (optional columns) + always broadcast
+  try{ await sb.from('student_boards').update({ evaluation: ev }).eq('id', sbid); }catch(e){}
+  await teacherBroadcastEval(sid, bid, ev);
+}
+
+function applyTeacherEvalToControls(ev){
+  if(!ev) ev = {score:0, level:'ممتاز', badge:'—', note:''};
+  const score = document.getElementById('scoreInput');
+  const level = document.getElementById('levelSelect');
+  const badge = document.getElementById('badgeSelect');
+  const note = document.getElementById('noteInput');
+  if(score) score.value = ev.score ?? 0;
+  if(level && ev.level) level.value = ev.level;
+  if(badge && ev.badge) badge.value = ev.badge;
+  if(note) note.value = ev.note || '';
+}
+
+// ---- Override teacher students rendering: select student and show work beside teacher ----
+
+
+
+// ---- Student: show evaluation summary + certificate download ----
+function ensureStudentEvalUI(){
+  if(State.role !== 'student') return;
+  const box = document.getElementById('feedbackBox');
+  if(!box) return;
+  if(!document.getElementById('studentEvalSummary')){
+    const sum = document.createElement('div');
+    sum.id = 'studentEvalSummary';
+    sum.className = 'small';
+    sum.style.marginTop = '8px';
+    sum.textContent = '—';
+    box.parentElement.insertBefore(sum, box);
+  }
+}
+
+let __certDownloading = false;
+
+function bindStudentCertificateButton(){
+  if(State.role !== 'student') return;
+  const btn = document.getElementById('downloadCert');
+  if(!btn) return;
+
+  // ✅ يمنع ربط الحدث أكثر من مرة حتى لو الدالة نادت نفسها كثير
+  if (btn.dataset.boundCert === '1') return;
+  btn.dataset.boundCert = '1';
+
+  btn.onclick = async () => {
+    // ✅ قفل ضد الضغط المتكرر/التنفيذ المكرر
+    if (__certDownloading) return;
+    __certDownloading = true;
+
+    // ✅ تعطيل الزر مؤقتًا لمنع double-click
+    const oldText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = (_getAppLang()==='en') ? 'Preparing…' : 'جاري التجهيز…';
+
+    try{
+      const lang = _getAppLang();
+      const key = `boardak_cert:${State.room.id}:${State.currentBoard.id}:${State.user.id}`;
+
+      let cert = null;
+      try{ cert = JSON.parse(safeStorage.getItem(key)||'null'); }catch(e){}
+
+      const teacherName = State.room?.teacher_name || 'Teacher';
+      const lessonTitle = State.room?.title || 'Lesson';
+      const studentName = document.getElementById('sRoomStudent')?.textContent || 'Student';
+
+      const ev = _loadEval(State.room.id, State.user.id, State.currentBoard.id) || {};
+
+      const certType = cert?.type || (lang==='ar' ? 'شهادة شكر' : 'Certificate');
+
+      // ✅ اسم ملف آمن (بدون مسافات/رموز)
+      const safeName = String(studentName).replace(/[\\/:*?"<>|]/g,'_').slice(0,40);
+
+      const img = await _drawCertificateImage({
+        lang, studentName, teacherName, lessonTitle, certType,
+        score: ev.score||0, level: ev.level||'', badge: ev.badge||''
+      });
+
+      await _downloadPdfFromImage(img, `certificate-${safeName}.pdf`);
+    } finally {
+      __certDownloading = false;
+      btn.disabled = false;
+      btn.textContent = oldText;
+    }
+  };
+}
+
+// ---- Reports (teacher) ----
+function _getStudentNameByUserId(uid){
+  const m = (State.__membersCache||[]).find(x=>x.user_id===uid);
+  return m?.display_name || uid;
+}
+function _collectReportRows(){
+  const bid = State.currentBoard?.id;
+  const rows = [];
+  (State.__studentBoardsCache||[]).forEach(sbRow=>{
+    if(bid && sbRow.board_id && sbRow.board_id !== bid) return;
+    const name = _getStudentNameByUserId(sbRow.student_user_id);
+    const ev = _loadEval(State.room.id, sbRow.student_user_id, bid) || {};
+    rows.push({
+      name,
+      score: ev.score ?? 0,
+      level: ev.level || '',
+      badge: ev.badge || '',
+      note: ev.note || '',
+      status: sbRow.status || '',
+      certificate: sbRow.certificate_granted ? 'YES' : 'NO'
+    });
+  });
+  return rows;
+}
+
+function downloadExcelReport(){
+  if(State.role !== 'teacher') return;
+  const rows = _collectReportRows();
+  const bom = '\ufeff';
+  const header = 'الاسم,الدرجة,المستوى,الوسام,الملاحظة,الحالة,الشهادة\n';
+  const lines = rows.map(r=>[
+    r.name, r.score, r.level, r.badge, (r.note||'').replace(/\n/g,' '), r.status, r.certificate
+  ].map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([bom + header + lines], {type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`report-${State.room?.code||'room'}.csv`;
+  a.click();
+}
+
+function _drawReportPageImage(lang, metaText, rows, pageIndex){
+  const canvas = document.createElement('canvas');
+  canvas.width = 1600; canvas.height = 1100;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.textAlign = 'center';
+  ctx.direction = (lang==='ar') ? 'rtl' : 'ltr';
+
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '900 48px Cairo';
+  ctx.fillText(lang==='ar' ? 'تقرير الطلبة' : 'Students Report', canvas.width/2, 85);
+
+  ctx.font = '700 28px Cairo';
+  ctx.fillStyle = '#334155';
+  ctx.fillText(metaText, canvas.width/2, 135);
+
+  const headers = (lang==='ar')
+    ? ['الاسم','الدرجة','المستوى','الوسام','الملاحظة','الحالة','الشهادة']
+    : ['Name','Score','Level','Badge','Note','Status','Certificate'];
+
+  const colX = [120, 520, 650, 820, 980, 1250, 1450];
+  const topY = 210;
+
+  ctx.fillStyle = '#eef2ff';
+  ctx.fillRect(60, topY-46, canvas.width-120, 48);
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '800 22px Cairo';
+  headers.forEach((h,i)=>ctx.fillText(h, colX[i], topY-14));
+
+  const rowH = 58;
+  ctx.font = '700 20px Cairo';
+  for(let i=0;i<rows.length;i++){
+    const y = topY + i*rowH;
+    ctx.fillStyle = (i%2===0) ? '#f8fafc' : '#ffffff';
+    ctx.fillRect(60, y-30, canvas.width-120, rowH);
+    ctx.fillStyle = '#0f172a';
+
+    const r = rows[i];
+    const cert = (lang==='en') ? (r.certificate==='YES' ? 'YES' : 'NO') : (r.certificate==='YES' ? 'نعم' : 'لا');
+   const note = String(r.note || '').split('\n').join(' ').slice(0, 28);
+const cells = [
+  r.name,
+  String(r.score ?? 0),
+  mapValue('level', r.level || 'none', lang),
+  mapValue('badge', r.badge || 'none', lang),
+  note,
+mapStatus(r.status || 'none', lang),
+  cert
+];    cells.forEach((c,ci)=>ctx.fillText(String(c), colX[ci], y));
+  }
+
+  ctx.fillStyle = '#64748b';
+  ctx.font = '600 20px Cairo';
+  ctx.fillText((lang==='ar' ? 'صفحة ' : 'Page ') + String(pageIndex+1), canvas.width/2, canvas.height-40);
+  return canvas.toDataURL('image/png');
+}
+
+function downloadPdfReport(){
+  if(State.role !== 'teacher') return;
+  const lang = _getAppLang ? _getAppLang() : _appLang();
+  const rowsAll = _collectReportRows();
+  const meta = (lang==='ar')
+    ? `الغرفة: ${State.room?.code||''} — المعلم: ${State.room?.teacher_name||''}`
+    : `Room: ${State.room?.code||''} — Teacher: ${State.room?.teacher_name||''}`;
+
+  const pageSize = 10;
+  const pages = Math.max(1, Math.ceil(rowsAll.length / pageSize));
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({orientation:'landscape', unit:'pt', format:'a4'});
+  const w = doc.internal.pageSize.getWidth();
+  const h = doc.internal.pageSize.getHeight();
+
+  for(let p=0;p<pages;p++){
+    const chunk = rowsAll.slice(p*pageSize, (p+1)*pageSize);
+    const img = _drawReportPageImage(lang, meta, chunk, p);
+    if(p>0) doc.addPage();
+    doc.addImage(img,'PNG',0,0,w,h);
+  }
+  doc.save(`report-${State.room?.code||'room'}.pdf`);
+}
+
+function _drawWorkPageImage(lang, studentName, metaLine, note, imgDataUrl){
+  const canvas = document.createElement('canvas');
+  canvas.width = 1600; canvas.height = 1100;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.textAlign = 'center';
+  ctx.direction = (lang==='ar') ? 'rtl' : 'ltr';
+
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '900 44px Cairo';
+  ctx.fillText(lang==='ar' ? 'تقرير أعمال الطالب' : 'Student Work Report', canvas.width/2, 80);
+
+  ctx.fillStyle = '#2563eb';
+  ctx.font = '900 34px Cairo';
+  ctx.fillText(studentName, canvas.width/2, 132);
+
+  ctx.fillStyle = '#334155';
+  ctx.font = '700 24px Cairo';
+  ctx.fillText(metaLine, canvas.width/2, 170);
+
+  // note box
+  ctx.textAlign = 'right';
+  ctx.direction = (lang==='ar') ? 'rtl' : 'ltr';
+  ctx.fillStyle = '#f8fafc';
+  ctx.strokeStyle = '#e5e7eb';
+  ctx.lineWidth = 2;
+  ctx.fillRect(80, 200, canvas.width-160, 110);
+  ctx.strokeRect(80, 200, canvas.width-160, 110);
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '700 22px Cairo';
+  const noteLabel = (lang==='ar') ? 'الملاحظة:' : 'Note:';
+  const text = String(note || '—').split('\n').join(' ').slice(0, 140);
+  ctx.fillText(noteLabel + ' ' + text, canvas.width-110, 240);
+
+  // image frame
+  ctx.textAlign = 'center';
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.setLineDash([6,6]);
+  ctx.strokeRect(80, 330, canvas.width-160, 700);
+  ctx.setLineDash([]);
+
+  if(!imgDataUrl) return Promise.resolve(canvas.toDataURL('image/png'));
+  const img = new Image();
+  return new Promise((resolve)=>{
+    img.onload = ()=>{
+      const boxX=90, boxY=340, boxW=canvas.width-180, boxH=680;
+      const scale = Math.min(boxW/img.width, boxH/img.height);
+      const w = img.width*scale, h=img.height*scale;
+      const x = boxX + (boxW-w)/2; const y = boxY + (boxH-h)/2;
+      ctx.drawImage(img,x,y,w,h);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = ()=> resolve(canvas.toDataURL('image/png'));
+    img.src = imgDataUrl;
+  });
+}
+
+async function downloadWorksPdf(){
+  if(State.role !== 'teacher') return;
+  const lang = _getAppLang ? _getAppLang() : _appLang();
+  const bid = State.currentBoard?.id;
+  const listRows = (State.__studentBoardsCache || []);
+  const filtered = listRows.filter(r => (!bid || r.board_id===bid));
+  if(!filtered.length){
+    showToast(lang==='ar' ? 'لا توجد أعمال بعد' : 'No works yet');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({orientation:'landscape', unit:'pt', format:'a4'});
+  const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
+
+  for(let i=0;i<filtered.length;i++){
+    const sbRow = filtered[i];
+    const studentName = _getStudentNameByUserId(sbRow.student_user_id);
+    const ev = _loadEval(State.room.id, sbRow.student_user_id, bid) || {};
+    const cert = (lang==='en') ? (sbRow.certificate_granted ? 'YES':'NO') : (sbRow.certificate_granted ? 'نعم':'لا');
+    const T = REPORT_I18N[lang] || REPORT_I18N.ar;
+const metaLine =
+  `${T.score}: ${ev.score ?? 0} — ` +
+  `${T.level}: ${mapValue('level', ev.level || 'none', lang)} — ` +
+  `${T.badge}: ${mapValue('badge', ev.badge || 'none', lang)} — ` +
+  `${T.status}: ${mapStatus(sbRow.status || 'none', lang)}`;
+    const img = await _drawWorkPageImage(lang, studentName, metaLine, ev.note||'', sbRow.board_data||'');
+    if(i>0) doc.addPage();
+    doc.addImage(img,'PNG',0,0,pw,ph);
+  }
+
+  doc.save(`works-${State.room?.code||'room'}.pdf`);
+}
+
+
+function ensureTLangSelect(){
+  const tTitle = document.getElementById('tTitle');
+  const grid = tTitle?.closest('.grid');
+  if(!grid) return;
+  if(document.getElementById('tLang')) return;
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `<label>لغة الشهادات / Language</label>
+    <select id="tLang">
+      <option value="ar" selected>العربية</option>
+      <option value="en">English</option>
+    </select>`;
+  grid.insertBefore(wrap, grid.querySelector('#teacherStart'));
+}
+
+
+// ---- Removed duplicate overrides (bindUI/teacherStartFlow/studentJoinFlow) to prevent runtime errors ----
+
+// Ensure teacher pane exists after entering teacher view
+window.addEventListener('load', ()=>{
+  // if teacher enters later, ensure pane when view becomes visible
+  const obs = new MutationObserver(()=>{
+    if(State.role==='teacher' && !document.getElementById('selectedStudentPreview')){
+      ensureTeacherStudentPane();
+      bindTeacherEvalControls();
+    }
+  });
+  obs.observe(document.body, {subtree:true, attributes:true, attributeFilter:['class']});
+});
+
+
+// v3.1 publish guard
+
+// Boardak boot check
+window.addEventListener('load', ()=>{
+  setTimeout(()=>{
+    // if click handlers didn't bind, user will still have navigation via minimal script
+    if(typeof window.sb === 'undefined' && typeof window.supabase === 'undefined'){
+      console.warn('Supabase library not loaded');
+    }
+  }, 500);
+});
+
+window.__boardak_boot_ok = false;
+try{ window.addEventListener('error', (e)=>{ console.error('Boardak runtime error:', e?.message||e); }); }catch(_){}
+
+
+// ===== Full UI i18n v3 (Dynamic + Static) =====
+const I18N_FULL = {
+  ar: {
+    ready:'جاهز', live:'مباشر',
+    homeTitle:'بوردك Boardak', homeDesc:'سوبرتك الذكية - منصة تعليمية هادئة للشرح والمتابعة والتقييم',
+    enterStudent:'دخول الطالب', enterTeacher:'دخول المعلم',
+    enterStudentDesc:'ادخل بالكود أو الرابط وابدأ العمل على سبورتك.',
+    enterTeacherDesc:'أنشئ الغرفة بسرعة وابدأ الشرح مباشرة.',
+    back:'رجوع',
+    teacherEntry:'دخول المعلم', studentEntry:'دخول الطالب',
+    teacherNameLabel:'اسم المعلم', roomCodeOpt:'كود الغرفة (اختياري)', lessonTitleOpt:'عنوان الدرس (اختياري)',
+    startSession:'ابدأ الجلسة',
+    studentNameLabel:'اسم الطالب', roomCode:'كود الغرفة', joinNow:'انضم الآن',
+    copyLink:'نسخ الرابط', resetStudents:'تصفير أعمال الطلبة', endSession:'إنهاء الجلسة',
+    pen:'قلم', eraser:'ممحاة', text:'نص', equation:'معادلة', clearBoard:'مسح السبورة',
+    explainOnly:'الشرح فقط', lock:'قفل', focus:'عرض جماعي',
+    studentsInside:'الطلاب داخل الغرفة', list:'قائمة', grid:'شبكة', searchStudent:'بحث عن طالب...',
+    filterAll:'الكل', filterHelp:'🆘 طلب مساعدة', filterDone:'✅ منجز', filterNoWork:'⏳ بدون عمل',
+    help:'مساعدة', exit:'خروج',
+    statusUnderstood:'فهمت', statusHelp:'لم أفهم', statusDone:'انتهيت',
+    downloadCert:'تحميل شهادتك',
+    eqTitle:'✍️ كتابة معادلة', eqInsert:'إدراج على السبورة', eqClear:'مسح الحقل', eqClose:'إغلاق',
+    pdfReport:'📄 تقرير PDF', excel:'📊 Excel', worksPdf:'⬇ أعمال PDF'
+  },
+  en: {
+    ready:'Ready', live:'Live',
+    homeTitle:'Boardak', homeDesc:'Your Smart Board – a calm platform for teaching, tracking and evaluation',
+    enterStudent:'Student', enterTeacher:'Teacher',
+    enterStudentDesc:'Join with a code/link and start working on your board.',
+    enterTeacherDesc:'Create a room and start teaching instantly.',
+    back:'Back',
+    teacherEntry:'Teacher Login', studentEntry:'Student Login',
+    teacherNameLabel:'Teacher name', roomCodeOpt:'Room code (optional)', lessonTitleOpt:'Lesson title (optional)',
+    startSession:'Start session',
+    studentNameLabel:'Student name', roomCode:'Room code', joinNow:'Join now',
+    copyLink:'Copy link', resetStudents:'Reset students work', endSession:'End session',
+    pen:'Pen', eraser:'Eraser', text:'Text', equation:'Equation', clearBoard:'Clear board',
+    explainOnly:'Explain only', lock:'Lock', focus:'Focus view',
+    studentsInside:'Students', list:'List', grid:'Grid', searchStudent:'Search student...',
+    filterAll:'All', filterHelp:'🆘 Needs help', filterDone:'✅ Done', filterNoWork:'⏳ No work',
+    help:'Help', exit:'Exit',
+    statusUnderstood:'Understood', statusHelp:'Need help', statusDone:'Done',
+    downloadCert:'Download certificate',
+    eqTitle:'✍️ Equation', eqInsert:'Insert to board', eqClear:'Clear', eqClose:'Close',
+    pdfReport:'📄 PDF report', excel:'📊 Excel', worksPdf:'⬇ Works PDF'
+  }
+};
+
+function applyFullLang(lang){
+  try{ _setAppLang(lang); }catch(e){}
+  document.documentElement.lang = lang;
+  document.documentElement.dir = (lang==='en') ? 'ltr' : 'rtl';
+  const t = I18N_FULL[lang] || I18N_FULL.ar;
+
+  // top status
+  const liveEl = document.getElementById('liveText');
+  if(liveEl){
+    const isLive = (liveEl.textContent==='مباشر' || liveEl.textContent==='Live');
+    liveEl.textContent = isLive ? t.live : t.ready;
+  }
+
+  // home
+  const h1 = document.querySelector('#home h1'); if(h1) h1.textContent = t.homeTitle;
+  const hp = document.querySelector('#home p'); if(hp) hp.textContent = t.homeDesc;
+  const sTitle = document.querySelector('#goStudent .entryTitle'); if(sTitle) sTitle.textContent = t.enterStudent;
+  const sDesc = document.querySelector('#goStudent .entryDesc'); if(sDesc) sDesc.textContent = t.enterStudentDesc;
+  const tTitle = document.querySelector('#goTeacher .entryTitle'); if(tTitle) tTitle.textContent = t.enterTeacher;
+  const tDesc = document.querySelector('#goTeacher .entryDesc'); if(tDesc) tDesc.textContent = t.enterTeacherDesc;
+
+  // backs
+  const b1 = document.getElementById('backFromTeacher'); if(b1) b1.textContent = t.back;
+  const b2 = document.getElementById('backFromStudent'); if(b2) b2.textContent = t.back;
+
+  // entry headings
+  const te = document.querySelector('#teacherEntry h2'); if(te) te.textContent = t.teacherEntry;
+  const se = document.querySelector('#studentEntry h2'); if(se) se.textContent = t.studentEntry;
+
+  // entry labels
+  const tl = document.querySelectorAll('#teacherEntry label');
+  if(tl.length>=3){ tl[0].textContent=t.teacherNameLabel; tl[1].textContent=t.roomCodeOpt; tl[2].textContent=t.lessonTitleOpt; }
+  const ts = document.getElementById('teacherStart'); if(ts) ts.textContent = t.startSession;
+
+  const sl = document.querySelectorAll('#studentEntry label');
+  if(sl.length>=2){ sl[0].textContent=t.studentNameLabel; sl[1].textContent=t.roomCode; }
+  const sj = document.getElementById('studentJoin'); if(sj) sj.textContent = t.joinNow;
+
+  // teacher room top buttons
+  const c = document.getElementById('copyLink'); if(c) c.textContent = t.copyLink;
+  const r = document.getElementById('resetStudents'); if(r) r.textContent = t.resetStudents;
+  const e = document.getElementById('endRoom'); if(e) e.textContent = t.endSession;
+
+  // tools
+  const map = {tPen:'pen', tEraser:'eraser', tText:'text', tEquation:'equation', clearTeacher:'clearBoard', toggleExplain:'explainOnly', toggleLock:'lock', toggleFocus:'focus'};
+  Object.keys(map).forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent = t[map[id]]; });
+
+  // students panel
+  const sh = document.querySelector('#teacherRoom .side h3'); if(sh) sh.textContent = t.studentsInside;
+  const lv = document.getElementById('studentsViewList'); if(lv) lv.textContent = t.list;
+  const gv = document.getElementById('studentsViewGrid'); if(gv) gv.textContent = t.grid;
+  const ss = document.getElementById('studentSearch'); if(ss) ss.placeholder = t.searchStudent;
+  const sf = document.getElementById('studentFilter');
+  if(sf && sf.options && sf.options.length>=4){
+    sf.options[0].textContent = t.filterAll;
+    sf.options[1].textContent = t.filterHelp;
+    sf.options[2].textContent = t.filterDone;
+    sf.options[3].textContent = t.filterNoWork;
+  }
+
+  // student room
+  const hb = document.getElementById('helpBtn'); if(hb) hb.textContent = t.help;
+  const xb = document.getElementById('studentExit'); if(xb) xb.textContent = t.exit;
+  const st = document.getElementById('sStatus');
+  if(st && st.options && st.options.length>=3){ st.options[0].textContent=t.statusUnderstood; st.options[1].textContent=t.statusHelp; st.options[2].textContent=t.statusDone; }
+  const dc = document.getElementById('downloadCert'); if(dc) dc.textContent = t.downloadCert;
+
+  // equation modal
+  const eqT = document.querySelector('#eqModal .modalTitle'); if(eqT) eqT.textContent = t.eqTitle;
+  const eqI = document.getElementById('eqInsert'); if(eqI) eqI.textContent = t.eqInsert;
+  const eqC = document.getElementById('eqClear'); if(eqC) eqC.textContent = t.eqClear;
+  const eqX = document.getElementById('eqClose'); if(eqX) eqX.textContent = t.eqClose;
+
+  // report buttons
+  const pdf = document.getElementById('exportPDF'); if(pdf) pdf.textContent = t.pdfReport;
+  const ex = document.getElementById('exportExcel'); if(ex) ex.textContent = t.excel;
+  const wk = document.getElementById('downloadWorks'); if(wk) wk.textContent = t.worksPdf;
+
+  // re-render dynamic student tiles/cards in current language
+  try{ if(State && State.role==='teacher'){ renderStudentsBoards().catch(()=>{}); } }catch(e){}
+}
+
+window.addEventListener("load", () => { try{ boot(); } catch(e){ console.error(e); document.getElementById('home')?.classList.remove('hidden'); } });
+</script>
+
+
+  <!-- Equation Modal -->
+  <div id="eqModal" class="modalOverlay hidden">
+    <div class="modalCard">
+      <div class="modalTop">
+        <div class="modalTitle">✍️ كتابة معادلة</div>
+        <button id="eqClose" class="btn btn-soft btn-sm" type="button">إغلاق</button>
+      </div>
+
+      <div class="eqBtns">
+  <button class="eqBtn" type="button" data-act="frac">كسر</button>
+  <button class="eqBtn" type="button" data-act="sup">أس</button>
+  <button class="eqBtn" type="button" data-act="sub">أسفل</button>
+  <button class="eqBtn" type="button" data-act="sqrt">جذر</button>
+  <button class="eqBtn" type="button" data-act="pm">±</button>
+  <button class="eqBtn" type="button" data-act="plus">+</button>
+  <button class="eqBtn" type="button" data-act="minus">−</button>
+  <button class="eqBtn" type="button" data-act="times">×</button>
+  <button class="eqBtn" type="button" data-act="div">÷</button>
+  <button class="eqBtn" type="button" data-act="eq">=</button>
+  <button class="eqBtn" type="button" data-act="lpar">(</button>
+  <button class="eqBtn" type="button" data-act="rpar">)</button>
+</div>
+<math-field id="eqField" default-mode="math" virtual-keyboard-mode="onfocus" smart-fence></math-field>
+
+      <div class="modalActions">
+        <button id="eqInsert" class="btn btn-blue btn-sm" type="button">إدراج على السبورة</button>
+        <button id="eqClear" class="btn btn-soft btn-sm" type="button">مسح الحقل</button>
+      </div>
+
+      <div class="small" style="margin-top:-4px">يمكنك كتابة المعادلة مباشرة أو استخدام الأزرار (كسر/أس/جذر...).</div>
+    </div>
+  </div>
+
+
+</body>
+</html>
