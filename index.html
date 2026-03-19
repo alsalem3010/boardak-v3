@@ -2373,6 +2373,50 @@ console.log("BEFORE ASYNC");
 /* =============================
    Flows
 ============================= */
+  // ===============================
+// Session Lifecycle (TEST/PROD)
+// ===============================
+const SESSION_MAX_MS  = 2 * 60 * 1000;   // دقيقتين (اختبار)
+const SESSION_WARN_MS = 1 * 60 * 1000;   // دقيقة (اختبار)
+
+let __sessionTicker = null;
+let __sessionWarned = false;
+
+function startSessionLifecycle(roomStartedAt){
+  if(!roomStartedAt) return;
+
+  const startedAt = new Date(roomStartedAt).getTime();
+  const endsAt = startedAt + SESSION_MAX_MS;
+
+  __sessionWarned = false;
+  if(__sessionTicker) clearInterval(__sessionTicker);
+
+  __sessionTicker = setInterval(async () => {
+    const now = Date.now();
+    const remaining = endsAt - now;
+
+    if(!__sessionWarned && remaining <= SESSION_WARN_MS && remaining > 0){
+      __sessionWarned = true;
+      showToast((_getAppLang()==='en')
+        ? '⏰ 1 minute left.'
+        : '⏰ تبقى دقيقة على انتهاء الجلسة.'
+      );
+    }
+
+    if(remaining <= 0){
+      clearInterval(__sessionTicker);
+
+      try{
+        if(State?.role === 'teacher' && State?.room?.id && sb){
+          await sb.rpc('end_and_delete_room', { p_room_id: State.room.id });
+        }
+      }catch(e){}
+
+      alert((_getAppLang()==='en') ? '⛔ Session ended.' : '⛔ انتهت الجلسة.');
+      location.href = location.pathname;
+    }
+  }, 1000);
+}
 async function teacherStartFlow(){
   if(!sb){ localStartTeacher(); return; }
   const teacherName = $("tName").value.trim();
@@ -2406,7 +2450,10 @@ async function teacherStartFlow(){
     $("tRoomTeacher").textContent = teacherName;
 
     showView("teacherRoom");
-    
+    // تأكد من started_at من قاعدة البيانات (لأن RPC قد لا يرجعه)
+sb.from('rooms').select('started_at').eq('id', State.room.id).maybeSingle()
+  .then(({data}) => startSessionLifecycle(data?.started_at))
+  .catch(()=>{});
     console.log('SESSION STARTED AT:', State.room?.started_at);
 startSessionLifecycle(State.room?.started_at);
     
@@ -2497,6 +2544,10 @@ async function studentJoinFlow(){
     }catch(_e){}
 
     showView("studentRoom");
+    // تأكد من started_at من قاعدة البيانات (لأن RPC قد لا يرجعه)
+sb.from('rooms').select('started_at').eq('id', State.room.id).maybeSingle()
+  .then(({data}) => startSessionLifecycle(data?.started_at))
+  .catch(()=>{});
     console.log('SESSION STARTED AT:', State.room?.started_at);
 startSessionLifecycle(State.room?.started_at);
     try{ startSessionLifecycle(State.room?.started_at); }catch(e){}
