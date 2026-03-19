@@ -408,53 +408,68 @@ body{background: radial-gradient(1200px 600px at 10% 0%, #e0ecff 0%, rgba(224,23
       <div class="right">
         <div class="pill">
           <span class="dot"></span>
-          <span id="liveText">جاهز</span>
-        </div>
-        <button id="langBtn" class="btn btn-soft lang">AR/EN</button>
-      </div>
-    </header>
+         <span id="liveText">جاهز</span>
+<span id="sessionTimer"
+      style="
+        margin-inline-start:12px;
+        padding:4px 10px;
+        border-radius:6px;
+        background:#222;
+        color:#fff;
+        font-weight:600;
+        font-size:14px;
+        font-family:monospace;
+        display:none;
+      ">
+  00:00
+</span>
+</div>
+<button id="langBtn" class="btn btn-soft lang">AR/EN</button>
+</div>
+</header>
 
-    <!-- HOME -->
-    <section id="home" class="view glass">
-      <div class="hero">
-  <div class="floaties">
-    <div class="floatie" style="top:10%; right:4%">🧠</div>
-    <div class="floatie" style="top:28%; right:6%">📘</div>
-    <div class="floatie" style="top:12%; left:4%">✍️</div>
-    <div class="floatie" style="top:44%; left:6%">✨</div>
-  </div>
+<!-- HOME -->
+<section id="home" class="view glass">
+  <div class="hero">
+    <div class="floaties">
+      <div class="floatie" style="top:10%; right:4%">🧠</div>
+      <div class="floatie" style="top:28%; right:6%">📘</div>
+      <div class="floatie" style="top:12%; left:4%">✍️</div>
+      <div class="floatie" style="top:44%; left:6%">✨</div>
+    </div>
+
+    <div>
+      <h1>بوردك | Boardak</h1>
+      <p>سوبرتك الذكية - منصة تعليمية هادئة للشرح والمتابعة والتقييم</p>
+
+      <div class="footerLine">
+        <span>اللهم علّمنا ما ينفعنا وانفعنا بما علمتنا</span>
+        <span>—</span>
+        <span>إعداد وتصميم: الأستاذ عبدالله السالم</span>
+        <span>—</span>
+        <span>الزوار: <span id="visitors" class="counter">5000</span></span>
+      </div>
+    </div>
+
+    <div class="cards">
+      <button class="entry" id="goStudent">
+        <div class="iconCircle cGreen">👥</div>
         <div>
-          <h1>بوردك | Boardak</h1>
-          <p>سوبرتك الذكية - منصة تعليمية هادئة للشرح والمتابعة والتقييم</p>
-
-          <div class="footerLine">
-            <span>اللهم علّمنا ما ينفعنا وانفعنا بما علمتنا</span>
-            <span>—</span>
-            <span>إعداد وتصميم: الأستاذ عبدالله السالم</span>
-            <span>—</span>
-            <span>الزوار: <span id="visitors" class="counter">5000</span></span>
-          </div>
+          <div class="entryTitle">دخول الطالب</div>
+          <div class="entryDesc">ادخل بالكود أو الرابط وابدأ العمل على سبورتك.</div>
         </div>
+      </button>
 
-        <div class="cards">
-          <button class="entry" id="goStudent">
-            <div class="iconCircle cGreen">👥</div>
-            <div>
-              <div class="entryTitle">دخول الطالب</div>
-              <div class="entryDesc">ادخل بالكود أو الرابط وابدأ العمل على سبورتك.</div>
-            </div>
-          </button>
-
-          <button class="entry" id="goTeacher">
-            <div class="iconCircle cBlue">🎓</div>
-            <div>
-              <div class="entryTitle">دخول المعلم</div>
-              <div class="entryDesc">أنشئ الغرفة بسرعة وابدأ الشرح مباشرة.</div>
-            </div>
-          </button>
+      <button class="entry" id="goTeacher">
+        <div class="iconCircle cBlue">🎓</div>
+        <div>
+          <div class="entryTitle">دخول المعلم</div>
+          <div class="entryDesc">أنشئ الغرفة بسرعة وابدأ الشرح مباشرة.</div>
         </div>
-      </div>
-    </section>
+      </button>
+    </div>
+  </div>
+</section>
 
     <!-- TEACHER ENTRY -->
     <section id="teacherEntry" class="view glass hidden">
@@ -2449,31 +2464,28 @@ async function teacherStartFlow(){
     $("tRoomCode").textContent = data.code;
     $("tRoomTeacher").textContent = teacherName;
 
-    showView("teacherRoom");
-    // تأكد من started_at من قاعدة البيانات (لأن RPC قد لا يرجعه)
-sb.from('rooms').select('started_at').eq('id', State.room.id).maybeSingle()
-  .then(({data}) => startSessionLifecycle(data?.started_at))
-  .catch(()=>{});
-    console.log('SESSION STARTED AT:', State.room?.started_at);
-startSessionLifecycle(State.room?.started_at);
+   showView("teacherRoom");
+
+// ✅ تشغيل مؤقت الجلسة للمعلم (مصدر موثوق من قاعدة البيانات)
+sb.from('rooms')
+  .select('started_at')
+  .eq('id', State.room.id)
+  .maybeSingle()
+  .then(({ data }) => startSessionLifecycle(data?.started_at))
+  .catch(() => {});
+
+$("liveText").textContent = "مباشر";
+
+if (typeof initCanvas === 'function') initCanvas();
+
+await loadSessionMeta();
+await loadBoards();
+await refreshCanvas();
+renderTeacherPreview();
+
+subscribeDb(State.room.id);
+subscribePresence(State.room.id);
     
-        try{ startSessionLifecycle(State.room?.started_at); }catch(e){}
-    // يجلب started_at من جدول rooms حسب id
-sb.from('rooms').select('started_at').eq('id', State.room.id).maybeSingle()
-  .then(({data}) => startSessionLifecycle(data?.started_at))
-  .catch(()=>{});
-    $("liveText").textContent = "مباشر";
-
-    if(typeof initCanvas==='function') initCanvas();
-
-    await loadSessionMeta();
-    await loadBoards();
-    await refreshCanvas();
-    renderTeacherPreview();
-
-    subscribeDb(data.id);
-    subscribePresence(data.id);
-
     // build teacher pane + first refresh
     try{ ensureTeacherStudentPane(); }catch(e){}
     try{ bindTeacherEvalControls(); }catch(e){}
@@ -2543,27 +2555,28 @@ async function studentJoinFlow(){
       }, { onConflict: 'room_id,user_id' });
     }catch(_e){}
 
-    showView("studentRoom");
-    // تأكد من started_at من قاعدة البيانات (لأن RPC قد لا يرجعه)
-sb.from('rooms').select('started_at').eq('id', State.room.id).maybeSingle()
-  .then(({data}) => startSessionLifecycle(data?.started_at))
-  .catch(()=>{});
-    console.log('SESSION STARTED AT:', State.room?.started_at);
-startSessionLifecycle(State.room?.started_at);
-    try{ startSessionLifecycle(State.room?.started_at); }catch(e){}
-    $("liveText").textContent = "مباشر";
+   showView("studentRoom");
 
-    if(typeof initCanvas==='function') initCanvas();
+// ✅ تشغيل مؤقت الجلسة للطالب (مضمون من قاعدة البيانات)
+sb.from('rooms')
+  .select('started_at')
+  .eq('id', State.room.id)
+  .maybeSingle()
+  .then(({ data }) => startSessionLifecycle(data?.started_at))
+  .catch(() => {});
 
-    await loadSessionMeta();
-    await loadBoards();
-    await ensureStudentBoard();
-    await refreshCanvas();
-    renderStudentTeacherPreview();
+$("liveText").textContent = "مباشر";
 
-    subscribeDb(State.room.id);
-    subscribePresence(State.room.id);
+if (typeof initCanvas === 'function') initCanvas();
 
+await loadSessionMeta();
+await loadBoards();
+await ensureStudentBoard();
+await refreshCanvas();
+renderStudentTeacherPreview();
+
+subscribeDb(State.room.id);
+subscribePresence(State.room.id);
     // evaluation UI
     try{ ensureStudentEvalUI(); }catch(e){}
     try{ ensureEvalChannel(); }catch(e){}
