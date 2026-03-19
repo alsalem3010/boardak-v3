@@ -1331,8 +1331,10 @@ async function renderStudentsBoards(){
       <div class="studentName">${escapeHtml(mem.display_name)}</div>
       <div class="badgeRow">
         ${help ? '<span class="badgeMini help">🆘</span>' : ''}
-        ${status==='done' ? '<span class="badgeMini done">${TT('doneBadge')}</span>' : ''}
-        ${(!hasImg) ? '<span class="badgeMini none">${TT('noWorkBadge')}</span>' : ''}
+${status === 'done'
+  ? '<span class="badgeMini done">' + TT('doneBadge') + '</span>'
+  : ''
+}        ${(!hasImg) ? '<span class="badgeMini none">${TT('noWorkBadge')}</span>' : ''}
         ${row?.certificate_granted ? '<span class="badgeMini">🎓</span>' : ''}
       </div>
       <div class="studentThumb">
