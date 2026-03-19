@@ -345,6 +345,32 @@ body{background: radial-gradient(1200px 600px at 10% 0%, #e0ecff 0%, rgba(224,23
 .studentTile{background:linear-gradient(180deg,#ffffff,#f8fafc);border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 10px 22px rgba(2,6,23,.08);overflow:hidden;}
 .studentTile.active{outline:2px solid rgba(37,99,235,.55);box-shadow:0 16px 32px rgba(37,99,235,.18);}
 .studentThumb{border-top:1px solid rgba(148,163,184,.22);background:#fff;}
+    /* ✅ STEP 5: تصغير شبكة أعمال الطلبة */
+
+.studentThumb {
+  height: 90px;               /* تصغير ارتفاع المعاينة */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.studentThumb img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;        /* بدون قص */
+}
+
+.studentTile {
+  max-width: 200px;           /* تصغير حجم البلاطة */
+}
+
+/* ضبط شبكة الطلبة */
+#studentsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
 
 </style>
 
@@ -794,7 +820,46 @@ function TT(key){
   const l=_appLang();
   return (LANG_DYN[l] && LANG_DYN[l][key]) ? LANG_DYN[l][key] : (LANG_DYN.ar[key]||key);
 }
+// ✅ ترجمة موحدة للتقارير/الشهادات (AR/EN)
+const REPORT_I18N = {
+  // ✅ توحيد قيم الحالة (Keys -> عرض حسب اللغة)
+const STATUS_I18N = {
+  understood: { ar: 'فهمت',     en: 'Understood' },
+  help:       { ar: 'مساعدة',   en: 'Need help' },
+  done:       { ar: 'منجز',     en: 'Done' },
+  none:       { ar: '—',        en: '-' }
+};
 
+function mapStatus(key, lang){
+  return STATUS_I18N[key]?.[lang] || (lang==='ar' ? '—' : '-');
+}
+  ar: {
+    score: 'الدرجة',
+    level: 'المستوى',
+    badge: 'الوسام',
+    note: 'الملاحظة',
+    status: 'الحالة',
+    cert: 'الشهادة',
+    yes: 'نعم',
+    no: 'لا',
+    noDrawing: 'لا يوجد رسم بعد',
+    noContent: 'لا يوجد محتوى بعد',
+    noWork: 'لا يوجد'
+  },
+  en: {
+    score: 'Score',
+    level: 'Level',
+    badge: 'Badge',
+    note: 'Note',
+    status: 'Status',
+    cert: 'Certificate',
+    yes: 'YES',
+    no: 'NO',
+    noDrawing: 'No drawing yet',
+    noContent: 'No content yet',
+    noWork: 'No work'
+  }
+};
 function escapeHtml(s){
   return String(s ?? '')
     .replaceAll('&','&amp;')
@@ -1255,14 +1320,24 @@ async function renderStudentsBoards(){
   State.__membersCache = members || [];
   State.__studentBoardsCache = sbs || [];
 
-  // latest work per student (across boards)
-  const latest = new Map();
-  (sbs || []).forEach(row => {
-    const prev = latest.get(row.student_user_id);
-    const prevT = prev?.updated_at ? new Date(prev.updated_at).getTime() : 0;
-    const curT = row.updated_at ? new Date(row.updated_at).getTime() : 0;
-    if(!prev || curT >= prevT) latest.set(row.student_user_id, row);
-  });
+ // ✅ STEP 6: اختر آخر سجل يحتوي على رسم (imgSrc) وليس مجرد آخر تحديث
+const latest = new Map();
+(sbs || []).forEach(row => {
+  const hasImg =
+    !!row?.board_data ||
+    !!row?.content?.preview ||
+    !!row?.content?.drawing;
+
+  if (!hasImg) return; // تجاهل السجلات بدون رسم
+
+  const prev = latest.get(row.student_user_id);
+  const prevT = prev?.updated_at ? new Date(prev.updated_at).getTime() : 0;
+  const curT = row.updated_at ? new Date(row.updated_at).getTime() : 0;
+
+  if (!prev || curT > prevT) {
+    latest.set(row.student_user_id, row);
+  }
+});
 
   const qv = (document.getElementById('studentSearch')?.value || '').trim().toLowerCase();
   const fv = (document.getElementById('studentFilter')?.value || 'all');
@@ -1298,29 +1373,37 @@ async function renderStudentsBoards(){
     const prevEl = document.getElementById('selectedStudentPreview');
     if(nameEl) nameEl.textContent = mem.display_name;
     if(metaEl) metaEl.textContent = TT('status') + ':  ' + (row?.status || '—') + (row?.help_requested ? ' 🆘' : '');
-    if(prevEl){
-      prevEl.innerHTML = row?.board_data ? `<img src="${row.board_data}" alt="student work" />` : '<span>لا يوجد رسم بعد</span>';
-    }
+   if (prevEl) {
+  prevEl.innerHTML = imgSrc
+    ? `${imgSrc}`
+    : `<span>${_getAppLang() === 'en' ? 'No drawing yet' : 'لا يوجد رسم بعد'}</span>`;
+}
 
-    // highlight grid selection
-    document.querySelectorAll('.studentTile').forEach(x => x.classList.remove('active'));
-    document.querySelector(`[data-stu="${mem.user_id}"]`)?.classList.add('active');
+// highlight grid selection
+document.querySelectorAll('.studentTile').forEach(x => x.classList.remove('active'));
+document.querySelector(`[data-stu="${mem.user_id}"]`)?.classList.add('active');
 
-    // also update overlay preview quickly
-    const prev = $("teacherPreview");
-    if(prev){
-      prev.innerHTML = row?.board_data ? `<img src="${row.board_data}" alt="student preview">` : '<span>لا يوجد محتوى بعد</span>';
-    }
+// also update overlay preview quickly
+const prev = $("teacherPreview");
+if (prev) {
+  prev.innerHTML = imgSrc
+    ? `${imgSrc}`
+    : `<span>${_getAppLang() === 'en' ? 'No content yet' : 'لا يوجد محتوى بعد'}</span>`;
+}
 
-    try{ bindTeacherEvalControls(); }catch(e){}
+try { bindTeacherEvalControls(); } catch (e) {}
   };
 
   members.forEach(mem => {
     const row = latest.get(mem.user_id) || null;
     if(!pass(mem, row)) return;
-
-    const status = row?.status || '—';
-    const hasImg = !!row?.board_data;
+    const imgSrc =
+  row?.board_data ||
+  row?.content?.preview ||
+  row?.content?.drawing ||
+  '';
+    const status = mapStatus(row?.status || 'none', _getAppLang());
+    const hasImg = !!imgSrc;
     const help = !!row?.help_requested;
 
     // grid tile
@@ -1340,9 +1423,12 @@ ${(!hasImg)
   : ''
 }        ${row?.certificate_granted ? '<span class="badgeMini">🎓</span>' : ''}
       </div>
-      <div class="studentThumb">
-        ${hasImg ? `<img src="${row.board_data}" loading="lazy" alt="work">` : '<span class="small">لا يوجد</span>'}
-      </div>
+     <div class="studentThumb">
+  ${hasImg
+    ? `<img src="${imgSrc}" loading="lazy" alt="work">`
+    : `<span class="small">${_getAppLang()==='en' ? 'No work' : 'لا يوجد'}</span>`
+  }
+</div>
     `;
     tile.onclick = () => selectStudent(mem, row);
     gridWrap.appendChild(tile);
@@ -2967,9 +3053,15 @@ function _drawCertificateImage({lang='ar', studentName='الطالب', teacherNa
 
   ctx.fillStyle = '#1e293b';
   ctx.font = '800 34px Cairo';
-  const metrics = (lang==='ar') ? `الدرجة: ${score}  |  المستوى: ${level||'—'}  |  الوسام: ${badge||'—'}` : `Score: ${score} | Level: ${level||'-'} | Badge: ${badge||'-'}`;
-  ctx.fillText(metrics, canvas.width/2, 600);
+const T = REPORT_I18N[lang] || REPORT_I18N.ar;
 
+const m1 = `${T.score}: ${score ?? 0}`;
+const m2 = `${T.level}: ${mapValue('level', level || 'none', lang)}`;
+const m3 = `${T.badge}: ${mapValue('badge', badge || 'none', lang)}`;
+
+ctx.fillText(m1, canvas.width / 2, 600);
+ctx.fillText(m2, canvas.width / 2, 645);
+ctx.fillText(m3, canvas.width / 2, 690);
   // signature area
   ctx.strokeStyle = '#94a3b8';
   ctx.lineWidth = 2;
@@ -3023,14 +3115,21 @@ function ensureTeacherStudentPane(){
     <div class="evalRow tight">
       <span class="chip">المستوى</span>
       <select id="levelSelect">
-        <option>ممتاز</option><option>جيد جدًا</option><option>جيد</option><option>مقبول</option><option>ضعيف</option>
-      </select>
+  <option value="excellent">ممتاز</option>
+  <option value="very_good">جيد جدًا</option>
+  <option value="good">جيد</option>
+  <option value="pass">مقبول</option>
+  <option value="weak">ضعيف</option>
+</select>
     </div>
     <div class="evalRow tight">
       <span class="chip">الوسام</span>
       <select id="badgeSelect">
-        <option>—</option><option>مبدع 🌟</option><option>فائق 🚀</option><option>عبقري 🧠</option>
-      </select>
+  <option value="none">—</option>
+  <option value="creative">مبدع 🌟</option>
+  <option value="super">فائق 🚀</option>
+  <option value="genius">عبقري 🧠</option>
+</select>
     </div>
     <div class="evalRow">
       <span class="chip">ملاحظة</span>
@@ -3181,26 +3280,56 @@ function ensureStudentEvalUI(){
   }
 }
 
+let __certDownloading = false;
+
 function bindStudentCertificateButton(){
   if(State.role !== 'student') return;
   const btn = document.getElementById('downloadCert');
   if(!btn) return;
-  btn.onclick = ()=>{
-    const lang = _getAppLang();
-    const key = `boardak_cert:${State.room.id}:${State.currentBoard.id}:${State.user.id}`;
-    let cert = null;
-    try{ cert = JSON.parse(safeStorage.getItem(key)||'null'); }catch(e){}
-    const teacherName = State.room?.teacher_name || 'Teacher';
-    const lessonTitle = State.room?.title || 'Lesson';
-    const studentName = document.getElementById('sRoomStudent')?.textContent || 'Student';
-    const ev = _loadEval(State.room.id, State.user.id, State.currentBoard.id) || {};
-    const certType = cert?.type || (lang==='ar' ? 'شهادة شكر' : 'Certificate');
 
-    const img = _drawCertificateImage({
-      lang, studentName, teacherName, lessonTitle, certType,
-      score: ev.score||0, level: ev.level||'', badge: ev.badge||''
-    });
-    _downloadPdfFromImage(img, `certificate-${studentName}.pdf`);
+  // ✅ يمنع ربط الحدث أكثر من مرة حتى لو الدالة نادت نفسها كثير
+  if (btn.dataset.boundCert === '1') return;
+  btn.dataset.boundCert = '1';
+
+  btn.onclick = async () => {
+    // ✅ قفل ضد الضغط المتكرر/التنفيذ المكرر
+    if (__certDownloading) return;
+    __certDownloading = true;
+
+    // ✅ تعطيل الزر مؤقتًا لمنع double-click
+    const oldText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = (_getAppLang()==='en') ? 'Preparing…' : 'جاري التجهيز…';
+
+    try{
+      const lang = _getAppLang();
+      const key = `boardak_cert:${State.room.id}:${State.currentBoard.id}:${State.user.id}`;
+
+      let cert = null;
+      try{ cert = JSON.parse(safeStorage.getItem(key)||'null'); }catch(e){}
+
+      const teacherName = State.room?.teacher_name || 'Teacher';
+      const lessonTitle = State.room?.title || 'Lesson';
+      const studentName = document.getElementById('sRoomStudent')?.textContent || 'Student';
+
+      const ev = _loadEval(State.room.id, State.user.id, State.currentBoard.id) || {};
+
+      const certType = cert?.type || (lang==='ar' ? 'شهادة شكر' : 'Certificate');
+
+      // ✅ اسم ملف آمن (بدون مسافات/رموز)
+      const safeName = String(studentName).replace(/[\\/:*?"<>|]/g,'_').slice(0,40);
+
+      const img = await _drawCertificateImage({
+        lang, studentName, teacherName, lessonTitle, certType,
+        score: ev.score||0, level: ev.level||'', badge: ev.badge||''
+      });
+
+      await _downloadPdfFromImage(img, `certificate-${safeName}.pdf`);
+    } finally {
+      __certDownloading = false;
+      btn.disabled = false;
+      btn.textContent = oldText;
+    }
   };
 }
 
@@ -3284,8 +3413,15 @@ function _drawReportPageImage(lang, metaText, rows, pageIndex){
     const r = rows[i];
     const cert = (lang==='en') ? (r.certificate==='YES' ? 'YES' : 'NO') : (r.certificate==='YES' ? 'نعم' : 'لا');
    const note = String(r.note || '').split('\n').join(' ').slice(0, 28);
-    const cells = [r.name, String(r.score ?? 0), r.level|| (lang==='ar'?'—':'-'), r.badge|| (lang==='ar'?'—':'-'), note, r.status|| (lang==='ar'?'—':'-'), cert];
-    cells.forEach((c,ci)=>ctx.fillText(String(c), colX[ci], y));
+const cells = [
+  r.name,
+  String(r.score ?? 0),
+  mapValue('level', r.level || 'none', lang),
+  mapValue('badge', r.badge || 'none', lang),
+  note,
+mapStatus(r.status || 'none', lang),
+  cert
+];    cells.forEach((c,ci)=>ctx.fillText(String(c), colX[ci], y));
   }
 
   ctx.fillStyle = '#64748b';
@@ -3396,10 +3532,12 @@ async function downloadWorksPdf(){
     const studentName = _getStudentNameByUserId(sbRow.student_user_id);
     const ev = _loadEval(State.room.id, sbRow.student_user_id, bid) || {};
     const cert = (lang==='en') ? (sbRow.certificate_granted ? 'YES':'NO') : (sbRow.certificate_granted ? 'نعم':'لا');
-    const metaLine = (lang==='ar')
-      ? `الدرجة: ${ev.score??0} — المستوى: ${ev.level||'—'} — الوسام: ${ev.badge||'—'} — الحالة: ${sbRow.status||'—'} — الشهادة: ${cert}`
-      : `Score: ${ev.score??0} — Level: ${ev.level||'-'} — Badge: ${ev.badge||'-'} — Status: ${sbRow.status||'-'} — Cert: ${cert}`;
-
+    const T = REPORT_I18N[lang] || REPORT_I18N.ar;
+const metaLine =
+  `${T.score}: ${ev.score ?? 0} — ` +
+  `${T.level}: ${mapValue('level', ev.level || 'none', lang)} — ` +
+  `${T.badge}: ${mapValue('badge', ev.badge || 'none', lang)} — ` +
+  `${T.status}: ${mapStatus(sbRow.status || 'none', lang)}`;
     const img = await _drawWorkPageImage(lang, studentName, metaLine, ev.note||'', sbRow.board_data||'');
     if(i>0) doc.addPage();
     doc.addImage(img,'PNG',0,0,pw,ph);
