@@ -2517,13 +2517,32 @@ $('langBtn').onclick = () => {
     showToast("تم التصفير");
   };
 
-  $('endRoom').onclick = async ()=>{
-  const sure = confirm(_getAppLang()==='en' ? 'End session and delete room and all students work?' : 'إنهاء الجلسة وحذف الغرفة وكل أعمال الطلبة؟');
-  if(!sure) return;
-  try{ await sb.from('session_meta').update({ session_open:false, updated_at:new Date().toISOString() }).eq('room_id', State.room.id); }catch(e){}
-  await new Promise(r=>setTimeout(r, 500));
-  const { error } = await sb.rpc('delete_room_full_v3', { p_room_id: State.room.id });
-  if(error){ console.warn(error); showToast(_getAppLang()==='en' ? 'Failed to end session' : 'فشل إنهاء الجلسة'); return; }
+ $('endRoom').onclick = async () => {
+  const sure = confirm(
+    _getAppLang()==='en'
+      ? 'End session and delete room and all students work?'
+      : 'إنهاء الجلسة وحذف الغرفة وكل أعمال الطلبة؟'
+  );
+  if (!sure) return;
+
+  // اختياري: إشعار الطلاب أن الجلسة انتهت قبل الحذف
+  try {
+    await sb.from('session_meta')
+      .update({ session_open: false, updated_at: new Date().toISOString() })
+      .eq('room_id', State.room.id);
+  } catch (e) {}
+
+  // اختياري: مهلة قصيرة جدًا لتزامن الرسالة قبل الحذف
+  await new Promise(r => setTimeout(r, 500));
+
+  // ✅ الحذف الفوري (الدالة التي أنشأناها في Supabase)
+  const { error } = await sb.rpc('end_and_delete_room', { p_room_id: State.room.id });
+  if (error) {
+    console.warn(error);
+    showToast(_getAppLang()==='en' ? 'Failed to end session' : 'فشل إنهاء الجلسة');
+    return;
+  }
+
   showToast(_getAppLang()==='en' ? 'Session ended' : 'تم إنهاء الجلسة');
   location.href = location.pathname;
 };
