@@ -3254,16 +3254,15 @@ function bindTeacherEvalControls(){
     safeStorage.setItem(`boardak_cert:${State.room.id}:${bid}:${sid}`, JSON.stringify(cert));
     await teacherBroadcastCert(sid, bid, cert);
 
-    // download for teacher
-    const img = _drawCertificateImage({
-      lang, studentName, teacherName, lessonTitle,
-      certType: cert.type,
-      score: ev.score, level: ev.level, badge: ev.badge
-    };
-  }
-    _downloadPdfFromImage(img, `certificate-${studentName}.pdf`);
-    showToast('تم إصدار الشهادة');
-  });
+   // download for teacher
+const img = _drawCertificateImage({
+  lang, studentName, teacherName, lessonTitle,
+  certType: cert.type,
+  score: ev.score, level: ev.level, badge: ev.badge
+});
+
+_downloadPdfFromImage(img, `certificate-${studentName}.pdf`);
+showToast('تم إصدار الشهادة');
 
   const __exportExcel=document.getElementById('exportExcel'); if(__exportExcel && __exportExcel.dataset.bound!=='1'){ __exportExcel.dataset.bound='1'; __exportExcel.onclick=downloadExcelReport; }
   const __exportPDF=document.getElementById('exportPDF'); if(__exportPDF && __exportPDF.dataset.bound!=='1'){ __exportPDF.dataset.bound='1'; __exportPDF.onclick=downloadPdfReport; }
