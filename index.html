@@ -3268,7 +3268,8 @@ showToast('تم إصدار الشهادة');
   const __exportPDF=document.getElementById('exportPDF'); if(__exportPDF && __exportPDF.dataset.bound!=='1'){ __exportPDF.dataset.bound='1'; __exportPDF.onclick=downloadPdfReport; }
   const __downloadWorks=document.getElementById('downloadWorks'); if(__downloadWorks && __downloadWorks.dataset.bound!=='1'){ __downloadWorks.dataset.bound='1'; __downloadWorks.onclick=downloadWorksPdf; }
 }
-
+  }
+}
 function getTeacherEvalPayload(){
   const score = Number(document.getElementById('scoreInput')?.value||0);
   const level = document.getElementById('levelSelect')?.value||'';
