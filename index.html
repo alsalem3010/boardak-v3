@@ -778,6 +778,72 @@ function showToast(msg){
 }
 function loading(flag){ $("loading").classList.toggle("hidden", !flag); }
 function showView(id){
+  // ===============================
+// Session Lifecycle (1 hour) + 10 min warning
+// ===============================
+const SESSION_MAX_MS  = 2 * 60 * 1000;   // ✅ دقيقتين
+const SESSION_WARN_MS = 1 * 60 * 1000;   // ⚠️ 1 دقائق
+
+let __sessionTicker = null;
+let __sessionWarned = false;
+
+function startSessionLifecycle(roomStartedAt){
+  if(!roomStartedAt) return;
+
+  const startedAt = new Date(roomStartedAt).getTime();
+  const endsAt = startedAt + SESSION_MAX_MS;
+
+  __sessionWarned = false;
+  if(__sessionTicker) clearInterval(__sessionTicker);
+
+  __sessionTicker = setInterval(async () => {
+    const now = Date.now();
+    const remaining = endsAt - now;
+
+    // ⚠️ تحذير قبل 10 دقائق
+    if(!__sessionWarned && remaining <= SESSION_WARN_MS && remaining > 0){
+      __sessionWarned = true;
+
+      const msg = (_getAppLang()==='en')
+        ? '⏰ Only 10 minutes left before the session ends.'
+        : '⏰ تبقى 10 دقائق على انتهاء الجلسة.';
+
+      showToast(msg);
+
+      // (اختياري) رسالة ثابتة أعلى الصفحة
+      try{
+        const id = 'sessionWarnBanner';
+        if(!document.getElementById(id)){
+          const div = document.createElement('div');
+          div.id = id;
+          div.className = 'alertbar';
+          div.style.position = 'fixed';
+          div.style.top = '12px';
+          div.style.left = '50%';
+          div.style.transform = 'translateX(-50%)';
+          div.style.zIndex = '9999';
+          div.textContent = msg;
+          document.body.appendChild(div);
+        }
+      }catch(e){}
+    }
+
+    // ⛔ انتهت الجلسة: اخرج الجميع
+    if(remaining <= 0){
+      clearInterval(__sessionTicker);
+
+      // حاول إنهاء الجلسة وحذفها لو كنت معلّم
+      try{
+        if(State?.role === 'teacher' && State?.room?.id && sb){
+          await sb.rpc('end_and_delete_room', { p_room_id: State.room.id });
+        }
+      }catch(e){}
+
+      alert((_getAppLang()==='en') ? '⛔ Session ended.' : '⛔ انتهت الجلسة.');
+      location.href = location.pathname; // يرجّع للشاشة الرئيسية
+    }
+  }, 1000);
+}
   ["home","teacherEntry","studentEntry","teacherRoom","studentRoom"].forEach(v=>$(v).classList.add("hidden"));
   $(id).classList.remove("hidden");
 }
@@ -2340,6 +2406,11 @@ async function teacherStartFlow(){
     $("tRoomTeacher").textContent = teacherName;
 
     showView("teacherRoom");
+    try{ startSessionLifecycle(State.room?.started_at); }catch(e){}
+    // يجلب started_at من جدول rooms حسب id
+sb.from('rooms').select('started_at').eq('id', State.room.id).maybeSingle()
+  .then(({data}) => startSessionLifecycle(data?.started_at))
+  .catch(()=>{});
     $("liveText").textContent = "مباشر";
 
     if(typeof initCanvas==='function') initCanvas();
@@ -2422,6 +2493,7 @@ async function studentJoinFlow(){
     }catch(_e){}
 
     showView("studentRoom");
+    try{ startSessionLifecycle(State.room?.started_at); }catch(e){}
     $("liveText").textContent = "مباشر";
 
     if(typeof initCanvas==='function') initCanvas();
