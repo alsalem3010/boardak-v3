@@ -907,8 +907,10 @@ function latexToSvgDataUrl(latex){
   if(!window.MathJax || !window.MathJax.tex2svg){
     throw new Error('MathJax not ready');
   }
-  const node = window.MathJax.tex2svg(latex, { display: true });
-  const svg = node.querySelector('svg');
+const node = window.MathJax.tex2svg(latex, {
+  display: true,
+  scale: 1.8   // ✅ كبر المعادلة
+});  const svg = node.querySelector('svg');
   const svgText = new XMLSerializer().serializeToString(svg);
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgText);
 }
@@ -2301,6 +2303,14 @@ function applySessionMetaUI(){
 
     renderStudentTeacherPreview();
   }
+  // ✅ مزامنة اللغة للطالب
+if (State.role === 'student' && State.sessionMeta?.lang) {
+  const lang = State.sessionMeta.lang;
+  if (_getAppLang() !== lang) {
+    _setAppLang(lang);
+    applyFullLang(lang);
+  }
+}
   renderTimerUI();
 }
 console.log("BEFORE ASYNC");
@@ -2489,11 +2499,21 @@ if(sSizeEl){
     };
   }
 
-$('langBtn').onclick = () => {
+$('langBtn').onclick = async () => {
   const next = (_getAppLang() === 'ar') ? 'en' : 'ar';
   _setAppLang(next);
-  try{ applyFullLang(next); }catch(e){}
-  try{ if(State && State.role==='teacher'){ bindTeacherEvalControls(); } }catch(e){}
+
+  applyFullLang(next);
+
+  // ✅ بث اللغة للطلاب
+  if (State.role === 'teacher' && State.room?.id && sb) {
+    try {
+      await sb.from('session_meta')
+        .update({ lang: next, updated_at: new Date().toISOString() })
+        .eq('room_id', State.room.id);
+    } catch(e){}
+  }
+
   showToast(next === 'ar' ? 'تم اختيار العربية' : 'English selected');
 };
   $("goTeacher").onclick = ()=> showView("teacherEntry");
@@ -2675,14 +2695,14 @@ $("tText").onclick = () => {
   $("tEraser")?.classList.remove("active");
   $("tImage")?.classList.remove("active");
 
-  const item = {
-    id: crypto.randomUUID(),
-    x: 120,   // نقطة يمين النص (RTL)
-    y: 120,
-    text,
-    size: 32,
-    color: tColor || "#000"
-  };
+ const item = {
+  id: crypto.randomUUID(),
+  x: tCanvas.width / 2 + 100,   // RTL: نقطة اليمين
+  y: tCanvas.height / 2 - 40,  // منتصف عمودي
+  text,
+  size: 36,
+  color: tColor || "#000"
+};
 
   // ✅ فقط أضف — لا تثبيت ولا مسح
   TextState.items.push(item);
@@ -3458,15 +3478,18 @@ function _drawReportPageImage(lang, metaText, rows, pageIndex){
     const r = rows[i];
     const cert = (lang==='en') ? (r.certificate==='YES' ? 'YES' : 'NO') : (r.certificate==='YES' ? 'نعم' : 'لا');
    const note = String(r.note || '').split('\n').join(' ').slice(0, 28);
-const cells = [
-  r.name,
-  String(r.score ?? 0),
-  mapValue('level', r.level || 'none', lang),
-  mapValue('badge', r.badge || 'none', lang),
-  note,
-mapStatus(r.status || 'none', lang),
-  cert
-];    cells.forEach((c,ci)=>ctx.fillText(String(c), colX[ci], y));
+const T = REPORT_I18N[lang] || REPORT_I18N.ar;
+
+const line =
+  `${lang==='ar' ? 'الاسم' : 'Name'}: ${r.name}   |   ` +
+  `${T.score}: ${String(r.score ?? 0)}   |   ` +
+  `${T.level}: ${mapValue('level', r.level || 'none', lang)}   |   ` +
+  `${T.badge}: ${mapValue('badge', r.badge || 'none', lang)}   |   ` +
+  `${T.note}: ${note}   |   ` +
+  `${T.status}: ${mapStatus(r.status || 'none', lang)}   |   ` +
+  `${T.cert}: ${cert}`;
+
+ctx.fillText(line, canvas.width/2, y);
   }
 
   ctx.fillStyle = '#64748b';
@@ -3758,6 +3781,28 @@ function applyFullLang(lang){
   const eqI = document.getElementById('eqInsert'); if(eqI) eqI.textContent = t.eqInsert;
   const eqC = document.getElementById('eqClear'); if(eqC) eqC.textContent = t.eqClear;
   const eqX = document.getElementById('eqClose'); if(eqX) eqX.textContent = t.eqClose;
+  // ✅ Equation buttons language
+document.querySelectorAll('.eqBtn').forEach(btn => {
+  const act = btn.getAttribute('data-act');
+  if (!act) return;
+
+  const map = {
+    frac: { ar:'كسر', en:'Fraction' },
+    sup: { ar:'أس', en:'Power' },
+    sub: { ar:'أسفل', en:'Subscript' },
+    sqrt:{ ar:'جذر', en:'Sqrt' },
+    pm:  { ar:'±', en:'±' },
+    plus:{ ar:'+', en:'+' },
+    minus:{ ar:'−', en:'−' },
+    times:{ ar:'×', en:'×' },
+    div: { ar:'÷', en:'÷' },
+    eq:  { ar:'=', en:'=' },
+    lpar:{ ar:'(', en:'(' },
+    rpar:{ ar:')', en:')' }
+  };
+
+  if (map[act]) btn.textContent = map[act][lang];
+});
 
   // report buttons
   const pdf = document.getElementById('exportPDF'); if(pdf) pdf.textContent = t.pdfReport;
