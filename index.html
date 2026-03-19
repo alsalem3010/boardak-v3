@@ -3786,50 +3786,66 @@ function applyFullLang(lang){
     if(certSel && certSel.options){
       for(const opt of certSel.options){ opt.textContent = mapCertType(opt.value || 'thanks', lang); }
     }
-  }catch(e){}
-
+  } catch(e){
+    console.error(e);
+  }
 
   // re-render dynamic student tiles/cards in current language
-  try{ if(State && State.role==='teacher'){ renderStudentsBoards().catch(()=>{}); } }catch(e){}
+  try {
+    if (State && State.role === 'teacher') {
+      renderStudentsBoards().catch((err) => console.error(err));
+    }
+  } catch(e){
+    console.error(e);
+  }
 }
 
-window.addEventListener("load", () => { try{ boot(); } catch(e){ console.error(e); document.getElementById('home')?.classList.remove('hidden'); } });
+window.addEventListener("load", () => {
+  try {
+    boot();
+  } catch(e){
+    console.error(e);
+    document.getElementById('home')?.classList.remove('hidden');
+  }
+});
 </script>
 
 
-  <!-- Equation Modal -->
-  <div id="eqModal" class="modalOverlay hidden">
-    <div class="modalCard">
-      <div class="modalTop">
-        <div class="modalTitle">✍️ كتابة معادلة</div>
-        <button id="eqClose" class="btn btn-soft btn-sm" type="button">إغلاق</button>
-      </div>
+<!-- Equation Modal -->
+<div id="eqModal" class="modalOverlay hidden">
+  <div class="modalCard">
+    <div class="modalTop">
+      <div class="modalTitle">✍️ كتابة معادلة</div>
+      <button id="eqClose" class="btn btn-soft btn-sm" type="button">إغلاق</button>
+    </div>
 
-      <div class="eqBtns">
-  <button class="eqBtn" type="button" data-act="frac">كسر</button>
-  <button class="eqBtn" type="button" data-act="sup">أس</button>
-  <button class="eqBtn" type="button" data-act="sub">أسفل</button>
-  <button class="eqBtn" type="button" data-act="sqrt">جذر</button>
-  <button class="eqBtn" type="button" data-act="pm">±</button>
-  <button class="eqBtn" type="button" data-act="plus">+</button>
-  <button class="eqBtn" type="button" data-act="minus">−</button>
-  <button class="eqBtn" type="button" data-act="times">×</button>
-  <button class="eqBtn" type="button" data-act="div">÷</button>
-  <button class="eqBtn" type="button" data-act="eq">=</button>
-  <button class="eqBtn" type="button" data-act="lpar">(</button>
-  <button class="eqBtn" type="button" data-act="rpar">)</button>
-</div>
-<math-field id="eqField" default-mode="math" virtual-keyboard-mode="onfocus" smart-fence></math-field>
+    <div class="eqBtns">
+      <button class="eqBtn" type="button" data-act="frac">كسر</button>
+      <button class="eqBtn" type="button" data-act="sup">أس</button>
+      <button class="eqBtn" type="button" data-act="sub">أسفل</button>
+      <button class="eqBtn" type="button" data-act="sqrt">جذر</button>
+      <button class="eqBtn" type="button" data-act="pm">±</button>
+      <button class="eqBtn" type="button" data-act="plus">+</button>
+      <button class="eqBtn" type="button" data-act="minus">−</button>
+      <button class="eqBtn" type="button" data-act="times">×</button>
+      <button class="eqBtn" type="button" data-act="div">÷</button>
+      <button class="eqBtn" type="button" data-act="eq">=</button>
+      <button class="eqBtn" type="button" data-act="lpar">(</button>
+      <button class="eqBtn" type="button" data-act="rpar">)</button>
+    </div>
 
-      <div class="modalActions">
-        <button id="eqInsert" class="btn btn-blue btn-sm" type="button">إدراج على السبورة</button>
-        <button id="eqClear" class="btn btn-soft btn-sm" type="button">مسح الحقل</button>
-      </div>
+    <math-field id="eqField" default-mode="math" virtual-keyboard-mode="onfocus" smart-fence></math-field>
 
-      <div class="small" style="margin-top:-4px">يمكنك كتابة المعادلة مباشرة أو استخدام الأزرار (كسر/أس/جذر...).</div>
+    <div class="modalActions">
+      <button id="eqInsert" class="btn btn-blue btn-sm" type="button">إدراج على السبورة</button>
+      <button id="eqClear" class="btn btn-soft btn-sm" type="button">مسح الحقل</button>
+    </div>
+
+    <div class="small" style="margin-top:-4px">
+      يمكنك كتابة المعادلة مباشرة أو استخدام الأزرار (كسر/أس/جذر...).
     </div>
   </div>
-
+</div>
 
 </body>
 </html>
