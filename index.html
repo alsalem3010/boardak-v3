@@ -2406,7 +2406,11 @@ async function teacherStartFlow(){
     $("tRoomTeacher").textContent = teacherName;
 
     showView("teacherRoom");
-    try{ startSessionLifecycle(State.room?.started_at); }catch(e){}
+    
+    console.log('SESSION STARTED AT:', State.room?.started_at);
+startSessionLifecycle(State.room?.started_at);
+    
+        try{ startSessionLifecycle(State.room?.started_at); }catch(e){}
     // يجلب started_at من جدول rooms حسب id
 sb.from('rooms').select('started_at').eq('id', State.room.id).maybeSingle()
   .then(({data}) => startSessionLifecycle(data?.started_at))
@@ -2493,6 +2497,8 @@ async function studentJoinFlow(){
     }catch(_e){}
 
     showView("studentRoom");
+    console.log('SESSION STARTED AT:', State.room?.started_at);
+startSessionLifecycle(State.room?.started_at);
     try{ startSessionLifecycle(State.room?.started_at); }catch(e){}
     $("liveText").textContent = "مباشر";
 
