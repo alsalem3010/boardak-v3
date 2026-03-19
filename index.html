@@ -1334,8 +1334,11 @@ async function renderStudentsBoards(){
 ${status === 'done'
   ? '<span class="badgeMini done">' + TT('doneBadge') + '</span>'
   : ''
-}        ${(!hasImg) ? '<span class="badgeMini none">${TT('noWorkBadge')}</span>' : ''}
-        ${row?.certificate_granted ? '<span class="badgeMini">🎓</span>' : ''}
+}
+${(!hasImg)
+  ? `<span class="badgeMini none">${TT('noWorkBadge')}</span>`
+  : ''
+}        ${row?.certificate_granted ? '<span class="badgeMini">🎓</span>' : ''}
       </div>
       <div class="studentThumb">
         ${hasImg ? `<img src="${row.board_data}" loading="lazy" alt="work">` : '<span class="small">لا يوجد</span>'}
