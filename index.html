@@ -13,21 +13,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const show = (id) => {
     ['home','teacherEntry','studentEntry','teacherRoom','studentRoom'].forEach(v=>{
       const el=document.getElementById(v);
-      if(el) el.classList.add('hidden');create or replace function public.join_room_limited(
-  p_room_code text,
-  p_student_name text,
-  p_user_id uuid,
-  p_max_students int
-)
-returns table (
-  room_id uuid,
-  teacher_name text,
-  title text
-)
-language plpgsql
-security definer
-set search_path = public
-as $func$
+      if(el) el.classList.add('hidden');
 #variable_conflict use_column
 declare
   v_room_id uuid;
@@ -2625,112 +2611,56 @@ async function teacherStartFlow(){
 // ===============================
 async function studentJoinFlow(){
   if(!sb){
-    showToast('⚠️ لا يمكن انضمام الطالب بدون اتصال (Supabase). افتح عبر Live Server وتأكد من تحميل Supabase.');
+    showToast('⚠️ لا يمكن انضمام الطالب بدون اتصال');
     return;
   }
 
   loading(true);
-  let joinedOk = false;
-
   try{
     if(!State.user) State.user = await ensureAnon();
 
     const studentName = $("sName").value.trim();
     const code = $("sCode").value.trim().toUpperCase();
-    if(!studentName || !code){ showToast("اكتب الاسم والكود"); return; }
+    if(!studentName || !code){
+      showToast("اكتب الاسم والكود");
+      return;
+    }
 
-  const { data, error } = await sb.rpc("join_room_limited", {
-  p_room_code: code,
-  p_student_name: studentName,
-  p_user_id: State.user.id,
-  p_max_students: 3
-});
-if (error) {
-  const em = error.message || '';
-  if (em.includes('
+    const { data, error } = await sb.rpc("join_room_limited", {
+      p_room_code: code,
+      p_student_name: studentName,
+      p_user_id: State.user.id,
+      p_max_students: 3 // للتجربة
+    });
+
+    if(error){
+      if(error.message.includes('ROOM_FULL')){
+        showToast("❌ الجلسة ممتلئة");
+        showView("studentEntry");
+        return;
+      }
+      throw error;
+    }
+
     const row = Array.isArray(data) ? data[0] : data;
-    // ✅ منع الدخول إذا الجلسة وصلت 35 طالب
-const { count, error: countErr } = await sb
-  .from('room_members')
-  .select('user_id', { count: 'exact', head: true })
-  .eq('room_id', row.room_id)
-  .eq('role', 'student');
-
-if (countErr) {
-  showToast("تعذر التحقق من عدد الطلبة");
-  return;
-}
-
-if ((count ?? 0) >= MAX_STUDENTS_PER_ROOM) {
-  showToast("❌ الجلسة ممتلئة (الحد الأقصى 35 طالب).");
- showView("studentEntry");
-return;
-}
-    joinedOk = true;
 
     State.role = "student";
-    State.room = { id: row.room_id, code, teacher_name: row.teacher_name, title: row.title };
-    State.roomCode = code;
+    State.room = {
+      id: row.room_id,
+      code,
+      teacher_name: row.teacher_name,
+      title: row.title
+    };
 
-    $("sRoomTitle").textContent = row.title || "Room";
+    $("sRoomTitle").textContent = row.title;
     $("sRoomCode").textContent = code;
     $("sRoomStudent").textContent = studentName;
 
-    // ensure student appears in teacher list
-    try{
-      await sb.from('room_members').upsert({
-        room_id: row.room_id,
-        user_id: State.user.id,
-        role: 'student',
-        display_name: studentName,
-        joined_at: new Date().toISOString()
-      }, { onConflict: 'room_id,user_id' });
-    }catch(_e){}
-
     showView("studentRoom");
 
-    // Scale: decide view-only vs active editor
-    await decideStudentMode();
-
-    // ✅ تشغيل مؤقت الجلسة للطالب (مضمون من DB)
-    sb.from('rooms')
-      .select('started_at')
-      .eq('id', State.room.id)
-      .maybeSingle()
-      .then(({ data }) => startSessionLifecycle(data?.started_at))
-      .catch(() => {});
-
-    $("liveText").textContent = "مباشر";
-
-    if(typeof initCanvas === 'function') initCanvas();
-
-    await loadSessionMeta();
-    await loadBoards();
-    if(!State.viewerOnly){
-      await ensureStudentBoard();
-    }
-    await refreshCanvas();
-    renderStudentTeacherPreview();
-
-    if(!State.viewerOnly){
-      subscribeDb(State.room.id);
-      subscribePresence(State.room.id);
-    } else {
-      startViewerPolling();
-    }
-
-    // evaluation UI
-    try{ ensureStudentEvalUI(); }catch(e){}
-    try{ ensureEvalChannel(); }catch(e){}
-    try{ studentSubscribeEval(); }catch(e){}
-    try{ bindStudentCertificateButton(); }catch(e){}
-
   }catch(e){
-    console.error("JOIN ERROR FULL:", e);
-    if(joinedOk){ showToast("تم الدخول، لكن حصل خطأ في التهيئة"); return; }
-    const msg = e?.message || String(e);
-    $("sMsg").textContent = msg;
-    showToast("تعذّر الدخول: " + msg);
+    console.error(e);
+    showToast("تعذر الدخول: " + e.message);
   }finally{
     loading(false);
   }
