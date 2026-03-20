@@ -2588,8 +2588,14 @@ async function studentJoinFlow(){
   p_max_students: 3   // ✅ للتجربة
 });
 if (error) {
-  if (error.message.includes('ROOM_FULL')) {
-    showToast("❌ الجلسة ممتلئة (3 طلاب فقط للتجربة)");
+  const em = error.message || '';
+  if (em.includes('ROOM_FULL')) {
+    showToast("❌ الجلسة ممتلئة (3 طلاب للتجربة)");
+    showView("studentEntry");
+    return;
+  }
+  if (em.includes('ROOM_NOT_FOUND')) {
+    showToast("❌ الكود غير صحيح أو الغرفة غير موجودة");
     showView("studentEntry");
     return;
   }
