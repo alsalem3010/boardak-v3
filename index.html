@@ -792,17 +792,12 @@ function showToast(msg){
   setTimeout(()=>t.classList.remove("show"), 2200);
 }
 function loading(flag){ $("loading").classList.toggle("hidden", !flag); }
-function showView(id){
-  // ===============================
-// Session Lifecycle (1 hour) + 10 min warning
 // ===============================
-const SESSION_MAX_MS  = 2 * 60 * 1000;   // ✅ دقيقتين
-const SESSION_WARN_MS = 1 * 60 * 1000;   // ⚠️ 1 دقائق
+// Session Lifecycle (TEST/PROD)
+// ===============================
+const SESSION_MAX_MS  = 2 * 60 * 1000;   // دقيقتين (اختبار)
+const SESSION_WARN_MS = 1 * 60 * 1000;   // تحذير قبل دقيقة (اختبار)
 
-let __sessionTicker = null;
-let __sessionWarned = false;
-
-// ✅ 1) دالة تنسيق الوقت (توضع هنا)
 function formatMMSS(ms){
   const total = Math.max(0, Math.floor(ms / 1000));
   const m = Math.floor(total / 60);
@@ -813,64 +808,79 @@ function formatMMSS(ms){
 function startSessionLifecycle(roomStartedAt){
   if(!roomStartedAt) return;
 
-  const timerEl = document.getElementById('sessionTimer');
-  if (timerEl) timerEl.style.display = 'inline-block';
-
   const startedAt = new Date(roomStartedAt).getTime();
   const endsAt = startedAt + SESSION_MAX_MS;
+
+  // ✅ عدّاد أعلى الصفحة (إذا موجود)
+  const timerEl = document.getElementById('sessionTimer');
+  if (timerEl) timerEl.style.display = 'inline-block';
 
   let warned = false;
 
   if (window.__sessionTicker) clearInterval(window.__sessionTicker);
 
   window.__sessionTicker = setInterval(async () => {
-    const now = Date.now();
-    const remaining = endsAt - now;
+    const remaining = endsAt - Date.now();
 
-    // ✅ تحديث العداد (للجميع)
+    // ✅ تحديث العداد
     if (timerEl) {
       timerEl.textContent = formatMMSS(remaining);
-      if (remaining <= SESSION_WARN_MS) {
-        timerEl.style.background = '#b00020'; // أحمر
-      }
+      if (remaining <= SESSION_WARN_MS) timerEl.style.background = '#b00020';
     }
 
-    // ⚠️ تحذير قبل الانتهاء (للـمعلم والطالب)
+    // ⚠️ تحذير (للمعلم والطالب)
     if (!warned && remaining <= SESSION_WARN_MS && remaining > 0) {
       warned = true;
-      showToast(
-        _getAppLang()==='en'
-          ? '⏰ Only 1 minute left before the session ends.'
-          : '⏰ تبقى دقيقة واحدة على انتهاء الجلسة.'
-      );
+
+      const msg = (_getAppLang()==='en')
+        ? '⏰ 1 minute left.'
+        : '⏰ تبقى دقيقة على انتهاء الجلسة.';
+
+      // toast
+      try { showToast(msg); } catch(e) {}
+
+      // ✅ بانر احتياطي حتى لو toast ما ظهر عند الطالب
+      try{
+        const id='sessionWarnBanner';
+        let b=document.getElementById(id);
+        if(!b){
+          b=document.createElement('div');
+          b.id=id;
+          b.style.cssText =
+            'position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:9999;' +
+            'background:#b00020;color:#fff;padding:8px 12px;border-radius:10px;font-weight:700;';
+          document.body.appendChild(b);
+        }
+        b.textContent = msg;
+      }catch(e){}
     }
 
-    // ⛔ انتهت الجلسة (للـمعلم والطالب)
+    // ⛔ انتهاء الجلسة (للمعلم والطالب)
     if (remaining <= 0) {
       clearInterval(window.__sessionTicker);
 
-      // ✅ الحذف فقط لو كنت معلّم
-      if (State?.role === 'teacher' && State?.room?.id) {
+      // الحذف فقط للمعلم
+      if (State?.role === 'teacher' && State?.room?.id && sb) {
         try {
           await sb.rpc('end_and_delete_room', { p_room_id: State.room.id });
         } catch(e){}
       }
 
-      // ✅ رسالة إنهاء للجميع
-      alert(
-        _getAppLang()==='en'
-          ? '⛔ Session ended.'
-          : '⛔ انتهت الجلسة.'
-      );
-
-      // ✅ إخراج الجميع
+      alert((_getAppLang()==='en') ? '⛔ Session ended.' : '⛔ انتهت الجلسة.');
       location.href = location.pathname;
     }
   }, 1000);
 }
-  ["home","teacherEntry","studentEntry","teacherRoom","studentRoom"].forEach(v=>$(v).classList.add("hidden"));
+
+// ===============================
+// View Switcher (لا تضع داخله Session Lifecycle)
+// ===============================
+function showView(id){
+  ["home","teacherEntry","studentEntry","teacherRoom","studentRoom"]
+    .forEach(v => $(v).classList.add("hidden"));
   $(id).classList.remove("hidden");
 }
+
 function bumpVisitors(){
   const key="boardak_visitors";
   let v = parseInt(safeStorage.getItem(key) || "5000", 10);
