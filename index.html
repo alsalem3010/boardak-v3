@@ -2614,6 +2614,13 @@ async function studentJoinFlow(){
 
     showView("studentRoom");
 
+    
+await ensureStudentBoard();
+    subscribePresence(State.room.id);
+updateOnlineUI();
+    subscribePresence(State.room.id);
+updateOnlineUI();
+
   }catch(e){
     console.error(e);
     showToast("تعذر الدخول: " + e.message);
