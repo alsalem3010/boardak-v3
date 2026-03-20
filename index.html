@@ -918,9 +918,8 @@ function startSessionLifecycle(roomStartedAt){
 // ===============================
 // Session Lifecycle (TEST/PROD)
 // ===============================
-const SESSION_MAX_MS  = 2 * 60 * 1000;   // دقيقتين (اختبار)
-const SESSION_WARN_MS = 1 * 60 * 1000;   // تحذير قبل دقيقة (اختبار)
-
+const SESSION_MAX_MS  = 60 * 60 * 1000;   // ساعة
+const SESSION_WARN_MS = 10 * 60 * 1000;   // 10 دقايق
 
 /* removed old formatMMSS */
 
@@ -2588,7 +2587,7 @@ async function studentJoinFlow(){
       p_room_code: code,
       p_student_name: studentName,
       p_user_id: State.user.id,
-      p_max_students: 3 // للتجربة
+      p_max_students: 35 // للتجربة
     });
 
     if(error){
