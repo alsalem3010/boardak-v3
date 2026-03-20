@@ -2582,12 +2582,19 @@ async function studentJoinFlow(){
     const code = $("sCode").value.trim().toUpperCase();
     if(!studentName || !code){ showToast("اكتب الاسم والكود"); return; }
 
-    const { data, error } = await sb.rpc("join_room_v3_sql", {
-      p_room_code: code,
-      p_student_name: studentName
-    });
-    if(error) throw error;
-
+   const { data, error } = await sb.rpc("join_room_limited", {
+  p_room_code: code,
+  p_student_name: studentName,
+  p_max_students: 3   // ✅ للتجربة
+});
+if (error) {
+  if (error.message.includes('ROOM_FULL')) {
+    showToast("❌ الجلسة ممتلئة (3 طلاب فقط للتجربة)");
+    showView("studentEntry");
+    return;
+  }
+  throw error;
+}
     const row = Array.isArray(data) ? data[0] : data;
     // ✅ منع الدخول إذا الجلسة وصلت 35 طالب
 const { count, error: countErr } = await sb
