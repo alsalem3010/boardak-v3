@@ -2476,7 +2476,7 @@ console.log("BEFORE ASYNC");
 
 /* removed old startSessionLifecycle */
 
-
+const MAX_STUDENTS_PER_ROOM = 35;
 
 // ===============================
 // Teacher Start Flow
@@ -2589,6 +2589,23 @@ async function studentJoinFlow(){
     if(error) throw error;
 
     const row = Array.isArray(data) ? data[0] : data;
+    // ✅ منع الدخول إذا الجلسة وصلت 35 طالب
+const { count, error: countErr } = await sb
+  .from('room_members')
+  .select('user_id', { count: 'exact', head: true })
+  .eq('room_id', row.room_id)
+  .eq('role', 'student');
+
+if (countErr) {
+  showToast("تعذر التحقق من عدد الطلبة");
+  return;
+}
+
+if ((count ?? 0) >= MAX_STUDENTS_PER_ROOM) {
+  showToast("❌ الجلسة ممتلئة (الحد الأقصى 35 طالب).");
+ showView("studentEntry");
+return;
+}
     joinedOk = true;
 
     State.role = "student";
