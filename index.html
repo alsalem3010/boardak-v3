@@ -795,8 +795,8 @@ function loading(flag){ $("loading").classList.toggle("hidden", !flag); }
 // ===============================
 // Session Lifecycle (TEST/PROD)
 // ===============================
-const SESSION_MAX_MS  = 2 * 60 * 1000;   // دقيقتين (اختبار)
-const SESSION_WARN_MS = 1 * 60 * 1000;   // تحذير قبل دقيقة (اختبار)
+const SESSION_MAX_MS  = 60 * 60 * 1000;   // ساعة كاملة
+const SESSION_WARN_MS = 1 * 60 * 1000;   // تحذير قبل 10 دقائق
 
 function formatMMSS(ms){
   const total = Math.max(0, Math.floor(ms / 1000));
