@@ -14,49 +14,7 @@ window.addEventListener('DOMContentLoaded', () => {
     ['home','teacherEntry','studentEntry','teacherRoom','studentRoom'].forEach(v=>{
       const el=document.getElementById(v);
       if(el) el.classList.add('hidden');
-#variable_conflict use_column
-declare
-  v_room_id uuid;
-  v_teacher_name text;
-  v_title text;
-  v_count int;
-begin
-  -- اقفل صف الغرفة لتجنب السباق (Race Condition)
-  select r.id, r.teacher_name, r.title
-    into v_room_id, v_teacher_name, v_title
-  from public.rooms as r
-  where r.code = p_room_code
-  limit 1
-  for update;
-
-  if v_room_id is null then
-    raise exception 'ROOM_NOT_FOUND';
-  end if;
-
-  -- عدّ الطلاب الحاليين
-  select count(*)
-    into v_count
-  from public.room_members rm
-  where rm.room_id = v_room_id
-    and rm.role = 'student';
-
-  if v_count >= p_max_students then
-    raise exception 'ROOM_FULL';
-  end if;
-
-  -- إدخال/تحديث عضوية الطالب
-  insert into public.room_members (room_id, user_id, role, display_name, joined_at)
-  values (v_room_id, p_user_id, 'student', p_student_name, now())
-  on conflict (room_id, user_id)
-  do update set
-    display_name = excluded.display_name,
-    joined_at = excluded.joined_at;
-
-  -- إرجاع بيانات الغرفة (بدون أي teacher_name مباشر هنا)
-  return query
-  select v_room_id, v_teacher_name, v_title;
-end;
-$func$;
+;
     });
     const el=document.getElementById(id);
     if(el) el.classList.remove('hidden');
@@ -2646,8 +2604,7 @@ async function studentJoinFlow(){
 
     State.role = "student";
     State.room = {
-      id: row.room_id,
-      code,
+  id: row.out_room_id,
       teacher_name: row.teacher_name,
       title: row.title
     };
