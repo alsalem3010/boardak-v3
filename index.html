@@ -13,7 +13,64 @@ window.addEventListener('DOMContentLoaded', () => {
   const show = (id) => {
     ['home','teacherEntry','studentEntry','teacherRoom','studentRoom'].forEach(v=>{
       const el=document.getElementById(v);
-      if(el) el.classList.add('hidden');
+      if(el) el.classList.add('hidden');create or replace function public.join_room_limited(
+  p_room_code text,
+  p_student_name text,
+  p_user_id uuid,
+  p_max_students int
+)
+returns table (
+  room_id uuid,
+  teacher_name text,
+  title text
+)
+language plpgsql
+security definer
+set search_path = public
+as $func$
+#variable_conflict use_column
+declare
+  v_room_id uuid;
+  v_teacher_name text;
+  v_title text;
+  v_count int;
+begin
+  -- اقفل صف الغرفة لتجنب السباق (Race Condition)
+  select r.id, r.teacher_name, r.title
+    into v_room_id, v_teacher_name, v_title
+  from public.rooms as r
+  where r.code = p_room_code
+  limit 1
+  for update;
+
+  if v_room_id is null then
+    raise exception 'ROOM_NOT_FOUND';
+  end if;
+
+  -- عدّ الطلاب الحاليين
+  select count(*)
+    into v_count
+  from public.room_members rm
+  where rm.room_id = v_room_id
+    and rm.role = 'student';
+
+  if v_count >= p_max_students then
+    raise exception 'ROOM_FULL';
+  end if;
+
+  -- إدخال/تحديث عضوية الطالب
+  insert into public.room_members (room_id, user_id, role, display_name, joined_at)
+  values (v_room_id, p_user_id, 'student', p_student_name, now())
+  on conflict (room_id, user_id)
+  do update set
+    display_name = excluded.display_name,
+    joined_at = excluded.joined_at;
+
+  -- إرجاع بيانات الغرفة (بدون أي teacher_name مباشر هنا)
+  return query
+  select v_room_id, v_teacher_name, v_title;
+end;
+$func$;
     });
     const el=document.getElementById(id);
     if(el) el.classList.remove('hidden');
@@ -2582,25 +2639,15 @@ async function studentJoinFlow(){
     const code = $("sCode").value.trim().toUpperCase();
     if(!studentName || !code){ showToast("اكتب الاسم والكود"); return; }
 
-   const { data, error } = await sb.rpc("join_room_limited", {
+  const { data, error } = await sb.rpc("join_room_limited", {
   p_room_code: code,
   p_student_name: studentName,
-  p_max_students: 3   // ✅ للتجربة
+  p_user_id: State.user.id,
+  p_max_students: 3
 });
 if (error) {
   const em = error.message || '';
-  if (em.includes('ROOM_FULL')) {
-    showToast("❌ الجلسة ممتلئة (3 طلاب للتجربة)");
-    showView("studentEntry");
-    return;
-  }
-  if (em.includes('ROOM_NOT_FOUND')) {
-    showToast("❌ الكود غير صحيح أو الغرفة غير موجودة");
-    showView("studentEntry");
-    return;
-  }
-  throw error;
-}
+  if (em.includes('
     const row = Array.isArray(data) ? data[0] : data;
     // ✅ منع الدخول إذا الجلسة وصلت 35 طالب
 const { count, error: countErr } = await sb
