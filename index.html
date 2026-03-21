@@ -3512,34 +3512,41 @@ async function saveTeacherEvalNow(){
   if (State.role !== 'teacher') return;
 
   const sid  = State.__selectedStudentUserId;
-  const sbid = State.__selectedStudentBoardId; // نتركه لو تستخدمه لأشياء أخرى
+  const sbid = State.__selectedStudentBoardId; // هذا هو المفتاح الصحيح عندك
   const bid  = State.currentBoard?.id;
 
-  if (!sid || !bid) return;
+  if(!sid || !sbid || !bid) return;
 
-  const ev = getTeacherEvalPayload();
+  const ev = getTeacherEvalPayload(); // ev = {score, level, badge, note}
 
-  // 1) حفظ محلي (كما عندك)
+  // cache locally
   _saveEval(State.room.id, sid, bid, ev);
 
-  // 2) ✅ حفظ التقييم في جدول evaluations بدل student_boards
-  // ملاحظة: إذا اسماء الأعمدة عندك مختلفة، عدّلها لتطابق جدولك
- const { error } = await sb
-  .from('evaluations')
-  .upsert({
+  // ✅ احفظ في evaluations بأعمدته الحقيقية
+  const payload = {
     room_id: State.room.id,
     student_user_id: sid,
-    student_board_id: sbid,   // ✅ بدل board_id
-    evaluation: ev,
+    student_board_id: sbid,
+    points: Number(ev.score ?? 0),
+    level: ev.level ?? null,
+    badge: ev.badge ?? null,
+    note: ev.note ?? null,
+    // rating موجود عندك كـ text: خلّيه null أو حط قيمة ثابتة
+    rating: null,
+    is_visible_to_student: true,
+    note_sent: false,
     updated_at: new Date().toISOString()
-  }, { onConflict: 'room_id,student_user_id,student_board_id' }); // ✅ بدل board_id
-  
+  };
+
+  const { error } = await sb
+    .from('evaluations')
+    .upsert(payload, { onConflict: 'room_id,student_user_id,student_board_id' });
+
   if (error) {
-    // فقط تنبيه، لا نكسر الواجهة
     console.warn('Eval DB save failed:', error);
   }
 
-  // 3) بث التقييم للطالب (كما هو)
+  // broadcast (كما هو)
   await teacherBroadcastEval(sid, bid, ev);
 }
 
