@@ -3524,16 +3524,16 @@ async function saveTeacherEvalNow(){
 
   // 2) ✅ حفظ التقييم في جدول evaluations بدل student_boards
   // ملاحظة: إذا اسماء الأعمدة عندك مختلفة، عدّلها لتطابق جدولك
-  const { error } = await sb
-    .from('evaluations')
-    .upsert({
-      room_id: State.room.id,
-      student_user_id: sid,
-      board_id: bid,
-      evaluation: ev,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'room_id,student_user_id,board_id' });
-
+ const { error } = await sb
+  .from('evaluations')
+  .upsert({
+    room_id: State.room.id,
+    student_user_id: sid,
+    student_board_id: sbid,   // ✅ بدل board_id
+    evaluation: ev,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'room_id,student_user_id,student_board_id' }); // ✅ بدل board_id
+  
   if (error) {
     // فقط تنبيه، لا نكسر الواجهة
     console.warn('Eval DB save failed:', error);
