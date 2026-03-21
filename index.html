@@ -3229,33 +3229,43 @@ function _saveEval(roomId, studentUserId, boardId, payload){
   try{ safeStorage.setItem(_evalKey(roomId,studentUserId,boardId), JSON.stringify(payload)); }catch(e){}
 }
 
-// ---- Realtime channel for evaluation/cert events ----
+// ---- Realtime channel for evaluation/cert events (PRIVATE + SAFE) ----
 let __evalChannel = null;
-let __evalChannelReady = false;
+let __evalChannelSubPromise = null;
 
-async function ensureEvalChannel(){
-  if(!State.room?.id) return null;
+/**
+ * Returns a Promise that resolves to a READY channel (SUBSCRIBED).
+ * Safe to call multiple times (shared singleton per room).
+ */
+function ensureEvalChannel(){
+  if(!State.room?.id) return Promise.resolve(null);
 
-  // لو القناة موجودة وجاهزة، رجّعها فورًا
-  if(__evalChannel && __evalChannelReady) return __evalChannel;
+  // already created
+  if(__evalChannel && __evalChannelSubPromise) {
+    return __evalChannelSubPromise.then(() => __evalChannel);
+  }
 
-  // أنشئ القناة مرة واحدة
+  // create once
   __evalChannel = sb.channel(`eval:${State.room.id}`, {
     config: { private: true }
   });
 
-  // اشترك وتأكد من SUBSCRIBED
-  await __evalChannel.subscribe((status) => {
-    if(status === 'SUBSCRIBED') {
-      __evalChannelReady = true;
-    }
+  // subscribe once, resolve when SUBSCRIBED (or still resolve to allow app to continue)
+  __evalChannelSubPromise = new Promise((resolve) => {
+    __evalChannel.subscribe((status) => {
+      if(status === 'SUBSCRIBED') resolve(true);
+      // لو صار خطأ/إغلاق، لا نعلق التطبيق للأبد
+      if(status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') resolve(false);
+    });
   });
 
-  return __evalChannel;
+  return __evalChannelSubPromise.then(() => __evalChannel);
 }
+
+// ---- Teacher broadcast: evaluation ----
 async function teacherBroadcastEval(studentUserId, boardId, evaluation){
   const ch = await ensureEvalChannel();
-  if(!ch || !__evalChannelReady) return;
+  if(!ch) return;
 
   await ch.send({
     type: 'broadcast',
@@ -3263,9 +3273,11 @@ async function teacherBroadcastEval(studentUserId, boardId, evaluation){
     payload: { student_user_id: studentUserId, board_id: boardId, evaluation }
   });
 }
+
+// ---- Teacher broadcast: certificate ----
 async function teacherBroadcastCert(studentUserId, boardId, cert){
   const ch = await ensureEvalChannel();
-  if(!ch || !__evalChannelReady) return;
+  if(!ch) return;
 
   await ch.send({
     type: 'broadcast',
@@ -3273,39 +3285,57 @@ async function teacherBroadcastCert(studentUserId, boardId, cert){
     payload: { student_user_id: studentUserId, board_id: boardId, cert }
   });
 }
-function studentSubscribeEval(){
+
+// ---- Student subscribe (eval + cert) ----
+async function studentSubscribeEval(){
   if(window.__studentEvalSubBound) return;
   window.__studentEvalSubBound = true;
-  const ch = ensureEvalChannel();
+
+  const ch = await ensureEvalChannel();
   if(!ch) return;
-  ch.on('broadcast', {event:'eval'}, ({payload})=>{
-    if(State.role!=='student') return;
+
+  ch.on('broadcast', { event: 'eval' }, ({ payload }) => {
+    if(State.role !== 'student') return;
     if(payload.student_user_id !== State.user?.id) return;
     if(payload.board_id !== State.currentBoard?.id) return;
+
     const ev = payload.evaluation || {};
+
     // cache locally
     _saveEval(State.room.id, State.user.id, State.currentBoard.id, ev);
+
     // show to student
     const box = document.getElementById('feedbackBox');
     if(box) box.textContent = ev.note || '—';
+
     const sum = document.getElementById('studentEvalSummary');
     if(sum){
       const TL = REPORT_I18N[_getAppLang()] || REPORT_I18N.ar;
-      sum.innerHTML = `${TL.score}: <b>${ev.score ?? 0}</b> — ${TL.level}: <b>${mapValue('level', ev.level || 'none', _getAppLang())}</b> — ${TL.badge}: <b>${mapValue('badge', ev.badge || 'none', _getAppLang())}</b>`;
+      sum.innerHTML =
+        `${TL.score}: <b>${ev.score ?? 0}</b> — ` +
+        `${TL.level}: <b>${mapValue('level', ev.level || 'none', _getAppLang())}</b> — ` +
+        `${TL.badge}: <b>${mapValue('badge', ev.badge || 'none', _getAppLang())}</b>`;
     }
   });
-  ch.on('broadcast', {event:'cert'}, ({payload})=>{
-    if(State.role!=='student') return;
+
+  ch.on('broadcast', { event: 'cert' }, ({ payload }) => {
+    if(State.role !== 'student') return;
     if(payload.student_user_id !== State.user?.id) return;
     if(payload.board_id !== State.currentBoard?.id) return;
+
     const cert = payload.cert || {};
-    safeStorage.setItem(`boardak_cert:${State.room.id}:${State.currentBoard.id}:${State.user.id}`, JSON.stringify(cert));
+
+    safeStorage.setItem(
+      `boardak_cert:${State.room.id}:${State.currentBoard.id}:${State.user.id}`,
+      JSON.stringify(cert)
+    );
+
     const btn = document.getElementById('downloadCert');
     if(btn) btn.classList.remove('hidden');
+
     showToast(_getAppLang()==='ar' ? 'تم إصدار شهادتك ✅' : 'Your certificate is ready ✅');
   });
 }
-
 // ---- Canvas-based Arabic-safe certificate image ----
 function _drawCertificateImage({lang='ar', studentName='الطالب', teacherName='المعلم', lessonTitle='درس', certType='شهادة شكر', score=0, level='', badge=''}){
   const canvas = document.createElement('canvas');
@@ -3502,7 +3532,7 @@ function bindTeacherEvalControls(){
     const ev = getTeacherEvalPayload();
     const cert = {type: certType.value, lang, studentName, teacherName, lessonTitle, ev, issuedAt: new Date().toISOString()};
 
-    // mark cert in DB if possible
+   / mark cert in D /B if possible
     try{ await sb.from('student_boards').update({ certificate_granted: true }).eq('id', State.__selectedStudentBoardId); }catch(e){}
 
     // cache + broadcast
