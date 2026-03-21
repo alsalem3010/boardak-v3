@@ -3532,8 +3532,8 @@ function bindTeacherEvalControls(){
     const ev = getTeacherEvalPayload();
     const cert = {type: certType.value, lang, studentName, teacherName, lessonTitle, ev, issuedAt: new Date().toISOString()};
 
-   / mark cert in D /B if possible
-    try{ await sb.from('student_boards').update({ certificate_granted: true }).eq('id', State.__selectedStudentBoardId); }catch(e){}
+// mark cert in DB if possible
+      try{ await sb.from('student_boards').update({ certificate_granted: true }).eq('id', State.__selectedStudentBoardId); }catch(e){}
 
     // cache + broadcast
     safeStorage.setItem(`boardak_cert:${State.room.id}:${bid}:${sid}`, JSON.stringify(cert));
