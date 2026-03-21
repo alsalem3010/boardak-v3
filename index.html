@@ -3231,17 +3231,37 @@ function _saveEval(roomId, studentUserId, boardId, payload){
 
 // ---- Realtime channel for evaluation/cert events ----
 let __evalChannel = null;
-function ensureEvalChannel(){
+let __evalChannelReady = false;
+
+async function ensureEvalChannel(){
   if(!State.room?.id) return null;
-  if(__evalChannel) return __evalChannel;
-  __evalChannel = sb.channel(`eval:${State.room.id}`);
-  __evalChannel.subscribe();
+
+  // لو القناة موجودة وجاهزة، رجّعها فورًا
+  if(__evalChannel && __evalChannelReady) return __evalChannel;
+
+  // أنشئ القناة مرة واحدة
+  __evalChannel = sb.channel(`eval:${State.room.id}`, {
+    config: { private: true }
+  });
+
+  // اشترك وتأكد من SUBSCRIBED
+  await __evalChannel.subscribe((status) => {
+    if(status === 'SUBSCRIBED') {
+      __evalChannelReady = true;
+    }
+  });
+
   return __evalChannel;
 }
 async function teacherBroadcastEval(studentUserId, boardId, evaluation){
-  const ch = ensureEvalChannel();
-  if(!ch) return;
-  await ch.send({type:'broadcast', event:'eval', payload:{ student_user_id: studentUserId, board_id: boardId, evaluation }});
+  const ch = await ensureEvalChannel();
+  if(!ch || !__evalChannelReady) return;
+
+  await ch.send({
+    type:'broadcast',
+    event:'eval',
+    payload:{ student_user_id: studentUserId, board_id: boardId, evaluation }
+  });
 }
 async function teacherBroadcastCert(studentUserId, boardId, cert){
   const ch = ensureEvalChannel();
