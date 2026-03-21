@@ -3258,15 +3258,20 @@ async function teacherBroadcastEval(studentUserId, boardId, evaluation){
   if(!ch || !__evalChannelReady) return;
 
   await ch.send({
-    type:'broadcast',
-    event:'eval',
-    payload:{ student_user_id: studentUserId, board_id: boardId, evaluation }
+    type: 'broadcast',
+    event: 'eval',
+    payload: { student_user_id: studentUserId, board_id: boardId, evaluation }
   });
 }
 async function teacherBroadcastCert(studentUserId, boardId, cert){
-  const ch = ensureEvalChannel();
-  if(!ch) return;
-  await ch.send({type:'broadcast', event:'cert', payload:{ student_user_id: studentUserId, board_id: boardId, cert }});
+  const ch = await ensureEvalChannel();
+  if(!ch || !__evalChannelReady) return;
+
+  await ch.send({
+    type: 'broadcast',
+    event: 'cert',
+    payload: { student_user_id: studentUserId, board_id: boardId, cert }
+  });
 }
 function studentSubscribeEval(){
   if(window.__studentEvalSubBound) return;
