@@ -34,6 +34,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   <!-- Supabase JS v2 (UMD) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
   <!-- jsPDF (optional, certificate download placeholder) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -757,6 +758,104 @@ body{background: radial-gradient(1200px 600px at 10% 0%, #e0ecff 0%, rgba(224,23
 ============================= */
 const SUPABASE_URL = "https://juqqhqbiirmgsjewyols.supabase.co";
 const SUPABASE_KEY = "sb_publishable_7HH992575bECbjgA08d-ow_DsercNiC";
+  /* =============================
+ Realtime via Socket.IO (Server)
+============================= */
+const RT_URL = "https://rt.boardak.space";
+let rt = null;
+
+function rtConnect(roomId) {
+  if (rt) return rt;
+
+  rt = io(RT_URL, {
+    path: "/socket.io",
+    transports: ["websocket"],
+    timeout: 20000
+  });
+
+  rt.on("connect", () => {
+    rt.emit("join-room", roomId);
+  });
+
+  // بديل Presence: عدد المتصلين
+  rt.on("online", (count) => {
+    State.onlineCount = count || 0;
+    updateOnlineUI();
+  });
+
+  // تحديثات من المعلم -> الطالب
+  rt.on("teacher-board", ({ boardId, payload }) => {
+    if (State.role !== "student") return;
+    const b = (State.boards || []).find(x => x.id === boardId);
+    if (b) b.content = payload;
+    renderStudentTeacherPreview();
+  });
+
+  // إشعارات: تغيّر session_meta (قفل/شرح/عرض جماعي/مؤقت)
+  rt.on("meta-update", async () => {
+    if (!sb || !State?.room?.id) return;
+    try {
+      await loadSessionMeta();
+    } catch (e) {}
+  });
+
+  // إشعارات: تغيّر قائمة boards (إضافة سبورة/تبديل visible board)
+  rt.on("boards-update", async () => {
+    if (!sb || !State?.room?.id) return;
+    try {
+      await loadBoards();
+      if (State.role === "student") {
+        await ensureStudentBoard();
+        await refreshCanvas();
+        renderStudentTeacherPreview();
+      }
+      if (State.role === "teacher") {
+        await refreshCanvas();
+        renderTeacherPreview();
+      }
+    } catch (e) {}
+  });
+
+  // تقييم/شهادة عبر Socket.IO
+  rt.on("eval", (msg) => {
+    if (State.role !== "student") return;
+    if (!msg) return;
+    if (msg.studentUserId !== State.user?.id) return;
+    if (msg.boardId !== State.currentBoard?.id) return;
+
+    const ev = msg.data || {};
+    _saveEval(State.room.id, State.user.id, State.currentBoard.id, ev);
+
+    const box = document.getElementById('feedbackBox');
+    if (box) box.textContent = ev.note || '—';
+  });
+
+  rt.on("cert", (msg) => {
+    if (State.role !== "student") return;
+    if (!msg) return;
+    if (msg.studentUserId !== State.user?.id) return;
+    if (msg.boardId !== State.currentBoard?.id) return;
+
+    safeStorage.setItem(
+      `boardak_cert:${State.room.id}:${State.currentBoard.id}:${State.user.id}`,
+      JSON.stringify(msg.cert || {})
+    );
+
+    const btn = document.getElementById('downloadCert');
+    if (btn) btn.classList.remove('hidden');
+    showToast(_getAppLang()==='ar' ? 'تم إصدار شهادتك ✅' : 'Your certificate is ready ✅');
+  });
+
+  return rt;
+}
+
+// helpers للبث
+function rtMetaUpdate() {
+  if (rt && State.room?.id) rt.emit("meta-update", { roomId: State.room.id });
+}
+function rtBoardsUpdate() {
+  if (rt && State.room?.id) rt.emit("boards-update", { roomId: State.room.id });
+}
 
 /* =============================
    Safe Storage (fallback memory)
@@ -1669,6 +1768,8 @@ function renderBoardTabs(){
       if(State.role==="teacher"){
         const { error } = await sb.rpc("set_visible_board_v3", { p_room_id: State.room.id, p_board_id: b.id });
         if(error) console.warn(error);
+        try{ await loadBoards(); }catch(e){}
+rtBoardsUpdate();
       }
 
       State.currentBoard = b;
@@ -2358,6 +2459,10 @@ function studentDataUrl(){
 async function saveTeacherBoard(){
   if(State.role!=="teacher" || !State.currentBoard) return;
   const payload = { type:"boardak_v3", version:1, drawing: teacherDataUrl(), preview: teacherDataUrl() };
+  // بث مباشر للطلاب (Realtime على السيرفر)
+if (rt && State.room?.id) {
+  rt.emit("teacher-board", { roomId: State.room.id, boardId: State.currentBoard.id, payload });
+}
   const { error } = await sb.from("boards").update({ content: payload }).eq("id", State.currentBoard.id);
   if(error){ console.warn(error); showToast("تعذر حفظ السبورة"); }
 }
@@ -2532,8 +2637,7 @@ async function teacherStartFlow(){
     await refreshCanvas();
     renderTeacherPreview();
 
-    subscribeDb(State.room.id);
-    subscribePresence(State.room.id);
+   rtConnect(State.room.id);
 
     // build teacher pane + first refresh
     try{ ensureTeacherStudentPane(); }catch(e){}
@@ -2644,14 +2748,9 @@ async function studentJoinFlow(){
     await refreshCanvas();
     renderStudentTeacherPreview();
 
-    subscribeDb(State.room.id);
-    subscribePresence(State.room.id);
-
-    try{ ensureStudentEvalUI(); }catch(e){}
-    try{ ensureEvalChannel(); }catch(e){}
-    try{ studentSubscribeEval(); }catch(e){}
-    try{ bindStudentCertificateButton(); }catch(e){}
-
+    rtConnect(State.room.id);
+try{ ensureStudentEvalUI(); }catch(e){}
+    
   }catch(e){
     console.error("JOIN ERROR FULL:", e);
     if(joinedOk){ showToast("تم الدخول، لكن حصل خطأ في التهيئة"); return; }
@@ -2762,12 +2861,16 @@ $('langBtn').onclick = () => {
     const next = !State.sessionMeta?.explanation_mode;
     const { error } = await sb.rpc("set_explanation_mode_v3", { p_room_id: State.room.id, p_enabled: next });
     if(error) console.warn(error);
+    try{ await loadSessionMeta(); }catch(e){}
+rtMetaUpdate();
   };
 
   $("toggleLock").onclick = async ()=>{
     const next = !State.sessionMeta?.board_locked;
     const { error } = await sb.rpc("set_board_locked_v3", { p_room_id: State.room.id, p_locked: next });
     if(error) console.warn(error);
+    try{ await loadSessionMeta(); }catch(e){}
+rtMetaUpdate();
   };
 
   $("toggleFocus").onclick = async ()=>{
@@ -2781,6 +2884,8 @@ $('langBtn').onclick = () => {
     } else {
       const { error } = await sb.rpc("clear_focused_student_board_v3", { p_room_id: State.room.id });
       if(error) console.warn(error);
+      try{ await loadSessionMeta(); }catch(e){}
+rtMetaUpdate();
     }
   };
 
@@ -2794,6 +2899,8 @@ $('langBtn').onclick = () => {
       content: { type:"boardak_v3", version:1 }
     });
     if(error){ console.warn(error); showToast("ربما وصلت حد 10 سبورات"); }
+    try{ await loadBoards(); }catch(e){}
+rtBoardsUpdate();
   };
 
 $("tPen").onclick = () => {
@@ -3264,26 +3371,18 @@ function ensureEvalChannel(){
 
 // ---- Teacher broadcast: evaluation ----
 async function teacherBroadcastEval(studentUserId, boardId, evaluation){
-  const ch = await ensureEvalChannel();
-  if(!ch) return;
-
-  await ch.send({
-    type: 'broadcast',
-    event: 'eval',
-    payload: { student_user_id: studentUserId, board_id: boardId, evaluation }
-  });
+  if (rt && State.room?.id) {
+    rt.emit("eval", { roomId: State.room.id, studentUserId, boardId, data: evaluation });
+    return;
+  }
 }
 
 // ---- Teacher broadcast: certificate ----
 async function teacherBroadcastCert(studentUserId, boardId, cert){
-  const ch = await ensureEvalChannel();
-  if(!ch) return;
-
-  await ch.send({
-    type: 'broadcast',
-    event: 'cert',
-    payload: { student_user_id: studentUserId, board_id: boardId, cert }
-  });
+  if (rt && State.room?.id) {
+    rt.emit("cert", { roomId: State.room.id, studentUserId, boardId, cert });
+    return;
+  }
 }
 
 // ---- Student subscribe (eval + cert) ----
