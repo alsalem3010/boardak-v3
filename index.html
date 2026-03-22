@@ -830,22 +830,25 @@ function rtConnect(roomId) {
     if (box) box.textContent = ev.note || '—';
   });
 
-  rt.on("cert", (msg) => {
-    if (State.role !== "student") return;
-    if (!msg) return;
-    if (msg.studentUserId !== State.user?.id) return;
-    if (msg.boardId !== State.currentBoard?.id) return;
+rt.on("cert", (msg) => {
+  if (State.role !== "student") return;
+  if (!msg) return;
+  if (msg.studentUserId !== State.user?.id) return;
+  if (msg.boardId !== State.currentBoard?.id) return;
 
-    safeStorage.setItem(
-      `boardak_cert:${State.room.id}:${State.currentBoard.id}:${State.user.id}`,
-      JSON.stringify(msg.cert || {})
-    );
+  safeStorage.setItem(
+    `boardak_cert:${State.room.id}:${State.currentBoard.id}:${State.user.id}`,
+    JSON.stringify(msg.cert || {})
+  );
 
-    const btn = document.getElementById('downloadCert');
-    if (btn) btn.classList.remove('hidden');
-    showToast(_getAppLang()==='ar' ? 'تم إصدار شهادتك ✅' : 'Your certificate is ready ✅');
-  });
+  const btn = document.getElementById('downloadCert');
+  if (btn) btn.classList.remove('hidden');
 
+  // ✅ هذا هو السطر المهم: يربط زر التحميل فعليًا
+  try{ bindStudentCertificateButton(); }catch(e){}
+
+  showToast(_getAppLang()==='ar' ? 'تم إصدار شهادتك ✅' : 'Your certificate is ready ✅');
+});
   return rt;
 }
 
@@ -2699,7 +2702,7 @@ async function studentJoinFlow(){
 
     rtConnect(State.room.id);
 try{ ensureStudentEvalUI(); }catch(e){}
-    
+    try{ bindStudentCertificateButton(); }catch(e){}
   }catch(e){
     console.error("JOIN ERROR FULL:", e);
     if(joinedOk){ showToast("تم الدخول، لكن حصل خطأ في التهيئة"); return; }
@@ -3616,8 +3619,7 @@ async function saveTeacherEvalNow(){
 
   const sid  = State.__selectedStudentUserId;
   const sbid = State.__selectedStudentBoardId; // هذا هو المفتاح الصحيح عندك
-  const bid  = State.currentBoard?.id;
-
+const bid = (State.boards || []).find(x => x.visible_to_students)?.id || State.currentBoard?.id;
   if(!sid || !sbid || !bid) return;
 
   const ev = getTeacherEvalPayload(); // ev = {score, level, badge, note}
