@@ -791,14 +791,21 @@ function rtConnect(roomId) {
     renderStudentTeacherPreview();
   });
 
-  // إشعارات: تغيّر session_meta (قفل/شرح/عرض جماعي/مؤقت)
+ // إشعارات: تغيّر session_meta (قفل/شرح/عرض جماعي/مؤقت/إنهاء جلسة)
 rt.on("meta-update", async () => {
   if (!sb || !State?.room?.id) return;
-  try { 
-    await loadSessionMeta(); 
-  } catch (e) {}
 
-  // ✅ تأكيد تشغيل المؤقت عند الطالب
+  try {
+    await loadSessionMeta();     // يجلب session_open, timer..., lock..., ...
+  } catch (e) {
+    console.warn(e);
+    return;
+  }
+
+  // ✅ هذا السطر هو اللي يخلي الطالب يطلع لتسجيل الدخول عند session_open=false
+  try { applySessionMetaUI(); } catch(e) { console.warn(e); }
+
+  // ✅ تشغيل/تزامن المؤقت (خاصة عند الطالب)
   renderTimerUI();
   startTimerTicker();
 });
@@ -1261,44 +1268,72 @@ function startTimerTicker(){
 async function timerUpdate(action){
   const meta = State.sessionMeta || {};
 
-  if(action === 'start'){
-    const mins = parseInt($('timerMinutesInput')?.value || '0', 10);
-    if(!mins || mins <= 0){
-      showToast("أدخل عدد الدقائق");
-      return;
-    }
+if(action === 'start'){
+  const { error } = await sb.from('session_meta')
+    .update({
+      timer_enabled: true,
+      timer_seconds: sec,
+      timer_started_at: new Date().toISOString(),
+      timer_action: timer_action,
+      updated_at: new Date().toISOString()
+    })
+    .eq('room_id', State.room.id);
 
-    const sec = mins * 60;
-    const timer_action = $('timerAction')?.value || 'alert';
-
-    const { error } = await sb.from('session_meta')
-      .update({
-        timer_enabled: true,
-        timer_seconds: sec,
-        timer_started_at: new Date().toISOString(),
-        timer_action: timer_action,
-        updated_at: new Date().toISOString()
-      })
-      .eq('room_id', State.room.id);
-
-    if(error){
-      console.error(error);
-      showToast("فشل تشغيل المؤقت");
-      return;
-    }
-
-    // ✅ هذا السطر هو الفرق
-    State.sessionMeta.timer_enabled = true;
-    State.sessionMeta.timer_seconds = sec;
-    State.sessionMeta.timer_started_at = new Date().toISOString();
-
-    renderTimerUI();
-    startTimerTicker();
-    
-// ✅ هذا السطر الحاسم
-rtMetaUpdate();
+  if(error){
+    console.error(error);
+    showToast("فشل تشغيل المؤقت");
     return;
   }
+
+  State.sessionMeta.timer_enabled = true;
+  State.sessionMeta.timer_seconds = sec;
+  State.sessionMeta.timer_started_at = new Date().toISOString();
+
+  renderTimerUI();
+  startTimerTicker();
+  rtMetaUpdate();
+  return;
+}
+
+if(action === 'pause'){
+  const remaining = _computeRemaining(meta);
+
+  await sb.from('session_meta')
+    .update({
+      timer_enabled: false,
+      timer_seconds: remaining,
+      updated_at: new Date().toISOString()
+    })
+    .eq('room_id', State.room.id);
+
+  State.sessionMeta.timer_enabled = false;
+  State.sessionMeta.timer_seconds = remaining;
+
+  renderTimerUI();
+  stopTimerTicker();   // ✅
+  rtMetaUpdate();      // ✅
+  return;
+}
+
+if(action === 'reset'){
+  await sb.from('session_meta')
+    .update({
+      timer_enabled: false,
+      timer_seconds: 0,
+      timer_started_at: null,
+      updated_at: new Date().toISOString()
+    })
+    .eq('room_id', State.room.id);
+
+  State.sessionMeta.timer_enabled = false;
+  State.sessionMeta.timer_seconds = 0;
+  State.sessionMeta.timer_started_at = null;
+
+  renderTimerUI();
+  stopTimerTicker();   // ✅
+  rtMetaUpdate();      // ✅ هذا كان ناقص
+  return;
+}
 
   if(action === 'pause'){
     const remaining = _computeRemaining(meta);
@@ -1313,6 +1348,9 @@ rtMetaUpdate();
     State.sessionMeta.timer_seconds = remaining;
 
     renderTimerUI();
+    
+    stopTimerTicker();   // ✅ يمنع استمرار العدّ محليًا
+
     // ✅ بث التغيير للطلاب
 rtMetaUpdate();
     return;
@@ -1331,6 +1369,11 @@ rtMetaUpdate();
     State.sessionMeta.timer_started_at = null;
 
     renderTimerUI();
+    
+stopTimerTicker();   // ✅ (اختياري لكن مفضل)
+
+rtMetaUpdate();      // ✅ هذا السطر كان ناقص
+
     return;
   }
 }
@@ -2862,31 +2905,49 @@ rtMetaUpdate();
     }
   };
 
-  $("addBoard").onclick = async () => {
-  const n = (State.boards?.length || 0) + 1;
+ $("addBoard").onclick = async () => {
+  if (State.role !== "teacher") return;
+
+  // ✅ اجلب العدد الحقيقي من DB
+  const { data: boards, error: cntErr } = await sb
+    .from("boards")
+    .select("id", { count: "exact", head: true })
+    .eq("room_id", State.room.id);
+
+  if (cntErr) {
+    console.warn(cntErr);
+    showToast("تعذر قراءة عدد السبورات");
+    return;
+  }
+
+  const count = boards?.length ?? 0;
+  if (count >= 10) {
+    showToast("وصلت للحد الأقصى (10 سبورات)");
+    return;
+  }
+
+  const n = count + 1;
 
   const { error } = await sb.from("boards").insert({
     room_id: State.room.id,
     title: `السبورة ${n}`,
     sort_order: n,
     visible_to_students: false,
-    content: { type:"boardak_v3", version:1 }
+    content: { type: "boardak_v3", version: 1 }
   });
 
-  if(error){
+  if (error) {
     console.warn(error);
-    showToast("ربما وصلت حد 10 سبورات");
+    showToast("فشل إضافة السبورة");
     return;
   }
 
-  // ✅ المعلم فقط يحمل محليًا
+  // ✅ المعلم فقط يحدث محليًا
   await loadBoards();
   renderTeacherPreview();
 
   // ✅ بث للطلاب فقط
-  if (State.role === "teacher") {
-    rt.emit("boards-update", { roomId: State.room.id });
-  }
+  rt.emit("boards-update", { roomId: State.room.id });
 };
 
 $("tPen").onclick = () => {
