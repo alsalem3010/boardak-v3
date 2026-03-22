@@ -1294,6 +1294,9 @@ async function timerUpdate(action){
 
     renderTimerUI();
     startTimerTicker();
+    
+// ✅ هذا السطر الحاسم
+rtMetaUpdate();
     return;
   }
 
@@ -1310,6 +1313,8 @@ async function timerUpdate(action){
     State.sessionMeta.timer_seconds = remaining;
 
     renderTimerUI();
+    // ✅ بث التغيير للطلاب
+rtMetaUpdate();
     return;
   }
 
@@ -2531,6 +2536,7 @@ function applySessionMetaUI(){
     renderStudentTeacherPreview();
   }
   renderTimerUI();
+  startTimerTicker();   // ✅ هذا السطر الناقص
 }
 console.log("BEFORE ASYNC");
 /* =============================
@@ -2806,6 +2812,7 @@ $('langBtn').onclick = () => {
     await sb.from('session_meta')
       .update({ session_open: false, updated_at: new Date().toISOString() })
       .eq('room_id', State.room.id);
+    rtMetaUpdate();   // ✅ يخبر الطلاب
   } catch (e) {}
 
   // اختياري: مهلة قصيرة جدًا لتزامن الرسالة قبل الحذف
@@ -2855,19 +2862,32 @@ rtMetaUpdate();
     }
   };
 
-  $("addBoard").onclick = async ()=>{
-    const n = (State.boards?.length||0)+1;
-    const { error } = await sb.from("boards").insert({
-      room_id: State.room.id,
-      title: `السبورة ${n}`,
-      sort_order: n,
-      visible_to_students: false,
-      content: { type:"boardak_v3", version:1 }
-    });
-    if(error){ console.warn(error); showToast("ربما وصلت حد 10 سبورات"); }
-    try{ await loadBoards(); }catch(e){}
-rtBoardsUpdate();
-  };
+  $("addBoard").onclick = async () => {
+  const n = (State.boards?.length || 0) + 1;
+
+  const { error } = await sb.from("boards").insert({
+    room_id: State.room.id,
+    title: `السبورة ${n}`,
+    sort_order: n,
+    visible_to_students: false,
+    content: { type:"boardak_v3", version:1 }
+  });
+
+  if(error){
+    console.warn(error);
+    showToast("ربما وصلت حد 10 سبورات");
+    return;
+  }
+
+  // ✅ المعلم فقط يحمل محليًا
+  await loadBoards();
+  renderTeacherPreview();
+
+  // ✅ بث للطلاب فقط
+  if (State.role === "teacher") {
+    rt.emit("boards-update", { roomId: State.room.id });
+  }
+};
 
 $("tPen").onclick = () => {
   ImageState.activeId = null;
@@ -2943,7 +2963,6 @@ if(tImageBtn) tImageBtn.onclick = () => {
 reader.onload = () => {
   addImageObject(reader.result);
   queueSaveTeacher();        // ✅ يحفظ
-  rtBoardsUpdate();          // ✅ يبث للطلاب
 };
   reader.readAsDataURL(file);
   imagePicker.value = "";
