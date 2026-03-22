@@ -792,12 +792,16 @@ function rtConnect(roomId) {
   });
 
   // إشعارات: تغيّر session_meta (قفل/شرح/عرض جماعي/مؤقت)
-  rt.on("meta-update", async () => {
-    if (!sb || !State?.room?.id) return;
-    try {
-      await loadSessionMeta();
-    } catch (e) {}
-  });
+rt.on("meta-update", async () => {
+  if (!sb || !State?.room?.id) return;
+  try { 
+    await loadSessionMeta(); 
+  } catch (e) {}
+
+  // ✅ تأكيد تشغيل المؤقت عند الطالب
+  renderTimerUI();
+  startTimerTicker();
+});
 
   // إشعارات: تغيّر قائمة boards (إضافة سبورة/تبديل visible board)
   rt.on("boards-update", async () => {
@@ -818,18 +822,28 @@ function rtConnect(roomId) {
 
   // تقييم/شهادة عبر Socket.IO
   rt.on("eval", (msg) => {
-    if (State.role !== "student") return;
-    if (!msg) return;
-    if (msg.studentUserId !== State.user?.id) return;
-    if (msg.boardId !== State.currentBoard?.id) return;
+  if (State.role !== "student") return;
+  if (!msg) return;
+  if (msg.studentUserId !== State.user?.id) return;
+  if (msg.boardId !== State.currentBoard?.id) return;
 
-    const ev = msg.data || {};
-    _saveEval(State.room.id, State.user.id, State.currentBoard.id, ev);
+  const ev = msg.data || {};
+  _saveEval(State.room.id, State.user.id, State.currentBoard.id, ev);
 
-    const box = document.getElementById('feedbackBox');
-    if (box) box.textContent = ev.note || '—';
-  });
+  // الملاحظة
+  const box = document.getElementById('feedbackBox');
+  if (box) box.textContent = ev.note || '—';
 
+  // ✅ الملخص (درجة/مستوى/وسام)
+  const sum = document.getElementById('studentEvalSummary');
+  if (sum) {
+    const TL = REPORT_I18N[_getAppLang()] || REPORT_I18N.ar;
+    sum.innerHTML =
+      `${TL.score}: <b>${ev.score ?? 0}</b> — ` +
+      `${TL.level}: <b>${mapValue('level', ev.level || 'none', _getAppLang())}</b> — ` +
+      `${TL.badge}: <b>${mapValue('badge', ev.badge || 'none', _getAppLang())}</b>`;
+  }
+});
 rt.on("cert", (msg) => {
   if (State.role !== "student") return;
   if (!msg) return;
