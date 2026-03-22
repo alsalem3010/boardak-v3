@@ -939,13 +939,10 @@ function startViewerPolling(){
     try{
       if(!sb || !State?.room?.id || State.role !== 'student' || !State.viewerOnly) return;
       const { data, error } = await sb
-        .from('boards')
-        .select('content')
-        .eq('room_id', State.room.id)
-        .eq('visible_to_students', true)
-        .order('sort_order', { ascending: true })
-        .limit(1)
-        .maybeSingle();
+      .from('boards')
+.select('*')
+.eq('room_id', State.room.id)
+.order('sort_order', { ascending: true });
       if(error) return;
       const preview = data?.content?.preview || data?.content?.drawing || '';
       const wrap = document.getElementById('studentTeacherPreview');
@@ -1511,23 +1508,39 @@ async function loadSessionMeta(){
 }
 
 async function loadBoards(){
-  const { data, error } = await sb
-    .from("boards")
-    .select("*")
-    .eq("room_id", State.room.id)
-    .order("sort_order", { ascending:true });
-
-  if(error) throw error;
-
-  State.boards = data || [];
-  State.currentBoard = State.boards.find(b=>b.visible_to_students) || State.boards[0] || null;
-
-  // ✅ حمّل عناصر هذه السبورة فقط (حتى لا تتسرب عناصر من سبورة أخرى)
-  if(State.currentBoard?.id){
-    loadObjectsForBoard(State.currentBoard.id);
+  if(!sb || !State.room?.id){
+    State.boards = [];
+    return [];
   }
 
-  renderBoardTabs();
+  const { data, error } = await sb
+    .from('boards')
+    .select('*')                                // ✅ لازم نجلب كل الأعمدة
+    .eq('room_id', State.room.id)
+    .order('sort_order', { ascending: true });  // ✅ ترتيب ثابت
+
+  if(error){
+    console.warn("loadBoards error:", error);
+    State.boards = [];
+    return [];
+  }
+
+  State.boards = Array.isArray(data) ? data : [];
+
+  // ✅ تأكد أن currentBoard يشير لسبورة موجودة
+  if(State.boards.length){
+    // إذا currentBoard مش موجود أو id مش موجود ضمن القائمة -> اختَر أول سبورة
+    const curId = State.currentBoard?.id;
+    const found = curId ? State.boards.find(b => b.id === curId) : null;
+    State.currentBoard = found || State.boards[0];
+  } else {
+    State.currentBoard = null;
+  }
+
+  // ✅ إذا عندك tabs، خلّيها تتحدث بعد تحميل السبورات
+  try { renderBoardTabs(); } catch(e) {}
+
+  return State.boards;
 }
 
 async function ensureStudentBoard(){
@@ -1782,19 +1795,28 @@ function renderBoardTabs(){
       if(State.role==="teacher"){
         const { error } = await sb.rpc("set_visible_board_v3", { p_room_id: State.room.id, p_board_id: b.id });
         if(error) console.warn(error);
-        try{ await loadBoards(); }catch(e){}
-rtBoardsUpdate();
+        // ✅ المعلم يحدّث عنده محليًا فقط
+try{ await loadBoards(); }catch(e){}
+
+// ✅ وبس يبث للطلاب (بدون ما يرجّع يعمل loadBoards عند نفسه)
+if (rt && State.role === "teacher") {
+  rt.emit("boards-update", { roomId: State.room.id });
+}
       }
 
-      State.currentBoard = b;
+   State.currentBoard = b;
 
-      // ✅ حمّل عناصر هذه السبورة فقط
-      if(State.currentBoard?.id){
-        loadObjectsForBoard(State.currentBoard.id);
-      }
+// ✅ حمّل عناصر هذه السبورة فقط
+if (State.currentBoard?.id) {
+  loadObjectsForBoard(State.currentBoard.id);
+}
 
-      renderBoardTabs();
-      await refreshCanvas();
+// ✅ لا تعيد بناء التبويبات من داخل onclick
+// فقط حدّث الـ active class (اختياري) أو اترك refreshCanvas يعيد الرسم
+await refreshCanvas();
+
+// ✅ إذا بدك تحديث شكل الـ active مباشرة بدون إعادة بناء:
+// (إذا عندك CSS active يعتمد على State.currentBoard فقط، ما تحتاج هذا)
     };
 
     wrap.appendChild(btn);
@@ -3836,12 +3858,17 @@ function bindStudentCertificateButton(){
         score: ev.score||0, level: ev.level||'', badge: ev.badge||''
       });
 
-      await _downloadPdfFromImage(img, `certificate-${safeName}.pdf`);
-    } finally {
-      __certDownloading = false;
-      btn.disabled = false;
-      btn.textContent = oldText;
-    }
+     
+await _downloadPdfFromImage(img, `certificate-${safeName}.pdf`);
+} catch (err) {
+  console.warn(err);
+  showToast(_getAppLang()==='en' ? 'Download failed' : 'فشل تنزيل الشهادة');
+} finally {
+  __certDownloading = false;
+  btn.disabled = false;
+  btn.textContent = oldText;
+}
+
   };
 }
 
