@@ -389,7 +389,11 @@ body{background: radial-gradient(1200px 600px at 10% 0%, #e0ecff 0%, rgba(224,23
     };
   </script>
   <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
-
+<style>
+canvas {
+  touch-action: none;
+}
+</style>
 </head>
 
 <body>
@@ -1895,20 +1899,35 @@ function ensureBaseLayer(){
 }
 let sCanvas, sCtx, sDrawing = false, sTool = "pen", sColor = "#000000", sSize = 4;
 let saveTimerT = null, saveTimerS = null;
-
+function lockCanvasTouch(canvas){
+  const opts = { passive: false };
+  canvas.addEventListener('touchstart', e => e.preventDefault(), opts);
+  canvas.addEventListener('touchmove',  e => e.preventDefault(), opts);
+  canvas.addEventListener('touchend',   e => e.preventDefault(), opts);
+  canvas.addEventListener('touchcancel',e => e.preventDefault(), opts);
+}
 function initCanvas() {
   tCanvas = $("tCanvas");
   tCtx = tCanvas.getContext("2d");
   ensureBaseLayer();
   sCanvas = $("sCanvas");
   sCtx = sCanvas.getContext("2d");
+  
+// ✅ هذا هو الحل القاطع للـ iPad
+  tCanvas.style.touchAction = "none";
+  sCanvas.style.touchAction = "none";
+  lockCanvasTouch(tCanvas);
+  lockCanvasTouch(sCanvas);
+
 
   [tCtx, sCtx].forEach(ctx => {
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
   });
 
- tCanvas.onpointerdown = (e) => {
+tCanvas.onpointerdown = (e) => {
+  e.preventDefault();              // ✅ مهم
+  tCanvas.setPointerCapture(e.pointerId);
   const p = pos(tCanvas, e);
 
   // ✅ إذا المؤشر: تعامل مع عناصر النص
@@ -2132,14 +2151,17 @@ tCanvas.onpointerup = () => {
 };
 
   
-  sCanvas.onpointerdown = (e) => {
-    if(!studentCanEdit()) return;
-    sDrawing = true;
-    const p = pos(sCanvas, e);
-    sCtx.beginPath();
-    sCtx.moveTo(p.x, p.y);
-  };
+ sCanvas.onpointerdown = (e) => {
+  e.preventDefault();                 // ✅ يمنع Scroll على iPad
+  if (e.pointerId != null) sCanvas.setPointerCapture(e.pointerId);
 
+  if(!studentCanEdit()) return;
+
+  sDrawing = true;
+  const p = pos(sCanvas, e);
+  sCtx.beginPath();
+  sCtx.moveTo(p.x, p.y);
+};
   sCanvas.onpointermove = (e) => {
     if (!studentCanEdit()) return;
     if (!sDrawing) return;
