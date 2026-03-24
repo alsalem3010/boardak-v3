@@ -835,6 +835,29 @@ rt.on("meta-update", async () => {
     console.warn(e);
   }
 });
+ // ✅ Fallback: لو طالب ما وصلته boards-update (شبكة/انقطاع)
+if (!window.__boardsPoll) {
+  window.__boardsPoll = setInterval(async () => {
+    try{
+      if(!sb || !State?.room?.id || State.role !== "student") return;
+      if(document.getElementById('studentRoom')?.classList.contains('hidden')) return;
+
+      const prev = State.currentBoard?.id || null;
+
+      // ✅ مهم: loadBoards فقط (يعيد currentBoard للـ visible_to_students)
+      await loadBoards();
+
+      const now = State.currentBoard?.id || null;
+
+      // ✅ لا تعمل refresh إلا إذا تغيرت فعلاً
+      if(now && now !== prev){
+        await ensureStudentBoard();
+        await refreshCanvas();
+        renderStudentTeacherPreview();
+      }
+    }catch(e){}
+  }, 4000);
+}
 
   // تقييم/شهادة عبر Socket.IO
   rt.on("eval", (msg) => {
@@ -953,7 +976,8 @@ function startViewerPolling(){
 .eq('room_id', State.room.id)
 .order('sort_order', { ascending: true });
       if(error) return;
-      const preview = data?.content?.preview || data?.content?.drawing || '';
+      const vis = (data || []).find(b => b.visible_to_students) || (data || [])[0];
+const preview = vis?.content?.preview || vis?.content?.drawing || '';
       const wrap = document.getElementById('studentTeacherPreview');
       if(!wrap) return;
       wrap.innerHTML = preview
@@ -1554,7 +1578,8 @@ if(State.boards.length){
 // ✅ إذا عندك tabs، خلّيها تتحدث بعد تحميل السبورات
 try { renderBoardTabs(); } catch(e) {}
 
-return State.boards;}
+return State.boards;
+}
 async function ensureStudentBoard(){
   if(!State.currentBoard) return;
 
@@ -1652,11 +1677,27 @@ async function renderStudentsBoards(){
     .order('joined_at', { ascending: true });
   if(mErr){ console.warn(mErr); return; }
 
-  const { data: sbs, error: sbErr } = await sb.from('student_boards')
-    .select('id, student_user_id, board_id, board_data, status, help_requested, certificate_granted, updated_at')
-    .eq('room_id', State.room.id)
-    .eq('board_id', State.currentBoard?.id || '') ;
-  if(sbErr){ console.warn(sbErr); return; }
+ const activeBoardId =
+  (State.boards || []).find(b => b.visible_to_students)?.id
+  || State.currentBoard?.id
+  || null;
+
+const qSB = sb.from('student_boards')
+  .select('id, student_user_id, board_id, board_data, status, help_requested, certificate_granted, updated_at')
+  .eq('room_id', State.room.id);
+
+if(activeBoardId){
+  qSB.eq('board_id', activeBoardId);
+}
+
+const { data: sbs, error: sbErr } = await qSB;
+  if(sbErr){ console.warn(sbErr); return; 
+           }
+
+  
+/ ✅ الآن امسح (بعد نجاح الجلب)
+gridWrap.innerHTML = '';
+listWrap.innerHTML = '';
 
   State.__membersCache = members || [];
   State.__studentBoardsCache = sbs || [];
@@ -1692,8 +1733,7 @@ const latest = new Map();
     return true;
   };
 
-  gridWrap.innerHTML = '';
-  listWrap.innerHTML = '';
+
 
   if(!members?.length){
     gridWrap.innerHTML = `<div class="studentCard">${TT('noStudents')}</div>`;
