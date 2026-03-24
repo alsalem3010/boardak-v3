@@ -1006,10 +1006,11 @@ function startSessionLifecycle(roomStartedAt){
 
   if(window.__sessionTicker) clearInterval(window.__sessionTicker);
 
-  window.__sessionTicker = setInterval(async () => {
+  window.__sessionTicker = setInterval(() => {
     const remaining = endsAt - Date.now();
     const txt = formatMMSS(remaining);
 
+    // ===== عرض الوقت =====
     const headerTimer = document.getElementById('sessionTimer');
     if(headerTimer){
       headerTimer.style.display = 'inline-block';
@@ -1023,27 +1024,32 @@ function startSessionLifecycle(roomStartedAt){
       if(remaining <= SESSION_WARN_MS) sTimer.style.background = '#b00020';
     }
 
+    // ===== تحذير قبل الانتهاء =====
     if(!warned && remaining <= SESSION_WARN_MS && remaining > 0){
       warned = true;
-      const msg = (_getAppLang()==='en') ? '⏰ Session will end soon.' : '⏰ الجلسة ستنتهي قريبًا.';
+      const msg = (_getAppLang()==='en')
+        ? '⏰ Session will end soon.'
+        : '⏰ الجلسة ستنتهي قريبًا.';
       try{ showToast(msg); }catch(e){}
-      const sBar = document.getElementById('sBar');
-      if(sBar){ sBar.textContent = msg; sBar.classList.remove('hidden'); }
-      const tBar = document.getElementById('tBar');
-      if(tBar){ tBar.textContent = msg; tBar.classList.remove('hidden'); }
     }
 
+    // ===== عند انتهاء الوقت =====
     if(remaining <= 0){
       clearInterval(window.__sessionTicker);
-      if(State?.role === 'teacher' && State?.room?.id && sb){
-        try{ await sb.rpc('end_and_delete_room', { p_room_id: State.room.id }); }catch(e){}
-      }
-      alert((_getAppLang()==='en') ? '⛔ Session ended.' : '⛔ انتهت الجلسة.');
-      location.href = location.pathname;
+
+      const msg = (_getAppLang()==='en')
+        ? '⛔ Session time ended.'
+        : '⛔ انتهى وقت الجلسة.';
+
+      try{ showToast(msg); }catch(e){}
+
+      // ❌ لا حذف غرفة
+      // ❌ لا redirect
+      // ✅ الجلسة تبقى شغالة إلى أن ينهيها المعلم يدويًا
     }
+
   }, 1000);
 }
-
 // ===============================
 // Session Lifecycle (TEST/PROD)
 // ===============================
@@ -1525,24 +1531,30 @@ async function loadBoards(){
     return [];
   }
 
-  State.boards = Array.isArray(data) ? data : [];
+ State.boards = Array.isArray(data) ? data : [];
 
-  // ✅ تأكد أن currentBoard يشير لسبورة موجودة
-  if(State.boards.length){
-    // إذا currentBoard مش موجود أو id مش موجود ضمن القائمة -> اختَر أول سبورة
+// ✅ اختيار currentBoard بشكل صحيح
+if(State.boards.length){
+
+  // ✅ للطالب: اربط currentBoard بالسبورة المرئية للطلاب
+  if(State.role === 'student'){
+    const vis = State.boards.find(b => b.visible_to_students) || State.boards[0] || null;
+    State.currentBoard = vis;
+  } else {
+    // ✅ للمعلم: حافظ على السلوك الحالي
     const curId = State.currentBoard?.id;
     const found = curId ? State.boards.find(b => b.id === curId) : null;
-    State.currentBoard = found || State.boards[0];
-  } else {
-    State.currentBoard = null;
+    State.currentBoard = found || State.boards[0] || null;
   }
 
-  // ✅ إذا عندك tabs، خلّيها تتحدث بعد تحميل السبورات
-  try { renderBoardTabs(); } catch(e) {}
-
-  return State.boards;
+} else {
+  State.currentBoard = null;
 }
 
+// ✅ إذا عندك tabs، خلّيها تتحدث بعد تحميل السبورات
+try { renderBoardTabs(); } catch(e) {}
+
+return State.boards;
 async function ensureStudentBoard(){
   if(!State.currentBoard) return;
 
@@ -2745,7 +2757,7 @@ async function studentJoinFlow(){
   loading(true);
   let joinedOk = false;
   try{
-    State.user = await ensureAnonFresh();
+    if(!State.user) State.user = await ensureAnon(); 
 
     const studentName = $("sName").value.trim();
     const code = $("sCode").value.trim().toUpperCase();
