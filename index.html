@@ -791,8 +791,8 @@ function rtConnect(roomId) {
   });
 
   // تحديثات من المعلم -> الطالب
-  rt.on("teacher-board", ({ boardId, payload }) => {
-    if (State.role !== "student") return;
+rt.on("teacher-board", async ({ boardId, payload }) => {
+  if (State.role !== "student") return;
     const b = (State.boards || []).find(x => x.id === boardId);
     if (b) b.content = payload;
     renderStudentTeacherPreview();
